@@ -1,0 +1,22 @@
+{% if result.available %}
+<div class="rounded-lg border p-4
+  {% if result.severity == 'critical' %}border-red-300 bg-red-50
+  {% elif result.severity == 'warning' %}border-yellow-300 bg-yellow-50
+  {% else %}border-blue-200 bg-blue-50{% endif %}">
+  <div class="flex items-center justify-between mb-2">
+    <h3 class="text-base font-semibold text-gray-800">{{ result.diagnosis }}</h3>
+    <span class="text-xs text-gray-500">{{ result.confidence_pct }}% confidence</span>
+  </div>
+  {% if result.treatment %}
+  <p class="text-sm text-gray-700 mt-1"><strong>Treatment:</strong> {{ result.treatment }}</p>
+  {% endif %}
+  {% if result.recommendation %}
+  <p class="text-sm text-gray-700 mt-1">{{ result.recommendation }}</p>
+  {% endif %}
+  {% if result.matched_symptoms %}
+  <p class="mt-2 text-xs text-gray-500">Matched: {{ result.matched_symptoms|join:", " }}</p>
+  {% endif %}
+</div>
+{% else %}
+<div class="p-4 text-sm text-gray-500">{{ result.reason }}</div>
+{% endif %}

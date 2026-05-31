@@ -1,0 +1,29 @@
+{% if anomalies %}
+<ul class="divide-y divide-gray-100">
+  {% for anomaly in anomalies %}
+  <li class="py-3 flex items-start gap-3">
+    {% if anomaly.severity == "critical" %}
+      <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">Critical</span>
+    {% elif anomaly.severity == "warning" %}
+      <span class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">Warning</span>
+    {% else %}
+      <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">Info</span>
+    {% endif %}
+    <div class="flex-1 min-w-0">
+      <p class="text-sm font-medium text-gray-800">{{ anomaly.get_anomaly_type_display }}</p>
+      <p class="text-xs text-gray-500 mt-0.5">{{ anomaly.description }}</p>
+      <p class="text-xs text-gray-400 mt-1">{{ anomaly.detected_at|date:"d M Y H:i" }}</p>
+    </div>
+    <form method="post" action="{% url 'analytics:resolve' pk=anomaly.id %}"
+          hx-post="{% url 'analytics:resolve' pk=anomaly.id %}"
+          hx-target="closest ul"
+          hx-swap="outerHTML">
+      {% csrf_token %}
+      <button type="submit" class="text-xs text-indigo-600 hover:text-indigo-800">Resolve</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="py-6 text-center text-sm text-gray-400">No active anomalies.</p>
+{% endif %}

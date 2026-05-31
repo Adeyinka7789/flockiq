@@ -1,0 +1,43 @@
+{% if data.available %}
+<div class="rounded-lg border p-4
+  {% if data.urgency == 'urgent' %}border-red-300 bg-red-50
+  {% elif data.urgency == 'now' %}border-green-300 bg-green-50
+  {% else %}border-gray-200 bg-white{% endif %}">
+  <div class="flex items-center justify-between mb-2">
+    <h3 class="text-base font-semibold text-gray-800">Sale Timing</h3>
+    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+      {% if data.urgency == 'urgent' %}bg-red-100 text-red-700
+      {% elif data.urgency == 'now' %}bg-green-100 text-green-700
+      {% else %}bg-gray-100 text-gray-600{% endif %}">
+      {{ data.urgency|upper }}
+    </span>
+  </div>
+  <p class="text-sm text-gray-700">{{ data.message }}</p>
+  <dl class="mt-3 grid grid-cols-2 gap-2 text-xs">
+    <div>
+      <dt class="text-gray-500">Batch age</dt>
+      <dd class="font-medium">Day {{ data.cycle_day }}</dd>
+    </div>
+    {% if data.estimated_weight_kg %}
+    <div>
+      <dt class="text-gray-500">Est. weight</dt>
+      <dd class="font-medium">{{ data.estimated_weight_kg }} kg/bird</dd>
+    </div>
+    {% endif %}
+    {% if data.recommended_sale_date %}
+    <div>
+      <dt class="text-gray-500">Recommended date</dt>
+      <dd class="font-medium">{{ data.recommended_sale_date }}</dd>
+    </div>
+    {% endif %}
+    {% if data.daily_holding_cost_kobo %}
+    <div>
+      <dt class="text-gray-500">Daily holding cost</dt>
+      <dd class="font-medium">₦{{ data.daily_holding_cost_kobo|floatformat:0 }} kobo</dd>
+    </div>
+    {% endif %}
+  </dl>
+</div>
+{% else %}
+<div class="p-4 text-sm text-gray-500">{{ data.reason }}</div>
+{% endif %}

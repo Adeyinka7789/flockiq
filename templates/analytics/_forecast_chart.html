@@ -1,0 +1,56 @@
+{% if data.available %}
+<div class="p-4">
+  <h3 class="text-base font-semibold text-gray-800 mb-3">Egg Production Forecast (30 days)</h3>
+  <canvas id="forecastChart-{{ batch.id }}" class="w-full" height="300"></canvas>
+  <p class="mt-2 text-xs text-gray-400">Generated {{ data.generated_at|slice:":19" }} UTC</p>
+</div>
+<script>
+(function() {
+  const ctx = document.getElementById('forecastChart-{{ batch.id }}');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: {{ data.labels|safe }},
+      datasets: [
+        {
+          label: 'Predicted Hen-Day %',
+          data: {{ data.predicted|safe }},
+          borderColor: '#16a34a',
+          backgroundColor: 'rgba(22,163,74,0.1)',
+          tension: 0.3,
+          fill: false,
+        },
+        {
+          label: 'Upper Bound',
+          data: {{ data.upper|safe }},
+          borderColor: 'rgba(22,163,74,0.3)',
+          borderDash: [4, 4],
+          pointRadius: 0,
+          fill: '+1',
+          backgroundColor: 'rgba(22,163,74,0.08)',
+        },
+        {
+          label: 'Lower Bound',
+          data: {{ data.lower|safe }},
+          borderColor: 'rgba(22,163,74,0.3)',
+          borderDash: [4, 4],
+          pointRadius: 0,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } },
+      scales: {
+        y: { min: 0, max: 100, title: { display: true, text: 'Hen-Day %' } },
+      },
+    },
+  });
+})();
+</script>
+{% else %}
+<div class="p-4 text-sm text-gray-500">
+  Forecast unavailable: {{ data.reason }}
+</div>
+{% endif %}
