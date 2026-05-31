@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Farms — FlockIQ{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Farms</h1>
+      <p class="text-sm text-gray-500 mt-1">Manage your poultry farm locations</p>
+    </div>
+    <button
+      hx-get="{% url 'farms:create' %}"
+      hx-target="#modal-container"
+      hx-swap="innerHTML"
+      class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Add Farm
+    </button>
+  </div>
+
+  <!-- Dashboard summary -->
+  <div class="grid grid-cols-3 gap-4 mb-8">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+      <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Total Farms</p>
+      <p class="text-3xl font-bold text-gray-900 mt-1">{{ dashboard.total_farms }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+      <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Live Birds</p>
+      <p class="text-3xl font-bold text-gray-900 mt-1">{{ dashboard.total_live_birds|default:"0" }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+      <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Active Batches</p>
+      <p class="text-3xl font-bold text-gray-900 mt-1">{{ dashboard.total_active_batches|default:"0" }}</p>
+    </div>
+  </div>
+
+  <!-- Farm list -->
+  <div id="farm-list">
+    {% include "farms/_farm_list_partial.html" %}
+  </div>
+
+</div>
+
+<!-- Modal container -->
+<div id="modal-container"></div>
+
+<!-- Toast container -->
+<div id="toast-container"
+     class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"
+     hx-on::after-settle="setTimeout(() => this.innerHTML = '', 4000)">
+</div>
+
+<script>
+  document.body.addEventListener("showToast", function(evt) {
+    const { message, type } = evt.detail;
+    const bg = type === "success" ? "bg-green-600" : "bg-red-600";
+    const toast = document.createElement("div");
+    toast.className = `${bg} text-white text-sm px-4 py-3 rounded-lg shadow-lg transition-opacity`;
+    toast.textContent = message;
+    document.getElementById("toast-container").appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  });
+</script>
+{% endblock %}

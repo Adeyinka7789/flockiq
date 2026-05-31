@@ -1,0 +1,62 @@
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+     x-data
+     @keydown.escape.window="document.getElementById('modal-container').innerHTML = ''">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-lg font-semibold text-gray-900">Add House</h2>
+      <button @click="document.getElementById('modal-container').innerHTML = ''"
+              class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <form hx-post="{% url 'farms:house_create' farm_id %}"
+          hx-target="#house-list"
+          hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.successful) document.getElementById('modal-container').innerHTML = ''">
+      {% csrf_token %}
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">House name</label>
+          {{ form.name }}
+          {% if form.name.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Capacity (birds)</label>
+          {{ form.capacity }}
+          {% if form.capacity.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ form.capacity.errors.0 }}</p>
+          {% endif %}
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">House type</label>
+          {{ form.house_type }}
+          {% if form.house_type.errors %}
+            <p class="text-red-500 text-xs mt-1">{{ form.house_type.errors.0 }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="mt-6 flex gap-3">
+        <button type="button"
+                @click="document.getElementById('modal-container').innerHTML = ''"
+                class="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+          Cancel
+        </button>
+        <button type="submit"
+                class="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+          Add House
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>

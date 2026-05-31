@@ -1,0 +1,31 @@
+<div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-semibold text-gray-800">{{ farm.name }}</h3>
+    <span class="text-xs text-gray-400">{{ farm.get_farm_type_display }}</span>
+  </div>
+
+  <div class="grid grid-cols-2 gap-3 mb-4">
+    <div class="text-center">
+      <p class="text-2xl font-bold text-gray-900">{{ total_live_birds }}</p>
+      <p class="text-xs text-gray-400">Live Birds</p>
+    </div>
+    <div class="text-center">
+      <p class="text-2xl font-bold text-gray-900">{{ occupancy_pct }}%</p>
+      <p class="text-xs text-gray-400">Occupancy</p>
+    </div>
+  </div>
+
+  <!-- Occupancy bar -->
+  <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+    <div class="h-full rounded-full
+      {% if occupancy_pct >= 90 %}bg-red-400
+      {% elif occupancy_pct >= 70 %}bg-yellow-400
+      {% else %}bg-green-400{% endif %}"
+      style="width: {{ occupancy_pct }}%"></div>
+  </div>
+
+  <div class="mt-3 flex justify-between text-xs text-gray-400">
+    <span>{{ active_batches }} batch{% if active_batches != 1 %}es{% endif %}</span>
+    <span>{{ total_capacity }} capacity</span>
+  </div>
+</div>

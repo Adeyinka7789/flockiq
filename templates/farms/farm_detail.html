@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}{{ farm.name }} — FlockIQ{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+
+  <!-- Breadcrumb -->
+  <nav class="text-xs text-gray-400 mb-4">
+    <a href="{% url 'farms:list' %}" class="hover:text-green-600">Farms</a>
+    <span class="mx-1">/</span>
+    <span class="text-gray-700">{{ farm.name }}</span>
+  </nav>
+
+  <!-- Farm header -->
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
+    <div class="flex items-start justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">{{ farm.name }}</h1>
+        <p class="text-sm text-gray-500 mt-1">{{ farm.location }}</p>
+        <p class="text-xs text-gray-400 mt-1">
+          {{ farm.latitude }}, {{ farm.longitude }}
+        </p>
+      </div>
+      <div class="flex flex-col items-end gap-2">
+        <span class="px-3 py-1 rounded-full text-sm font-medium
+          {% if farm.farm_type == 'layer' %}bg-yellow-100 text-yellow-700
+          {% elif farm.farm_type == 'broiler' %}bg-blue-100 text-blue-700
+          {% else %}bg-gray-100 text-gray-600{% endif %}">
+          {{ farm.get_farm_type_display }}
+        </span>
+        <span class="flex items-center gap-1 text-xs
+          {% if farm.is_active %}text-green-600{% else %}text-gray-400{% endif %}">
+          <span class="w-1.5 h-1.5 rounded-full
+            {% if farm.is_active %}bg-green-500{% else %}bg-gray-300{% endif %}"></span>
+          {% if farm.is_active %}Active{% else %}Inactive{% endif %}
+        </span>
+      </div>
+    </div>
+    {% if farm.notes %}
+      <p class="text-sm text-gray-600 mt-4 border-t border-gray-50 pt-4">{{ farm.notes }}</p>
+    {% endif %}
+  </div>
+
+  <!-- Houses section -->
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold text-gray-800">Houses</h2>
+    <button
+      hx-get="{% url 'farms:house_create' farm.id %}"
+      hx-target="#modal-container"
+      hx-swap="innerHTML"
+      class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+      Add House
+    </button>
+  </div>
+
+  <div id="house-list">
+    {% include "farms/_house_list_partial.html" with farm_id=farm.id %}
+  </div>
+
+</div>
+
+<!-- Modal container -->
+<div id="modal-container"></div>
+
+<!-- Toast -->
+<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+<script>
+  document.body.addEventListener("showToast", function(evt) {
+    const { message, type } = evt.detail;
+    const bg = type === "success" ? "bg-green-600" : "bg-red-600";
+    const toast = document.createElement("div");
+    toast.className = `${bg} text-white text-sm px-4 py-3 rounded-lg shadow-lg`;
+    toast.textContent = message;
+    document.getElementById("toast-container").appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  });
+</script>
+{% endblock %}

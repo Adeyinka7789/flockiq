@@ -1,0 +1,39 @@
+{% if houses %}
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-gray-100 text-xs text-gray-400 uppercase">
+          <th class="text-left px-5 py-3">Name</th>
+          <th class="text-left px-5 py-3">Type</th>
+          <th class="text-right px-5 py-3">Capacity</th>
+          <th class="text-right px-5 py-3">Occupancy</th>
+          <th class="text-right px-5 py-3">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for house in houses %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-5 py-3 font-medium text-gray-800">{{ house.name }}</td>
+            <td class="px-5 py-3 text-gray-500 capitalize">{{ house.get_house_type_display }}</td>
+            <td class="px-5 py-3 text-right text-gray-600">{{ house.capacity|floatformat:0 }}</td>
+            <td class="px-5 py-3 text-right">
+              <span class="text-gray-700">{{ house.current_occupancy }}</span>
+              <span class="text-gray-400 text-xs ml-1">({{ house.occupancy_pct }}%)</span>
+            </td>
+            <td class="px-5 py-3 text-right">
+              <span class="px-2 py-0.5 rounded text-xs font-medium
+                {% if house.is_active %}bg-green-100 text-green-700
+                {% else %}bg-gray-100 text-gray-500{% endif %}">
+                {% if house.is_active %}Active{% else %}Inactive{% endif %}
+              </span>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="text-center py-12 bg-white rounded-xl border border-dashed border-gray-200">
+    <p class="text-gray-400 text-sm">No houses yet. Add the first house to this farm.</p>
+  </div>
+{% endif %}
