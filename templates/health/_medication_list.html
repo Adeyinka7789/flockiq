@@ -1,0 +1,24 @@
+<div id="medication-list">
+  <h3 class="font-semibold mb-2">Active Medications</h3>
+  {% if medications %}
+  <ul class="divide-y">
+    {% for med in medications %}
+    <li class="py-2">
+      <div class="flex justify-between items-start">
+        <div>
+          <span class="font-medium">{{ med.drug_name }}</span>
+          <span class="ml-2 text-xs text-gray-500">{{ med.get_drug_type_display }}</span>
+          <div class="text-sm text-gray-600">{{ med.start_date }} → {{ med.end_date }} ({{ med.duration_days }}d)</div>
+          <div class="text-sm">Dosage: {{ med.dosage }} | {{ med.quantity_used }} {{ med.get_unit_display }}</div>
+        </div>
+        {% if med.withdrawal_active %}
+        {% include "health/_withdrawal_badge.html" with med=med %}
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-gray-500 text-sm">No active medications.</p>
+  {% endif %}
+</div>

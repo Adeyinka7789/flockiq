@@ -1,0 +1,63 @@
+<div id="health-summary" class="space-y-4">
+  <div class="flex items-center gap-4">
+    <div class="text-center">
+      <div class="text-3xl font-bold
+        {% if vaccination_compliance_pct >= 80 %}text-green-600
+        {% elif vaccination_compliance_pct >= 50 %}text-yellow-600
+        {% else %}text-red-600{% endif %}">
+        {{ vaccination_compliance_pct }}%
+      </div>
+      <div class="text-xs text-gray-500">Vaccination Compliance</div>
+    </div>
+    {% if withdrawal_active %}
+    <div class="bg-red-100 text-red-800 px-3 py-2 rounded text-sm font-medium">
+      Withdrawal Period Active
+    </div>
+    {% endif %}
+  </div>
+
+  {% if overdue_vaccinations %}
+  <div>
+    <h4 class="font-semibold text-red-700 text-sm">Overdue Vaccinations ({{ overdue_vaccinations|length }})</h4>
+    <ul class="text-sm space-y-1 mt-1">
+      {% for v in overdue_vaccinations %}
+      <li class="text-red-600">{{ v.vaccine_name }} — due {{ v.due_date }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if upcoming_vaccinations %}
+  <div>
+    <h4 class="font-semibold text-sm">Upcoming Vaccinations</h4>
+    <ul class="text-sm space-y-1 mt-1">
+      {% for v in upcoming_vaccinations %}
+      <li class="text-gray-700">{{ v.vaccine_name }} — {{ v.due_date }} ({{ v.get_route_display }})</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if active_medications %}
+  <div>
+    <h4 class="font-semibold text-sm">Active Medications</h4>
+    {% include "health/_medication_list.html" with medications=active_medications %}
+  </div>
+  {% endif %}
+
+  {% if recent_symptom_logs %}
+  <div>
+    <h4 class="font-semibold text-sm">Recent Symptom Logs</h4>
+    <ul class="text-sm space-y-1 mt-1">
+      {% for log in recent_symptom_logs %}
+      <li class="text-gray-700">
+        {{ log.record_date }} — {{ log.affected_count }} birds —
+        <span class="{% if log.severity == 'severe' %}text-red-600 font-medium{% elif log.severity == 'moderate' %}text-orange-600{% endif %}">
+          {{ log.get_severity_display }}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+</div>

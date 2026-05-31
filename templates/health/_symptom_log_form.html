@@ -1,0 +1,40 @@
+<div id="symptom-log-form">
+  {% if error %}<p class="text-red-600 mb-2">{{ error }}</p>{% endif %}
+  <form hx-post="{% url 'health:symptom_log' batch_pk %}"
+        hx-target="#symptom-result"
+        hx-swap="outerHTML">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="block text-sm font-medium">Affected Birds</label>
+      <input type="number" name="affected_count" min="1" required
+             class="w-full border rounded px-2 py-1 text-sm">
+    </div>
+    <div class="mb-3">
+      <label class="block text-sm font-medium mb-1">Symptoms</label>
+      <div class="grid grid-cols-2 gap-1 text-sm">
+        {% for symptom in "lethargy,reduced_feed,nasal_discharge,coughing,diarrhoea,ruffled_feathers,swollen_eyes,sudden_death,reduced_laying,lameness"|split:"," %}
+        <label class="flex items-center gap-1">
+          <input type="checkbox" name="symptoms" value="{{ symptom }}">
+          {{ symptom|title|replace:"_":" " }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="mb-3">
+      <label class="block text-sm font-medium">Severity</label>
+      <select name="severity" class="w-full border rounded px-2 py-1 text-sm">
+        <option value="mild">Mild</option>
+        <option value="moderate">Moderate</option>
+        <option value="severe">Severe</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="block text-sm font-medium">Treatment Notes</label>
+      <textarea name="treatment_notes" rows="2"
+                class="w-full border rounded px-2 py-1 text-sm"></textarea>
+    </div>
+    <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm">
+      Log Symptoms
+    </button>
+  </form>
+</div>

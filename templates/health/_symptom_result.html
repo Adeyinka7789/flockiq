@@ -1,0 +1,22 @@
+<div id="symptom-result" class="p-3 bg-orange-50 rounded border border-orange-200">
+  <h4 class="font-semibold text-orange-800">Symptom Log Recorded</h4>
+  <p class="text-sm mt-1">
+    <span class="font-medium">{{ log.affected_count }}</span> birds affected —
+    Severity: <span class="font-medium
+      {% if log.severity == 'severe' %}text-red-700
+      {% elif log.severity == 'moderate' %}text-orange-700
+      {% else %}text-yellow-700{% endif %}">
+      {{ log.get_severity_display }}
+    </span>
+  </p>
+  {% if log.symptoms %}
+  <p class="text-sm text-gray-600 mt-1">Symptoms: {{ log.symptoms|join:", " }}</p>
+  {% endif %}
+  {% if log.diagnosis_result %}
+  <div class="mt-2 p-2 bg-white rounded text-sm">
+    <span class="font-medium">AI Diagnosis:</span> {{ log.diagnosis_result }}
+  </div>
+  {% else %}
+  <p class="text-xs text-gray-400 mt-2">AI diagnosis available in Phase 4B.</p>
+  {% endif %}
+</div>
