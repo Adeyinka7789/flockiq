@@ -1,0 +1,35 @@
+<form method="post"
+      action="{% url 'flocks:mortality' batch_pk %}"
+      hx-post="{% url 'flocks:mortality' batch_pk %}"
+      hx-target="#mortality-table"
+      hx-swap="innerHTML"
+      class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+  <div class="mb-3 p-3 bg-red-50 text-red-700 text-sm rounded-lg">
+    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+  </div>
+  {% endif %}
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Date</label>
+      {{ form.date }}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Count</label>
+      {{ form.count }}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Cause</label>
+      {{ form.cause }}
+    </div>
+  </div>
+  <div class="mt-3">
+    <label class="block text-xs font-medium text-gray-500 mb-1">Notes</label>
+    {{ form.notes }}
+  </div>
+  <button type="submit"
+          class="mt-4 w-full py-3 bg-red-600 text-white font-medium text-sm rounded-lg hover:bg-red-700 transition-colors">
+    Log Mortality
+  </button>
+</form>

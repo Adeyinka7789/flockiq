@@ -1,0 +1,443 @@
+import json
+
+import structlog
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404, render
+from django.views import View
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.infrastructure.core.rls import set_tenant_context
+
+from .exceptions import (
+    BatchAlreadyClosedError,
+    BatchClosedError,
+    HouseCapacityExceededError,
+    HouseOccupiedError,
+    MortalityExceedsLiveBirdsError,
+)
+from .forms import BatchCloseForm, BatchCreateForm, MortalityLogForm, WeightRecordForm
+from .models import Batch, MortalityLog, WeightRecord
+from .serializers import (
+    BatchCreateSerializer,
+    BatchSerializer,
+    MortalityLogCreateSerializer,
+    MortalityLogSerializer,
+)
+from .services import BatchService
+
+logger = structlog.get_logger(__name__)
+
+
+def _get_org(request):
+    org = getattr(request.user, "org", None)
+    if org is None:
+        raise Http404("No organisation found for this user.")
+    return org
+
+
+# ── HTMX views ─────────────────────────────────────────────────────────────────
+
+class BatchListView(LoginRequiredMixin, View):
+    """GET /batches/ → Full batch list page."""
+
+    def get(self, request):
+        org = _get_org(request)
+        is_htmx = request.headers.get("HX-Request") == "true"
+
+        with set_tenant_context(org):
+            batches = list(
+                BatchService(org).get_active_batches()
+            )
+
+        context = {"batches": batches, "form": BatchCreateForm()}
+
+        if is_htmx:
+            return render(request, "flocks/_batch_list_partial.html", context)
+        return render(request, "flocks/batch_list.html", context)
+
+
+class BatchCreateView(LoginRequiredMixin, View):
+    """POST /farms/<uuid>/batches/create/ → Creates batch; returns toast + detail redirect."""
+
+    def get(self, request, farm_pk):
+        form = BatchCreateForm(initial={"farm_id": farm_pk})
+        return render(request, "flocks/_batch_create_modal.html", {"form": form, "farm_pk": farm_pk})
+
+    def post(self, request, farm_pk):
+        form = BatchCreateForm(request.POST)
+        org = _get_org(request)
+        is_htmx = request.headers.get("HX-Request") == "true"
+
+        if form.is_valid():
+            cd = form.cleaned_data
+            try:
+                with set_tenant_context(org):
+                    batch = BatchService(org).create_batch(
+                        farm_id=str(farm_pk),
+                        house_id=str(cd["house_id"]),
+                        batch_name=cd["batch_name"],
+                        bird_type=cd["bird_type"],
+                        placement_date=cd["placement_date"],
+                        initial_count=cd["initial_count"],
+                        breed_name=cd.get("breed_name", ""),
+                    )
+            except (HouseOccupiedError, HouseCapacityExceededError, ValueError) as exc:
+                form.add_error(None, str(exc))
+                if is_htmx:
+                    return render(
+                        request,
+                        "flocks/_batch_create_modal.html",
+                        {"form": form, "farm_pk": farm_pk},
+                        status=422,
+                    )
+                return render(request, "flocks/_batch_create_modal.html", {"form": form, "farm_pk": farm_pk})
+
+            if is_htmx:
+                response = HttpResponse(status=204)
+                response["HX-Trigger"] = json.dumps({
+                    "showToast": {
+                        "message": f'Batch "{batch.batch_name}" created.',
+                        "type": "success",
+                    },
+                    "batchCreated": {"batch_id": str(batch.pk)},
+                })
+                response["HX-Redirect"] = f"/batches/{batch.pk}/"
+                return response
+
+            from django.shortcuts import redirect
+            return redirect("flocks:detail", pk=batch.pk)
+
+        if is_htmx:
+            return render(
+                request,
+                "flocks/_batch_create_modal.html",
+                {"form": form, "farm_pk": farm_pk},
+                status=422,
+            )
+        return render(request, "flocks/_batch_create_modal.html", {"form": form, "farm_pk": farm_pk})
+
+
+class BatchDetailView(LoginRequiredMixin, View):
+    """GET /batches/<uuid>/ → Full batch detail page with Alpine.js tabs."""
+
+    def get(self, request, pk):
+        org = _get_org(request)
+        with set_tenant_context(org):
+            try:
+                batch = Batch.objects.select_related("farm", "house").get(id=pk)
+            except Batch.DoesNotExist:
+                raise Http404("Batch not found.")
+
+        context = {
+            "batch": batch,
+            "mortality_form": MortalityLogForm(),
+            "weight_form": WeightRecordForm(),
+            "close_form": BatchCloseForm(),
+        }
+        return render(request, "flocks/batch_detail.html", context)
+
+
+class MortalityLogView(LoginRequiredMixin, View):
+    """POST /batches/<uuid>/mortality/ → HTMX mortality form submission."""
+
+    def post(self, request, pk):
+        form = MortalityLogForm(request.POST)
+        org = _get_org(request)
+
+        if form.is_valid():
+            cd = form.cleaned_data
+            try:
+                with set_tenant_context(org):
+                    BatchService(org).log_mortality(
+                        batch_id=str(pk),
+                        count=cd["count"],
+                        cause=cd["cause"],
+                        date=cd["date"],
+                        notes=cd.get("notes", ""),
+                    )
+                    batch = Batch.objects.get(id=pk)
+                    logs = list(
+                        MortalityLog.objects.filter(batch_id=pk).order_by("-date")[:30]
+                    )
+            except (BatchClosedError, MortalityExceedsLiveBirdsError) as exc:
+                form.add_error(None, str(exc))
+                return render(
+                    request,
+                    "flocks/_mortality_form.html",
+                    {"form": form, "batch_pk": pk},
+                    status=422,
+                )
+
+            response = render(
+                request,
+                "flocks/_mortality_table.html",
+                {"logs": logs, "batch": batch, "batch_pk": pk},
+            )
+            response["HX-Trigger"] = json.dumps({
+                "showToast": {
+                    "message": f"{cd['count']} mortality logged.",
+                    "type": "success",
+                }
+            })
+            return response
+
+        return render(
+            request,
+            "flocks/_mortality_form.html",
+            {"form": form, "batch_pk": pk},
+            status=422,
+        )
+
+
+class WeightRecordView(LoginRequiredMixin, View):
+    """POST /batches/<uuid>/weight/ → HTMX weight record submission."""
+
+    def post(self, request, pk):
+        form = WeightRecordForm(request.POST)
+        org = _get_org(request)
+
+        if form.is_valid():
+            cd = form.cleaned_data
+            try:
+                with set_tenant_context(org):
+                    BatchService(org).log_weight(
+                        batch_id=str(pk),
+                        sample_size=cd["sample_size"],
+                        avg_weight_kg=cd["avg_weight_kg"],
+                        min_weight_kg=cd.get("min_weight_kg"),
+                        max_weight_kg=cd.get("max_weight_kg"),
+                        sample_date=cd["sample_date"],
+                        notes=cd.get("notes", ""),
+                    )
+                    records = list(
+                        WeightRecord.objects.filter(batch_id=pk).order_by("-sample_date")[:20]
+                    )
+            except (BatchClosedError, ValueError) as exc:
+                form.add_error(None, str(exc))
+                return render(
+                    request,
+                    "flocks/_weight_form.html",
+                    {"form": form, "batch_pk": pk},
+                    status=422,
+                )
+
+            response = render(
+                request,
+                "flocks/_weight_table.html",
+                {"records": records, "batch_pk": pk},
+            )
+            response["HX-Trigger"] = json.dumps({
+                "showToast": {"message": "Weight recorded.", "type": "success"}
+            })
+            return response
+
+        return render(
+            request,
+            "flocks/_weight_form.html",
+            {"form": form, "batch_pk": pk},
+            status=422,
+        )
+
+
+class BatchCloseView(LoginRequiredMixin, View):
+    """POST /batches/<uuid>/close/ → Closes batch, shows reconciliation result."""
+
+    def get(self, request, pk):
+        org = _get_org(request)
+        with set_tenant_context(org):
+            try:
+                batch = Batch.objects.get(id=pk)
+            except Batch.DoesNotExist:
+                raise Http404("Batch not found.")
+        form = BatchCloseForm()
+        return render(request, "flocks/_batch_close_modal.html", {"form": form, "batch": batch})
+
+    def post(self, request, pk):
+        form = BatchCloseForm(request.POST)
+        org = _get_org(request)
+        is_htmx = request.headers.get("HX-Request") == "true"
+
+        if form.is_valid():
+            cd = form.cleaned_data
+            try:
+                with set_tenant_context(org):
+                    batch = BatchService(org).close_batch(
+                        batch_id=str(pk),
+                        notes=cd.get("notes", ""),
+                    )
+                    reconciliation = batch.reconciliations.order_by("-date").first()
+            except (BatchAlreadyClosedError, ValueError) as exc:
+                form.add_error(None, str(exc))
+                if is_htmx:
+                    return render(
+                        request,
+                        "flocks/_batch_close_modal.html",
+                        {"form": form, "batch_pk": pk},
+                        status=422,
+                    )
+
+            if is_htmx:
+                response = render(
+                    request,
+                    "flocks/_batch_close_result.html",
+                    {"batch": batch, "reconciliation": reconciliation},
+                )
+                response["HX-Trigger"] = json.dumps({
+                    "showToast": {"message": f'Batch "{batch.batch_name}" closed.', "type": "success"}
+                })
+                return response
+
+            from django.shortcuts import redirect
+            return redirect("flocks:detail", pk=pk)
+
+        if is_htmx:
+            return render(
+                request,
+                "flocks/_batch_close_modal.html",
+                {"form": form, "batch_pk": pk},
+                status=422,
+            )
+        return render(request, "flocks/_batch_close_modal.html", {"form": form})
+
+
+class BatchMetricsCardView(LoginRequiredMixin, View):
+    """GET /batches/<uuid>/metrics/ → HTMX fragment for skeleton loader pattern."""
+
+    def get(self, request, pk):
+        org = _get_org(request)
+        with set_tenant_context(org):
+            try:
+                data = BatchService(org).get_batch_dashboard_data(str(pk))
+            except ValueError:
+                raise Http404("Batch not found.")
+
+        return render(request, "flocks/_batch_metrics_cards.html", data)
+
+
+# ── DRF API views ───────────────────────────────────────────────────────────────
+
+class BatchListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        org = getattr(request.user, "org", None)
+        if not org:
+            return Response({"error": "No organisation."}, status=403)
+
+        status_filter = request.query_params.get("status")
+        with set_tenant_context(org):
+            qs = Batch.objects.select_related("farm", "house")
+            if status_filter:
+                qs = qs.filter(status=status_filter)
+            batches = list(qs)
+
+        serializer = BatchSerializer(batches, many=True)
+        return Response({"data": serializer.data})
+
+    def post(self, request):
+        org = getattr(request.user, "org", None)
+        if not org:
+            return Response({"error": "No organisation."}, status=403)
+
+        serializer = BatchCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"error": {"fields": serializer.errors}}, status=400)
+
+        cd = serializer.validated_data
+        try:
+            with set_tenant_context(org):
+                batch = BatchService(org).create_batch(
+                    farm_id=str(cd["farm_id"]),
+                    house_id=str(cd["house_id"]),
+                    batch_name=cd["batch_name"],
+                    bird_type=cd["bird_type"],
+                    placement_date=cd["placement_date"],
+                    initial_count=cd["initial_count"],
+                    breed_name=cd.get("breed_name", ""),
+                )
+        except (HouseOccupiedError, HouseCapacityExceededError) as exc:
+            return Response({"error": {"detail": str(exc)}}, status=409)
+        except ValueError as exc:
+            return Response({"error": {"detail": str(exc)}}, status=400)
+
+        return Response({"data": BatchSerializer(batch).data}, status=201)
+
+
+class BatchDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        org = getattr(request.user, "org", None)
+        if not org:
+            return Response({"error": "No organisation."}, status=403)
+
+        with set_tenant_context(org):
+            try:
+                batch = Batch.objects.select_related("farm", "house").get(id=pk)
+            except Batch.DoesNotExist:
+                return Response({"error": "Batch not found."}, status=404)
+
+        return Response({"data": BatchSerializer(batch).data})
+
+
+class MortalityLogAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        org = getattr(request.user, "org", None)
+        if not org:
+            return Response({"error": "No organisation."}, status=403)
+
+        with set_tenant_context(org):
+            try:
+                Batch.objects.get(id=pk)
+            except Batch.DoesNotExist:
+                return Response({"error": "Batch not found."}, status=404)
+
+        serializer = MortalityLogCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"error": {"fields": serializer.errors}}, status=400)
+
+        cd = serializer.validated_data
+        try:
+            with set_tenant_context(org):
+                log = BatchService(org).log_mortality(
+                    batch_id=str(pk),
+                    count=cd["count"],
+                    cause=cd["cause"],
+                    date=cd.get("date"),
+                    notes=cd.get("notes", ""),
+                )
+        except BatchClosedError as exc:
+            return Response({"error": {"detail": str(exc)}}, status=422)
+        except MortalityExceedsLiveBirdsError as exc:
+            return Response({"error": {"detail": str(exc)}}, status=422)
+
+        return Response({"data": MortalityLogSerializer(log).data}, status=201)
+
+
+class BatchCloseAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        org = getattr(request.user, "org", None)
+        if not org:
+            return Response({"error": "No organisation."}, status=403)
+
+        try:
+            with set_tenant_context(org):
+                batch = BatchService(org).close_batch(
+                    batch_id=str(pk),
+                    notes=request.data.get("notes", ""),
+                )
+        except Batch.DoesNotExist:
+            return Response({"error": "Batch not found."}, status=404)
+        except BatchAlreadyClosedError as exc:
+            return Response({"error": {"detail": str(exc)}}, status=422)
+        except ValueError as exc:
+            return Response({"error": {"detail": str(exc)}}, status=404)
+
+        return Response({"data": BatchSerializer(batch).data})

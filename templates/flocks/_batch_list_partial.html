@@ -1,0 +1,45 @@
+{% if batches %}
+<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+  <table class="min-w-full divide-y divide-gray-100">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Farm</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">House</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Day</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Live Birds</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mortality %</th>
+        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      {% for batch in batches %}
+      <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='/batches/{{ batch.pk }}/'">
+        <td class="px-4 py-3 text-sm text-gray-700">{{ batch.farm.name }}</td>
+        <td class="px-4 py-3 text-sm text-gray-500">{{ batch.house.name }}</td>
+        <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ batch.batch_name }}</td>
+        <td class="px-4 py-3">
+          {% if batch.bird_type == 'layer' %}
+          <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">Layer</span>
+          {% else %}
+          <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">Broiler</span>
+          {% endif %}
+        </td>
+        <td class="px-4 py-3 text-sm tabular-nums text-gray-700">{{ batch.cycle_day }}</td>
+        <td class="px-4 py-3 text-sm font-bold tabular-nums text-gray-900">{{ batch.current_count|floatformat:"0" }}</td>
+        <td class="px-4 py-3 text-sm tabular-nums text-gray-600">{{ batch.mortality_rate_pct }}%</td>
+        <td class="px-4 py-3">
+          <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">Active</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-16 text-gray-400">
+  <p class="text-lg font-medium">No active batches</p>
+  <p class="text-sm mt-1">Add a batch from a farm's detail page.</p>
+</div>
+{% endif %}

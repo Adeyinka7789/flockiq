@@ -1,0 +1,19 @@
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Live Birds</p>
+    <p class="text-3xl font-bold tabular-nums text-gray-900 mt-1">{{ batch.current_count|floatformat:"0" }}</p>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Cycle Day</p>
+    <p class="text-3xl font-bold tabular-nums text-gray-900 mt-1">{{ cycle_day }}</p>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Mortality Rate</p>
+    <p class="text-3xl font-bold tabular-nums text-gray-900 mt-1">{{ mortality_rate_pct }}%</p>
+  </div>
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Feed Today</p>
+    <p class="text-3xl font-bold tabular-nums text-gray-900 mt-1">{{ feed_requirement_today }} kg</p>
+    <p class="text-xs text-gray-400 mt-1" data-feed-requirement="{{ feed_requirement_today }}">{{ batch.get_bird_type_display }}</p>
+  </div>
+</div>

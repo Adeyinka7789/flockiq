@@ -1,0 +1,32 @@
+<form method="post"
+      action="{% url 'flocks:weight' batch_pk %}"
+      hx-post="{% url 'flocks:weight' batch_pk %}"
+      hx-target="#weight-table"
+      hx-swap="innerHTML"
+      class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+  {% csrf_token %}
+  {% if form.non_field_errors %}
+  <div class="mb-3 p-3 bg-red-50 text-red-700 text-sm rounded-lg">
+    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+  </div>
+  {% endif %}
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Date</label>
+      {{ form.sample_date }}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Birds Weighed</label>
+      {{ form.sample_size }}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Avg Weight (kg)</label>
+      {{ form.avg_weight_kg }}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Notes</label>
+      {{ form.notes }}
+    </div>
+  </div>
+  <button type="submit" class="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">Save Weight</button>
+</form>

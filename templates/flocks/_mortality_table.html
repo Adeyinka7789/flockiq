@@ -1,0 +1,31 @@
+{% if logs %}
+<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-4">
+  <table class="min-w-full divide-y divide-gray-100" id="mortality-log-table">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Count</th>
+        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cause</th>
+        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Notes</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      {% for log in logs %}
+      <tr>
+        <td class="px-4 py-2 text-sm text-gray-700">{{ log.date }}</td>
+        <td class="px-4 py-2 text-sm font-bold tabular-nums text-red-600">{{ log.count }}</td>
+        <td class="px-4 py-2 text-sm text-gray-500">{{ log.get_cause_display }}</td>
+        <td class="px-4 py-2 text-sm text-gray-400">{{ log.notes|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if batch %}
+  <div class="px-4 py-2 bg-gray-50 text-xs text-gray-500">
+    Live birds: <strong class="text-gray-900" id="current-live-count">{{ batch.current_count }}</strong>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<p class="text-sm text-gray-400 mt-4">No mortality logged yet.</p>
+{% endif %}

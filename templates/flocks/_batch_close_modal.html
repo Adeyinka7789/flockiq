@@ -1,0 +1,15 @@
+<div class="p-6">
+  <h2 class="text-lg font-bold text-gray-900 mb-2">Close Batch</h2>
+  <p class="text-sm text-gray-500 mb-4">This will close the batch and run a final stock reconciliation.</p>
+  <form method="post"
+        action="{% url 'flocks:close' batch.pk %}"
+        hx-post="{% url 'flocks:close' batch.pk %}"
+        hx-target="#close-result"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="w-full py-2 bg-red-600 text-white font-medium text-sm rounded-lg mt-4">
+      Confirm Close
+    </button>
+  </form>
+</div>

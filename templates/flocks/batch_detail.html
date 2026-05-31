@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}{{ batch.batch_name }} — FlockIQ{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8" x-data="{ tab: 'overview' }">
+
+  <div class="flex items-center gap-3 mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">{{ batch.batch_name }}</h1>
+    {% if batch.breed_name %}
+    <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">{{ batch.breed_name }}</span>
+    {% endif %}
+    {% if batch.bird_type == 'layer' %}
+    <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">Layer</span>
+    {% else %}
+    <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">Broiler</span>
+    {% endif %}
+    {% if batch.status == 'active' %}
+    <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
+    {% elif batch.status == 'closed' %}
+    <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">Closed</span>
+    {% else %}
+    <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">Culled</span>
+    {% endif %}
+  </div>
+
+  <!-- Metrics cards (lazy-loaded) -->
+  <div id="metrics-cards"
+       hx-get="{% url 'flocks:metrics' batch.pk %}"
+       hx-trigger="load"
+       hx-swap="innerHTML">
+    {% include "partials/_skeleton_metric_cards.html" %}
+  </div>
+
+  <!-- Tabs -->
+  <div class="mt-6 border-b border-gray-200 flex gap-4">
+    <button @click="tab='overview'" :class="tab==='overview' ? 'border-b-2 border-green-600 text-green-700 font-medium' : 'text-gray-500'" class="pb-2 text-sm">Overview</button>
+    <button @click="tab='mortality'" :class="tab==='mortality' ? 'border-b-2 border-green-600 text-green-700 font-medium' : 'text-gray-500'" class="pb-2 text-sm">Mortality</button>
+    {% if batch.bird_type == 'broiler' %}
+    <button @click="tab='weight'" :class="tab==='weight' ? 'border-b-2 border-green-600 text-green-700 font-medium' : 'text-gray-500'" class="pb-2 text-sm">Weights</button>
+    {% endif %}
+    <button @click="tab='reconciliation'" :class="tab==='reconciliation' ? 'border-b-2 border-green-600 text-green-700 font-medium' : 'text-gray-500'" class="pb-2 text-sm">Reconciliation</button>
+  </div>
+
+  <!-- Tab: Overview -->
+  <div x-show="tab==='overview'" class="mt-6">
+    <p class="text-sm text-gray-500">Farm: <strong>{{ batch.farm.name }}</strong> &nbsp;|&nbsp; House: <strong>{{ batch.house.name }}</strong></p>
+    <p class="text-sm text-gray-500 mt-1">Placement date: <strong>{{ batch.placement_date }}</strong></p>
+  </div>
+
+  <!-- Tab: Mortality -->
+  <div x-show="tab==='mortality'" class="mt-6">
+    {% if batch.is_active %}
+    {% include "flocks/_mortality_form.html" with batch_pk=batch.pk form=mortality_form %}
+    {% endif %}
+    <div id="mortality-table">
+      {% include "flocks/_mortality_table.html" %}
+    </div>
+  </div>
+
+  <!-- Tab: Weights (broiler only) -->
+  {% if batch.bird_type == 'broiler' %}
+  <div x-show="tab==='weight'" class="mt-6">
+    {% if batch.is_active %}
+    {% include "flocks/_weight_form.html" with batch_pk=batch.pk form=weight_form %}
+    {% endif %}
+    <div id="weight-table">{% include "flocks/_weight_table.html" %}</div>
+  </div>
+  {% endif %}
+
+  <!-- Tab: Reconciliation -->
+  <div x-show="tab==='reconciliation'" class="mt-6">
+    {% if batch.is_active %}
+    <form method="post" action="{% url 'flocks:close' batch.pk %}" hx-post="{% url 'flocks:close' batch.pk %}" hx-target="#close-result" hx-swap="innerHTML">
+      {% csrf_token %}
+      {{ close_form.as_p }}
+      <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg">Close Batch</button>
+    </form>
+    {% endif %}
+    <div id="close-result"></div>
+  </div>
+
+</div>
+<div id="modal-container"></div>
+<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+<script>
+  document.body.addEventListener("showToast", function(evt) {
+    const { message, type } = evt.detail;
+    const bg = type === "success" ? "bg-green-600" : "bg-red-600";
+    const toast = document.createElement("div");
+    toast.className = `${bg} text-white text-sm px-4 py-3 rounded-lg shadow-lg`;
+    toast.textContent = message;
+    document.getElementById("toast-container").appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  });
+</script>
+{% endblock %}
