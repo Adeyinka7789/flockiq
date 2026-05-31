@@ -1,0 +1,70 @@
+<div id="feed-table" class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+  {% if page_obj.object_list %}
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-100 text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Type</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Qty (kg)</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Required (kg)</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Variance (kg)</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Cost (₦)</th>
+          <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Recorded By</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for log in page_obj %}
+        <tr class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-gray-900 font-medium whitespace-nowrap">{{ log.record_date|date:"d M Y" }}</td>
+          <td class="px-4 py-3 text-gray-600">{{ log.get_feed_type_display }}</td>
+          <td class="px-4 py-3 text-right tabular-nums font-semibold text-gray-900">{{ log.quantity_kg }}</td>
+          <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ log.requirement_kg|default:"—" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums
+            {% if log.variance_kg is not None %}
+              {% if log.variance_kg >= 0 %}text-amber-500{% else %}text-red-600 font-semibold{% endif %}
+            {% endif %}">
+            {% if log.variance_kg is not None %}
+              {% if log.variance_kg >= 0 %}+{% endif %}{{ log.variance_kg }}
+            {% else %}—{% endif %}
+          </td>
+          <td class="px-4 py-3 text-right tabular-nums text-gray-600">
+            {% if log.total_cost %}₦{{ log.total_cost }}{% else %}—{% endif %}
+          </td>
+          <td class="px-4 py-3 text-gray-500 text-xs">
+            {{ log.recorded_by.get_full_name|default:log.recorded_by.username|default:"—" }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <div class="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
+    <p class="text-xs text-gray-500">
+      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      &mdash; {{ page_obj.paginator.count }} records
+    </p>
+    <div class="flex gap-2">
+      {% if page_obj.has_previous %}
+      <button hx-get="{% url 'feed:table' batch_pk %}?page={{ page_obj.previous_page_number }}"
+              hx-target="#feed-table" hx-swap="outerHTML"
+              class="px-3 py-1 text-xs rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600">&larr; Prev</button>
+      {% endif %}
+      {% if page_obj.has_next %}
+      <button hx-get="{% url 'feed:table' batch_pk %}?page={{ page_obj.next_page_number }}"
+              hx-target="#feed-table" hx-swap="outerHTML"
+              class="px-3 py-1 text-xs rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600">Next &rarr;</button>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="flex flex-col items-center justify-center py-12 text-center">
+    <p class="text-sm text-gray-400">No feed logs yet.</p>
+    <p class="text-xs text-gray-400 mt-1">Use the form above to record today's feed.</p>
+  </div>
+  {% endif %}
+</div>

@@ -1,0 +1,46 @@
+<form hx-post="{% url 'waste:log' farm_pk %}"
+      hx-target="#waste-table"
+      hx-swap="outerHTML"
+      class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Date</label>
+      {{ form.record_date }}
+      {% if form.record_date.errors %}<p class="text-xs text-red-600 mt-1">{{ form.record_date.errors.0 }}</p>{% endif %}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Waste Type</label>
+      {{ form.waste_type }}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Quantity (kg)</label>
+      {{ form.quantity_kg }}
+      {% if form.quantity_kg.errors %}<p class="text-xs text-red-600 mt-1">{{ form.quantity_kg.errors.0 }}</p>{% endif %}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Disposal Method</label>
+      {{ form.disposal_method }}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Cost (₦, optional)</label>
+      {{ form.cost }}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Notes</label>
+      {{ form.notes }}
+    </div>
+  </div>
+
+  <button type="submit"
+          class="mt-4 px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white text-sm font-medium rounded-lg transition-colors">
+    Log Waste
+  </button>
+</form>

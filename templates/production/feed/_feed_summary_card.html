@@ -1,0 +1,47 @@
+<div id="feed-summary-card" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Today's Feed</p>
+    {% if last_7_days %}
+    <p class="text-3xl font-bold tabular-nums text-gray-900 mt-1">
+      {{ last_7_days.0.quantity_kg|default:"—" }} kg
+    </p>
+    {% else %}
+    <p class="text-3xl font-bold text-gray-300 mt-1">—</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Requirement</p>
+    {% if last_7_days and last_7_days.0.requirement_kg %}
+    <p class="text-3xl font-bold tabular-nums text-gray-900 mt-1">
+      {{ last_7_days.0.requirement_kg }} kg
+    </p>
+    {% else %}
+    <p class="text-3xl font-bold text-gray-300 mt-1">—</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Variance</p>
+    {% if last_7_days and last_7_days.0.variance_kg is not None %}
+    {% with v=last_7_days.0.variance_kg %}
+    <p class="text-3xl font-bold tabular-nums mt-1
+      {% if v >= 0 %}text-amber-500{% else %}text-red-600{% endif %}">
+      {% if v >= 0 %}+{% endif %}{{ v }} kg
+    </p>
+    {% endwith %}
+    {% else %}
+    <p class="text-3xl font-bold text-gray-300 mt-1">—</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">FCR</p>
+    <p class="text-3xl font-bold tabular-nums text-gray-900 mt-1">
+      {% if current_fcr %}{{ current_fcr }}{% else %}—{% endif %}
+    </p>
+    <p class="text-xs text-gray-400 mt-1">Total: {{ total_feed_consumed_kg }} kg</p>
+  </div>
+
+</div>

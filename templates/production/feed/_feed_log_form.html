@@ -1,0 +1,43 @@
+<form hx-post="{% url 'feed:log' batch_pk %}"
+      hx-target="#feed-summary-card"
+      hx-swap="outerHTML"
+      class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Date</label>
+      {{ form.record_date }}
+      {% if form.record_date.errors %}<p class="text-xs text-red-600 mt-1">{{ form.record_date.errors.0 }}</p>{% endif %}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Feed Type</label>
+      {{ form.feed_type }}
+      {% if form.feed_type.errors %}<p class="text-xs text-red-600 mt-1">{{ form.feed_type.errors.0 }}</p>{% endif %}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Quantity (kg)</label>
+      {{ form.quantity_kg }}
+      {% if form.quantity_kg.errors %}<p class="text-xs text-red-600 mt-1">{{ form.quantity_kg.errors.0 }}</p>{% endif %}
+    </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Cost / kg (₦, optional)</label>
+      {{ form.cost_per_kg }}
+    </div>
+    <div class="col-span-2">
+      <label class="block text-xs font-medium text-gray-500 mb-1">Notes</label>
+      {{ form.notes }}
+    </div>
+  </div>
+
+  <button type="submit"
+          class="mt-4 px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
+    Log Feed
+  </button>
+</form>

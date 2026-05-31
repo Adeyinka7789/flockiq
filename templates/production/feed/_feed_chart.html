@@ -1,0 +1,47 @@
+<div id="feed-chart" class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-sm font-semibold text-gray-700">Feed: Actual vs Requirement</h3>
+    <div class="flex gap-1">
+      {% for opt in day_options %}
+      <button hx-get="{% url 'feed:chart' batch_pk %}?days={{ opt }}"
+              hx-target="#feed-chart" hx-swap="outerHTML"
+              class="px-2 py-1 text-xs rounded {% if opt == selected_days %}bg-green-600 text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %}">
+        {{ opt }}d
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+  <canvas id="feedChart" height="120"></canvas>
+</div>
+
+<script>
+(function () {
+  var data = {{ chart_data|safe }};
+  var ctx = document.getElementById('feedChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.labels,
+      datasets: [
+        {
+          label: 'Actual (kg)',
+          data: data.actual_data,
+          borderColor: '#16a34a',
+          backgroundColor: 'rgba(22,163,74,0.08)',
+          tension: 0.3,
+          fill: true,
+        },
+        {
+          label: 'Required (kg)',
+          data: data.requirement_data,
+          borderColor: '#f59e0b',
+          borderDash: [5, 5],
+          tension: 0.3,
+          fill: false,
+        },
+      ],
+    },
+    options: {responsive: true, plugins: {legend: {position: 'bottom'}}},
+  });
+})();
+</script>

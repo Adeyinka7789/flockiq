@@ -1,0 +1,30 @@
+<div id="water-summary-card" class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Today's Water</p>
+    {% if last_7_days %}
+    <p class="text-3xl font-bold tabular-nums text-gray-900 mt-1">
+      {{ last_7_days.0.litres_consumed|default:"—" }} L
+    </p>
+    {% else %}
+    <p class="text-3xl font-bold text-gray-300 mt-1">—</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Avg Daily (L)</p>
+    <p class="text-3xl font-bold tabular-nums text-blue-600 mt-1">
+      {% if avg_daily_consumption %}{{ avg_daily_consumption }}{% else %}—{% endif %}
+    </p>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Anomalies (7d)</p>
+    <p class="text-3xl font-bold tabular-nums mt-1
+      {% if anomaly_count_last_7days > 0 %}text-red-600{% else %}text-green-600{% endif %}">
+      {{ anomaly_count_last_7days }}
+    </p>
+    <p class="text-xs text-gray-400 mt-1">Water drops detected</p>
+  </div>
+
+</div>
