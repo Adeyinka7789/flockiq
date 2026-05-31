@@ -1,0 +1,48 @@
+<div id="production-summary-card" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+
+  {% with hdp=average_hen_day_pct status=benchmark.status %}
+
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Today's Eggs</p>
+    {% if last_7_days %}
+    <p class="text-3xl font-bold tabular-nums text-gray-900 mt-1">
+      {{ last_7_days.0.total_eggs|default:"—" }}
+    </p>
+    {% else %}
+    <p class="text-3xl font-bold text-gray-300 mt-1">—</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Hen-Day %</p>
+    <p class="text-3xl font-bold tabular-nums mt-1
+      {% if status == 'on_track' %}text-green-600
+      {% elif status == 'below_benchmark' %}text-amber-500
+      {% else %}text-red-600{% endif %}">
+      {% if average_hen_day_pct %}{{ average_hen_day_pct }}%{% else %}—{% endif %}
+    </p>
+    <p class="text-xs text-gray-400 mt-1">Target: {{ benchmark.expected_range }}</p>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Total Crates</p>
+    <p class="text-3xl font-bold tabular-nums text-gray-900 mt-1">
+      {% if total_crates %}{{ total_crates }}{% else %}—{% endif %}
+    </p>
+  </div>
+
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">vs Benchmark</p>
+    <p class="text-lg font-bold mt-1
+      {% if status == 'on_track' %}text-green-600
+      {% elif status == 'below_benchmark' %}text-amber-500
+      {% else %}text-red-600{% endif %}">
+      {% if status == 'on_track' %}On Track
+      {% elif status == 'below_benchmark' %}Below Target
+      {% else %}Critical{% endif %}
+    </p>
+    <p class="text-xs text-gray-400 mt-1">7-day avg: {{ benchmark.actual_avg_7day }}%</p>
+  </div>
+
+  {% endwith %}
+</div>

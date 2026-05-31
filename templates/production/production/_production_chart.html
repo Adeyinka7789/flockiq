@@ -1,0 +1,94 @@
+<div id="production-chart" class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-sm font-semibold text-gray-700">Hen-Day % Trend</h3>
+    <div class="flex gap-2">
+      {% for d in day_options %}
+      <button hx-get="{% url 'production:chart' batch_pk %}?days={{ d }}"
+              hx-target="#production-chart"
+              hx-swap="outerHTML"
+              class="px-2 py-1 text-xs rounded-md border
+                {% if selected_days == d %}bg-green-600 text-white border-green-600
+                {% else %}bg-white text-gray-500 border-gray-200 hover:bg-gray-50{% endif %}
+                transition-colors">
+        {{ d }}d
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if chart_data %}
+  <div class="relative h-56">
+    <canvas id="productionTrendChart-{{ batch_pk }}" class="w-full h-full"></canvas>
+  </div>
+
+  <script>
+  (function () {
+    var raw = {{ chart_data|safe }};
+    var ctx = document.getElementById('productionTrendChart-{{ batch_pk }}');
+    if (!ctx || !raw.labels || raw.labels.length === 0) return;
+
+    if (ctx._chartInstance) { ctx._chartInstance.destroy(); }
+
+    ctx._chartInstance = new Chart(ctx.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: raw.labels,
+        datasets: [
+          {
+            label: 'Actual HDP %',
+            data: raw.actual_data,
+            borderColor: '#16a34a',
+            backgroundColor: 'rgba(22,163,74,0.08)',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            fill: true,
+            tension: 0.3,
+          },
+          {
+            label: 'Benchmark',
+            data: raw.benchmark_data,
+            borderColor: '#d97706',
+            borderWidth: 1.5,
+            borderDash: [6, 3],
+            pointRadius: 0,
+            fill: false,
+            tension: 0,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%'; }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
+          y: {
+            min: 0, max: 100,
+            ticks: { font: { size: 10 }, callback: function (v) { return v + '%'; } },
+            grid: { color: 'rgba(0,0,0,0.04)' }
+          }
+        }
+      }
+    });
+  })();
+  </script>
+
+  {% else %}
+  <div class="flex flex-col items-center justify-center h-40 text-center">
+    <svg class="w-8 h-8 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+    </svg>
+    <p class="text-sm text-gray-400">No trend data for this period.</p>
+  </div>
+  {% endif %}
+</div>

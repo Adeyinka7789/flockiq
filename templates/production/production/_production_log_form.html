@@ -1,0 +1,77 @@
+<form hx-post="{% url 'production:log' batch_pk %}"
+      hx-target="#production-summary-card"
+      hx-swap="outerHTML"
+      class="space-y-4">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div class="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+    {{ form.non_field_errors }}
+  </div>
+  {% endif %}
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+    {{ form.record_date }}
+    {% if form.record_date.errors %}
+    <p class="mt-1 text-xs text-red-600">{{ form.record_date.errors.0 }}</p>
+    {% endif %}
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Total Eggs</label>
+    <input type="number" name="total_eggs" inputmode="numeric" min="0"
+           value="{{ form.total_eggs.value|default:'' }}"
+           x-model="totalEggs"
+           class="w-full rounded-lg border border-gray-300 px-4 py-3 text-2xl font-bold text-center tabular-nums focus:ring-2 focus:ring-green-500 focus:border-transparent">
+    {% if form.total_eggs.errors %}
+    <p class="mt-1 text-xs text-red-600">{{ form.total_eggs.errors.0 }}</p>
+    {% endif %}
+  </div>
+
+  <div x-data="{ open: false }">
+    <button type="button" @click="open = !open"
+            class="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">
+      <span x-text="open ? '▾' : '▸'"></span>
+      Grade breakdown (optional)
+    </button>
+
+    <div x-show="open" x-transition class="mt-3 grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Grade A</label>
+        <input type="number" name="grade_a" inputmode="numeric" min="0"
+               value="{{ form.grade_a.value|default:0 }}"
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm tabular-nums">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Grade B</label>
+        <input type="number" name="grade_b" inputmode="numeric" min="0"
+               value="{{ form.grade_b.value|default:0 }}"
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm tabular-nums">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Grade C</label>
+        <input type="number" name="grade_c" inputmode="numeric" min="0"
+               value="{{ form.grade_c.value|default:0 }}"
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm tabular-nums">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Broken</label>
+        <input type="number" name="broken" inputmode="numeric" min="0"
+               value="{{ form.broken.value|default:0 }}"
+               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm tabular-nums">
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+    <textarea name="notes" rows="2"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">{{ form.notes.value|default:'' }}</textarea>
+  </div>
+
+  <button type="submit"
+          class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors">
+    Log Production
+  </button>
+</form>
