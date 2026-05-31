@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Billing — FlockIQ{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8">
+  <h1 class="text-2xl font-bold text-gray-900 mb-6">Billing &amp; Subscription</h1>
+
+  <!-- Current Plan -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">Current Plan</h2>
+    {% if summary.plan %}
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xl font-bold text-green-600">{{ summary.plan.name }}</p>
+          <p class="text-sm text-gray-500 mt-1">
+            ₦{{ summary.plan.amount_naira|floatformat:0 }} / {{ summary.plan.billing_interval }}
+          </p>
+        </div>
+        <span class="px-3 py-1 rounded-full text-sm font-medium
+          {% if summary.org.subscription_status == 'active' %}bg-green-100 text-green-700
+          {% elif summary.org.subscription_status == 'trial' %}bg-blue-100 text-blue-700
+          {% else %}bg-gray-100 text-gray-600{% endif %}">
+          {{ summary.org.subscription_status|title }}
+        </span>
+      </div>
+      {% if summary.plan.features %}
+        <ul class="mt-4 space-y-1">
+          {% for feature in summary.plan.features %}
+            <li class="flex items-center gap-2 text-sm text-gray-600">
+              <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              {{ feature }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% else %}
+      <p class="text-gray-500">No active plan found. Please contact support.</p>
+    {% endif %}
+  </div>
+
+  <!-- Active Cycle Subscriptions -->
+  {% if summary.active_cycle_subscriptions %}
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">Active Batch Subscriptions</h2>
+    <ul class="divide-y divide-gray-50">
+      {% for sub in summary.active_cycle_subscriptions %}
+        <li class="py-3 flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-800">Batch {{ sub.batch_id }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">Activated {{ sub.activated_at|date:"d M Y" }}</p>
+          </div>
+          <span class="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+            {{ sub.status|title }}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <!-- Payment History -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <h2 class="text-lg font-semibold text-gray-800 mb-4">Payment History</h2>
+    {% if summary.payment_history %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-gray-500 uppercase border-b border-gray-100">
+              <th class="pb-2 pr-4">Reference</th>
+              <th class="pb-2 pr-4">Amount</th>
+              <th class="pb-2 pr-4">Channel</th>
+              <th class="pb-2 pr-4">Status</th>
+              <th class="pb-2">Date</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            {% for payment in summary.payment_history %}
+              <tr class="hover:bg-gray-50">
+                <td class="py-3 pr-4 font-mono text-xs text-gray-600">{{ payment.reference }}</td>
+                <td class="py-3 pr-4">₦{{ payment.amount_kobo|floatformat:0 }}</td>
+                <td class="py-3 pr-4 capitalize">{{ payment.channel|default:"—" }}</td>
+                <td class="py-3 pr-4">
+                  <span class="px-2 py-0.5 rounded text-xs font-medium
+                    {% if payment.status == 'success' %}bg-green-100 text-green-700
+                    {% elif payment.status == 'failed' %}bg-red-100 text-red-700
+                    {% else %}bg-gray-100 text-gray-600{% endif %}">
+                    {{ payment.status|title }}
+                  </span>
+                </td>
+                <td class="py-3 text-gray-500">{{ payment.paid_at|date:"d M Y"|default:"—" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-gray-400 text-sm">No payment records yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

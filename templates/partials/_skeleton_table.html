@@ -1,0 +1,16 @@
+<div class="bg-white rounded-xl shadow-sm border border-earth-200 overflow-hidden">
+  <div class="p-4 border-b border-earth-200">
+    <div class="skeleton skeleton-row w-1-2"></div>
+  </div>
+  <div class="divide-y divide-earth-100">
+    {% for _ in "123456" %}
+    <div class="p-4 flex items-center gap-4">
+      <div class="skeleton skeleton-avatar flex-shrink-0"></div>
+      <div class="flex-1">
+        <div class="skeleton skeleton-row w-3-4 mb-1"></div>
+        <div class="skeleton skeleton-row w-1-2"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>

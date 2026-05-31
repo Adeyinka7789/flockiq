@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-earth-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}FlockIQ{% endblock %}</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/skeletons.css' %}">
+  <link rel="stylesheet" href="{% static 'css/tailwind.output.css' %}">
+  <script src="https://unpkg.com/htmx.org@2.0.0" defer></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full font-sans text-earth-800"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+  {% block content %}{% endblock %}
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

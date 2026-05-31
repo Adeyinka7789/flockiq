@@ -1,0 +1,420 @@
+"""
+Phase 1E — Notifications engine tests.
+
+Conventions:
+- All tests use pytest-django (pytestmark = pytest.mark.django_db)
+- No fixture files: each test builds its own objects to be self-contained
+- Providers are tested with mocked external calls
+"""
+
+from datetime import timedelta
+from unittest.mock import MagicMock, patch
+
+import pytest
+from django.utils import timezone
+
+pytestmark = pytest.mark.django_db
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def make_org(subdomain="testfarm", **kwargs):
+    from apps.infrastructure.tenants.models import Organization
+    defaults = {"name": "Test Farm", "subdomain": subdomain, "owner_email": f"{subdomain}@test.com"}
+    defaults.update(kwargs)
+    return Organization.objects.create(**defaults)
+
+
+def make_user(org, role="owner", email=None, phone="+2348012345678"):
+    from apps.infrastructure.accounts.models import CustomUser
+    if email is None:
+        email = f"{role}@{org.subdomain}.com"
+    return CustomUser.objects.create_user(
+        email=email,
+        username=email,
+        password="pass1234",
+        role=role,
+        org=org,
+        phone=phone,
+    )
+
+
+# ---------------------------------------------------------------------------
+# 1. AlertRules seeded on Org creation
+# ---------------------------------------------------------------------------
+
+def test_alert_rules_seeded_on_org_creation():
+    from apps.infrastructure.notifications.models import AlertRule, DEFAULT_ALERT_RULES
+    from apps.infrastructure.core.rls import set_tenant_context
+    org = make_org(subdomain="seedtest")
+    with set_tenant_context(org):
+        count = AlertRule.objects.filter(org=org).count()
+    assert count == len(DEFAULT_ALERT_RULES)
+
+
+# ---------------------------------------------------------------------------
+# 2. Cooldown prevents duplicate OutboxEvents
+# ---------------------------------------------------------------------------
+
+def test_cooldown_prevents_duplicate_outbox_events():
+    from apps.infrastructure.notifications.models import AlertRule, OutboxEvent
+    from apps.infrastructure.notifications.services import NotificationService
+    from apps.infrastructure.core.rls import set_tenant_context
+
+    org = make_org(subdomain="cooldowntest")
+    make_user(org, role="owner")
+
+    with set_tenant_context(org):
+        AlertRule.objects.filter(org=org, event_type="water_drop").update(cooldown_minutes=60)
+
+        svc = NotificationService(org)
+        svc.send("water_drop", {"farm_name": "Test Farm", "value": "50"})
+
+        OutboxEvent.objects.filter(org_id=org.id, event_type="water_drop").update(
+            status="delivered",
+            delivered_at=timezone.now(),
+        )
+
+        before_count = OutboxEvent.objects.filter(org_id=org.id, event_type="water_drop").count()
+        svc.send("water_drop", {"farm_name": "Test Farm", "value": "50"})
+        after_count = OutboxEvent.objects.filter(org_id=org.id, event_type="water_drop").count()
+
+    assert before_count == after_count
+
+
+# ---------------------------------------------------------------------------
+# 3. Only correct roles receive notifications
+# ---------------------------------------------------------------------------
+
+def test_only_correct_roles_get_notified():
+    from apps.infrastructure.notifications.models import AlertRule, OutboxEvent
+    from apps.infrastructure.notifications.services import NotificationService
+    from apps.infrastructure.core.rls import set_tenant_context
+
+    org = make_org(subdomain="roletest")
+    owner = make_user(org, role="owner", email="owner@roletest.com")
+    make_user(org, role="data_entry", email="de@roletest.com")
+
+    with set_tenant_context(org):
+        AlertRule.objects.filter(org=org, event_type="theft_suspected").update(
+            notify_roles=["owner"], cooldown_minutes=0
+        )
+
+        svc = NotificationService(org)
+        svc.send("theft_suspected", {"farm_name": "Test Farm", "batch_name": "B1", "count": "5"})
+
+        events = OutboxEvent.objects.filter(org_id=org.id, event_type="theft_suspected")
+        recipient_ids = set(str(e.recipient_user_id) for e in events)
+
+    assert str(owner.id) in recipient_ids
+    assert all(str(r_id) == str(owner.id) for r_id in recipient_ids)
+
+
+# ---------------------------------------------------------------------------
+# 4. Idempotency key is unique per user/channel/day
+# ---------------------------------------------------------------------------
+
+def test_outbox_event_has_unique_idempotency_key():
+    from apps.infrastructure.notifications.models import AlertRule, OutboxEvent
+    from apps.infrastructure.notifications.services import NotificationService
+    from apps.infrastructure.core.rls import set_tenant_context
+    from datetime import date
+
+    org = make_org(subdomain="idemptest")
+    user = make_user(org, role="owner", email="owner@idemptest.com")
+
+    with set_tenant_context(org):
+        AlertRule.objects.filter(org=org, event_type="batch_closed").update(cooldown_minutes=0)
+        svc = NotificationService(org)
+        svc.send("batch_closed", {"farm_name": "F", "batch_name": "B1", "date": str(date.today())})
+
+        events = OutboxEvent.objects.filter(org_id=org.id, event_type="batch_closed")
+        keys = [e.idempotency_key for e in events]
+
+    assert len(keys) == len(set(keys)), "Idempotency keys must be unique"
+    for key in keys:
+        assert str(user.id) in key
+        assert str(org.id) in key
+
+
+# ---------------------------------------------------------------------------
+# 5. TermiiProvider returns DeliveryResult on success
+# ---------------------------------------------------------------------------
+
+def test_termii_provider_returns_delivery_result_on_success():
+    from apps.infrastructure.notifications.providers.termii import TermiiProvider
+    from apps.infrastructure.notifications.providers.base import NotificationPayload
+
+    payload = NotificationPayload(
+        recipient_id="user-1",
+        recipient_phone="+2348012345678",
+        recipient_email="",
+        subject="",
+        body="Test SMS body",
+        body_html="",
+        channel="sms",
+        idempotency_key="mortality_spike:org1:user1:2026-01-01:sms",
+        org_id="org-1",
+    )
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"code": "ok", "message_id": "abc123"}
+
+    with patch("apps.infrastructure.notifications.providers.termii.requests.post", return_value=mock_response):
+        result = TermiiProvider().send(payload)
+
+    assert result.success is True
+    assert result.provider == "termii"
+    assert result.external_id == "abc123"
+
+
+# ---------------------------------------------------------------------------
+# 6. TermiiProvider returns should_retry=True on timeout
+# ---------------------------------------------------------------------------
+
+def test_termii_provider_returns_retry_on_timeout():
+    import requests as req
+    from apps.infrastructure.notifications.providers.termii import TermiiProvider
+    from apps.infrastructure.notifications.providers.base import NotificationPayload
+
+    payload = NotificationPayload(
+        recipient_id="user-1",
+        recipient_phone="+2348012345678",
+        recipient_email="",
+        subject="",
+        body="Test SMS",
+        body_html="",
+        channel="sms",
+        idempotency_key="test:org:user:2026-01-01:sms",
+        org_id="org-1",
+    )
+
+    with patch("apps.infrastructure.notifications.providers.termii.requests.post", side_effect=req.Timeout):
+        result = TermiiProvider().send(payload)
+
+    assert result.success is False
+    assert result.should_retry is True
+    assert result.error_code == "timeout"
+
+
+# ---------------------------------------------------------------------------
+# 7. SMTPProvider sends email
+# ---------------------------------------------------------------------------
+
+def test_smtp_provider_sends_email():
+    from apps.infrastructure.notifications.providers.smtp import SMTPProvider
+    from apps.infrastructure.notifications.providers.base import NotificationPayload
+
+    payload = NotificationPayload(
+        recipient_id="user-1",
+        recipient_phone="",
+        recipient_email="owner@testfarm.com",
+        subject="Weekly Summary",
+        body="Your weekly summary.",
+        body_html="<p>Your weekly summary.</p>",
+        channel="email",
+        idempotency_key="weekly_summary:org:user:2026-01-01:email",
+        org_id="org-1",
+    )
+
+    with patch("apps.infrastructure.notifications.providers.smtp.EmailMultiAlternatives") as mock_email_cls:
+        mock_msg = MagicMock()
+        mock_email_cls.return_value = mock_msg
+        result = SMTPProvider().send(payload)
+
+    assert result.success is True
+    mock_msg.send.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# 8. InAppProvider returns success
+# ---------------------------------------------------------------------------
+
+def test_inapp_provider_returns_success():
+    from apps.infrastructure.notifications.providers.inapp import InAppProvider
+    from apps.infrastructure.notifications.providers.base import NotificationPayload
+
+    payload = NotificationPayload(
+        recipient_id="user-1",
+        recipient_phone="",
+        recipient_email="",
+        subject="Mortality Spike Detected",
+        body="3 deaths at Test Farm",
+        body_html="",
+        channel="in_app",
+        idempotency_key="mortality_spike:org:user:2026-01-01:in_app",
+        org_id="org-1",
+    )
+
+    result = InAppProvider().send(payload)
+
+    assert result.success is True
+    assert result.provider == "inapp"
+
+
+# ---------------------------------------------------------------------------
+# 9. process_outbox delivers pending events
+# ---------------------------------------------------------------------------
+
+def test_process_outbox_delivers_pending_events():
+    import uuid
+    from apps.infrastructure.notifications.models import OutboxEvent
+    from apps.infrastructure.notifications.tasks import process_outbox
+
+    org = make_org(subdomain="outboxtest")
+    user = make_user(org, role="owner", email="owner@outboxtest.com")
+
+    event = OutboxEvent.objects.create(
+        org_id=org.id,
+        event_type="batch_closed",
+        recipient_user_id=user.id,
+        recipient_phone=user.phone,
+        recipient_email=user.email,
+        subject="Batch Closed",
+        body="Your batch was closed.",
+        channel="in_app",
+        idempotency_key=f"batch_closed:{org.id}:{user.id}:2026-01-01:in_app",
+        status="pending",
+    )
+
+    with patch("apps.infrastructure.notifications.tasks._create_notification_log") as mock_log:
+        process_outbox()
+
+    event.refresh_from_db()
+    assert event.status == "delivered"
+    mock_log.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# 10. process_outbox skips locked rows (no double-processing)
+# ---------------------------------------------------------------------------
+
+def test_process_outbox_skips_locked_rows():
+    import uuid
+    from apps.infrastructure.notifications.models import OutboxEvent
+    from apps.infrastructure.notifications.tasks import process_outbox
+
+    org = make_org(subdomain="lockedtest")
+    user = make_user(org, role="owner", email="owner@lockedtest.com")
+
+    OutboxEvent.objects.create(
+        org_id=org.id,
+        event_type="batch_closed",
+        recipient_user_id=user.id,
+        recipient_email=user.email,
+        subject="Batch Closed",
+        body="Closed.",
+        channel="in_app",
+        idempotency_key=f"batch_closed:{org.id}:{user.id}:2026-01-02:in_app",
+        status="processing",
+        attempts=1,
+    )
+
+    with patch("apps.infrastructure.notifications.tasks._deliver_event") as mock_deliver:
+        process_outbox()
+
+    mock_deliver.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# 11. mark_read updates is_read
+# ---------------------------------------------------------------------------
+
+def test_mark_read_updates_is_read():
+    from apps.infrastructure.notifications.models import NotificationLog
+    from apps.infrastructure.notifications.services import NotificationService
+    from apps.infrastructure.core.rls import set_tenant_context
+
+    org = make_org(subdomain="markreadtest")
+    user = make_user(org, role="owner", email="owner@markreadtest.com")
+
+    with set_tenant_context(org):
+        notif = NotificationLog.objects.create(
+            org=org,
+            event_type="batch_closed",
+            title="Test",
+            body="Test body",
+            severity="info",
+            channel="in_app",
+            recipient=user,
+        )
+        svc = NotificationService(org)
+        svc.mark_read(notif.id)
+        notif.refresh_from_db()
+
+    assert notif.is_read is True
+    assert notif.read_at is not None
+
+
+# ---------------------------------------------------------------------------
+# 12. get_unread_count returns correct integer
+# ---------------------------------------------------------------------------
+
+def test_unread_count_returns_correct_integer():
+    from apps.infrastructure.notifications.models import NotificationLog
+    from apps.infrastructure.notifications.services import NotificationService
+    from apps.infrastructure.core.rls import set_tenant_context
+
+    org = make_org(subdomain="unreadtest")
+    user = make_user(org, role="owner", email="owner@unreadtest.com")
+
+    with set_tenant_context(org):
+        for i in range(3):
+            NotificationLog.objects.create(
+                org=org,
+                event_type="water_drop",
+                title=f"Alert {i}",
+                body="Body",
+                severity="warning",
+                channel="in_app",
+                recipient=user,
+            )
+        NotificationLog.objects.create(
+            org=org,
+            event_type="water_drop",
+            title="Already read",
+            body="Body",
+            severity="info",
+            channel="in_app",
+            recipient=user,
+            is_read=True,
+        )
+
+        svc = NotificationService(org)
+        count = svc.get_unread_count(user)
+
+    assert count == 3
+
+
+# ---------------------------------------------------------------------------
+# 13. NotificationLog RLS isolation (org_b cannot see org_a notifications)
+# ---------------------------------------------------------------------------
+
+def test_notification_log_rls_isolated():
+    from apps.infrastructure.notifications.models import NotificationLog
+    from apps.infrastructure.core.rls import set_tenant_context
+
+    org_a = make_org(subdomain="rlsa")
+    org_b = make_org(subdomain="rlsb")
+    user_a = make_user(org_a, role="owner", email="owner@rlsa.com")
+    user_b = make_user(org_b, role="owner", email="owner@rlsb.com")
+
+    with set_tenant_context(org_a):
+        NotificationLog.objects.create(
+            org=org_a,
+            event_type="theft_suspected",
+            title="Theft at A",
+            body="Body",
+            severity="critical",
+            channel="in_app",
+            recipient=user_a,
+        )
+
+    with set_tenant_context(org_b):
+        logs = NotificationLog.objects.filter(event_type="theft_suspected")
+        titles = list(logs.values_list("title", flat=True))
+
+    assert "Theft at A" not in titles

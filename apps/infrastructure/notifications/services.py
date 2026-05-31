@@ -1,0 +1,221 @@
+from datetime import date, timedelta
+
+import structlog
+from django.utils import timezone
+
+from apps.infrastructure.core.services import BaseService
+from .models import AlertRule, NotificationLog, OutboxEvent
+
+logger = structlog.get_logger(__name__)
+
+# ---------------------------------------------------------------------------
+# Message templates for all 15 event types.
+# Keys: sms, email_subject, email_body, in_app_title, in_app_body
+# Placeholders: {farm_name}, {batch_name}, {count}, {date}, {value}, {normal}
+# ---------------------------------------------------------------------------
+MESSAGE_TEMPLATES = {
+    "mortality_spike": {
+        "sms": "ALERT: Unusual mortality at {farm_name}. {count} deaths today vs normal {normal}. Check flock immediately.",
+        "email_subject": "Mortality Alert — {farm_name}",
+        "email_body": "Unusual mortality detected at {farm_name} ({batch_name}).\n{count} deaths recorded today vs normal threshold of {normal}.\nPlease inspect your flock immediately.",
+        "in_app_title": "Mortality Spike Detected",
+        "in_app_body": "{count} deaths recorded at {farm_name} — above normal threshold of {normal}.",
+    },
+    "water_drop": {
+        "sms": "WARNING: Water consumption drop at {farm_name}. Current: {value}L. Check water system.",
+        "email_subject": "Water Drop Alert — {farm_name}",
+        "email_body": "Water consumption has dropped significantly at {farm_name} ({batch_name}).\nCurrent: {value}L. Please check your water supply and nipple drinkers.",
+        "in_app_title": "Water Consumption Drop",
+        "in_app_body": "Water consumption at {farm_name} has dropped to {value}L. Inspect water system.",
+    },
+    "production_drop": {
+        "sms": "INFO: Egg production drop at {farm_name}. Current: {value} trays. Check flock health.",
+        "email_subject": "Production Drop — {farm_name}",
+        "email_body": "Egg production has dropped at {farm_name} ({batch_name}).\nCurrent production: {value} trays. Previous: {normal}. Review flock health and feed quality.",
+        "in_app_title": "Egg Production Drop",
+        "in_app_body": "Production at {farm_name} fell to {value} trays (was {normal}). Review flock.",
+    },
+    "vaccination_due": {
+        "sms": "REMINDER: Vaccination due for {batch_name} at {farm_name} on {date}. Prepare vaccines.",
+        "email_subject": "Vaccination Due — {batch_name}",
+        "email_body": "Vaccination is due for batch {batch_name} at {farm_name}.\nScheduled date: {date}.\nPlease prepare vaccines and schedule your vet.",
+        "in_app_title": "Vaccination Due",
+        "in_app_body": "Batch {batch_name} at {farm_name} is due for vaccination on {date}.",
+    },
+    "vaccination_overdue": {
+        "sms": "URGENT: Vaccination OVERDUE for {batch_name} at {farm_name}. Administer immediately.",
+        "email_subject": "Vaccination Overdue — {batch_name}",
+        "email_body": "URGENT: Vaccination is overdue for batch {batch_name} at {farm_name}.\nScheduled date was {date}.\nAdminister vaccines immediately to prevent disease outbreak.",
+        "in_app_title": "Vaccination Overdue",
+        "in_app_body": "URGENT: {batch_name} at {farm_name} vaccination is overdue since {date}.",
+    },
+    "theft_suspected": {
+        "sms": "SECURITY ALERT: Possible theft detected at {farm_name}. Stock discrepancy: {count} birds. Verify inventory.",
+        "email_subject": "Theft Alert — {farm_name}",
+        "email_body": "A stock discrepancy has been detected at {farm_name} ({batch_name}).\nDiscrepancy: {count} birds unaccounted for.\nPlease verify your inventory and review security footage.",
+        "in_app_title": "Theft Suspected",
+        "in_app_body": "Stock discrepancy of {count} birds at {farm_name}. Verify inventory immediately.",
+    },
+    "heat_stress": {
+        "sms": "CRITICAL: Heat stress conditions at {farm_name}. Temperature: {value}°C. Cool birds immediately.",
+        "email_subject": "Heat Stress Alert — {farm_name}",
+        "email_body": "Critical heat stress conditions detected at {farm_name}.\nTemperature: {value}°C — above safe threshold.\nActivate cooling systems and increase water supply immediately.",
+        "in_app_title": "Heat Stress Alert",
+        "in_app_body": "Temperature at {farm_name} is {value}°C — heat stress risk. Activate cooling.",
+    },
+    "heavy_rain": {
+        "sms": "WEATHER: Heavy rain forecast near {farm_name}. Secure housing and check drainage.",
+        "email_subject": "Heavy Rain Alert — {farm_name}",
+        "email_body": "Heavy rain is forecast near {farm_name}.\nEnsure housing is secure, drainage channels are clear, and litter is protected from moisture.",
+        "in_app_title": "Heavy Rain Forecast",
+        "in_app_body": "Heavy rain expected near {farm_name}. Secure housing and drainage.",
+    },
+    "high_humidity": {
+        "sms": "WARNING: High humidity at {farm_name} — {value}%. Improve ventilation to prevent disease.",
+        "email_subject": "High Humidity Alert — {farm_name}",
+        "email_body": "High humidity levels detected at {farm_name}.\nHumidity: {value}%.\nImprove ventilation and check litter condition to prevent respiratory disease.",
+        "in_app_title": "High Humidity Detected",
+        "in_app_body": "Humidity at {farm_name} is {value}% — above threshold. Improve ventilation.",
+    },
+    "batch_closed": {
+        "sms": "Batch {batch_name} at {farm_name} has been closed on {date}.",
+        "email_subject": "Batch Closed — {batch_name}",
+        "email_body": "Batch {batch_name} at {farm_name} was closed on {date}.\nFinal summary and performance report are now available in your FlockIQ dashboard.",
+        "in_app_title": "Batch Closed",
+        "in_app_body": "Batch {batch_name} at {farm_name} was closed on {date}. View final report.",
+    },
+    "sale_timing": {
+        "sms": "AI TIP: Optimal sale window for {batch_name} at {farm_name}. Market price: ₦{value}/kg. Consider selling now.",
+        "email_subject": "Sale Timing Recommendation — {batch_name}",
+        "email_body": "Our AI has identified a good sale window for batch {batch_name} at {farm_name}.\nCurrent market rate: ₦{value}/kg.\nReview your production data and market conditions before deciding.",
+        "in_app_title": "Sale Timing Recommendation",
+        "in_app_body": "Good sale window for {batch_name}. Current rate: ₦{value}/kg. Check market.",
+    },
+    "weekly_summary": {
+        "sms": "FlockIQ Weekly: {farm_name} — {count} birds active, {value} trays eggs, week ending {date}.",
+        "email_subject": "Weekly Farm Summary — {farm_name}",
+        "email_body": "Weekly summary for {farm_name} — week ending {date}.\n\nActive birds: {count}\nEgg production: {value} trays\n\nView full report in your FlockIQ dashboard.",
+        "in_app_title": "Weekly Summary Ready",
+        "in_app_body": "Your weekly summary for {farm_name} (w/e {date}) is ready. Tap to view.",
+    },
+    "incomplete_tasks": {
+        "sms": "REMINDER: {count} incomplete tasks at {farm_name} today ({date}). Check your task list.",
+        "email_subject": "Incomplete Tasks — {farm_name}",
+        "email_body": "{count} farm tasks remain incomplete at {farm_name} for {date}.\nPlease log in to FlockIQ and complete or reschedule these tasks.",
+        "in_app_title": "Incomplete Tasks Today",
+        "in_app_body": "{count} tasks incomplete at {farm_name} for {date}. Review your task list.",
+    },
+    "disease_outbreak": {
+        "sms": "CRITICAL: Disease outbreak reported near {farm_name}. Increase biosecurity immediately. Contact vet.",
+        "email_subject": "Disease Outbreak Alert — {farm_name}",
+        "email_body": "A disease outbreak has been reported in the region near {farm_name}.\nIncrease biosecurity measures immediately:\n- Restrict farm access\n- Disinfect entry points\n- Monitor flock closely\n- Contact your vet advisor",
+        "in_app_title": "Regional Disease Alert",
+        "in_app_body": "Disease outbreak near {farm_name}. Increase biosecurity and contact your vet.",
+    },
+    "medication_withdrawal": {
+        "sms": "REMINDER: Medication withdrawal period ending for {batch_name} at {farm_name} on {date}. Safe to sell after this date.",
+        "email_subject": "Medication Withdrawal Period Ending — {batch_name}",
+        "email_body": "The medication withdrawal period for batch {batch_name} at {farm_name} ends on {date}.\nBirds will be safe for sale/consumption after this date.\nDo not sell before the withdrawal period ends.",
+        "in_app_title": "Withdrawal Period Ending",
+        "in_app_body": "{batch_name} medication withdrawal ends {date}. Safe to sell after this date.",
+    },
+}
+
+
+class NotificationService(BaseService):
+    def send(self, event_type, context, severity="info", farm=None, batch=None):
+        """
+        Main entry point. Always called INSIDE an existing transaction.atomic() block —
+        OutboxEvent creation is atomic with the domain write.
+        """
+        try:
+            rule = AlertRule.objects.get(org=self.org, event_type=event_type, is_active=True)
+        except AlertRule.DoesNotExist:
+            self.logger.debug("notification.no_rule", event_type=event_type)
+            return 0
+
+        if rule.cooldown_minutes > 0:
+            cutoff = timezone.now() - timedelta(minutes=rule.cooldown_minutes)
+            duplicate = OutboxEvent.objects.filter(
+                org_id=self.org.id,
+                event_type=event_type,
+                status="delivered",
+                delivered_at__gte=cutoff,
+            ).exists()
+            if duplicate:
+                self.logger.info("notification.cooldown_skipped", event_type=event_type)
+                return 0
+
+        from apps.infrastructure.accounts.models import CustomUser
+        recipients = CustomUser.objects.filter(
+            org=self.org,
+            role__in=rule.notify_roles,
+            is_active=True,
+        )
+
+        today = date.today().isoformat()
+        created = 0
+        for user in recipients:
+            for channel in rule.channels:
+                subject, body_text, body_html = self._render_message(event_type, channel, context)
+                idempotency_key = f"{event_type}:{self.org.id}:{user.id}:{today}:{channel}"
+                if OutboxEvent.objects.filter(idempotency_key=idempotency_key).exists():
+                    continue
+
+                OutboxEvent.objects.create(
+                    org_id=self.org.id,
+                    event_type=event_type,
+                    recipient_user_id=user.id,
+                    recipient_phone=getattr(user, "phone", ""),
+                    recipient_email=user.email,
+                    subject=subject,
+                    body=body_text,
+                    body_html=body_html,
+                    channel=channel,
+                    idempotency_key=idempotency_key,
+                    status="pending",
+                )
+                created += 1
+
+        self.logger.info("notification.outbox_created", event_type=event_type, count=created)
+        return created
+
+    def _render_message(self, event_type, channel, context):
+        template = MESSAGE_TEMPLATES.get(event_type, {})
+        safe_ctx = {k: (v if v is not None else "") for k, v in context.items()}
+        try:
+            if channel == "sms":
+                body = template.get("sms", event_type).format(**safe_ctx)
+                return "", body, ""
+            elif channel == "email":
+                subject = template.get("email_subject", event_type).format(**safe_ctx)
+                body = template.get("email_body", event_type).format(**safe_ctx)
+                body_html = f"<p>{body.replace(chr(10), '</p><p>')}</p>"
+                return subject, body, body_html
+            else:  # in_app
+                title = template.get("in_app_title", event_type).format(**safe_ctx)
+                body = template.get("in_app_body", event_type).format(**safe_ctx)
+                return title, body, ""
+        except KeyError:
+            fallback = f"{event_type} event occurred"
+            return event_type, fallback, ""
+
+    def mark_read(self, notification_log_id):
+        updated = NotificationLog.objects.filter(
+            id=notification_log_id,
+            recipient__org=self.org,
+        ).update(is_read=True, read_at=timezone.now())
+        self.logger.debug("notification.marked_read", id=str(notification_log_id), updated=updated)
+
+    def get_unread_count(self, user) -> int:
+        return NotificationLog.objects.filter(
+            org=self.org,
+            recipient=user,
+            is_read=False,
+        ).count()
+
+    def get_notifications(self, user, limit=20):
+        return NotificationLog.objects.filter(
+            org=self.org,
+            recipient=user,
+        ).order_by("-created_at")[:limit]

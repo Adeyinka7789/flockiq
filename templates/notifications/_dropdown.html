@@ -1,0 +1,59 @@
+{% load tz %}
+<div class="w-80 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+  <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+    <h3 class="text-sm font-semibold text-gray-800">Notifications</h3>
+    <form
+      method="post"
+      action="{% url 'notifications:mark_all_read' %}"
+      hx-post="{% url 'notifications:mark_all_read' %}"
+      hx-target="closest div"
+      hx-swap="outerHTML"
+    >
+      {% csrf_token %}
+      <button type="submit" class="text-xs text-green-600 hover:text-green-800 font-medium">
+        Mark all read
+      </button>
+    </form>
+  </div>
+
+  {% if notifications %}
+    <ul class="divide-y divide-gray-50 max-h-96 overflow-y-auto">
+      {% for notif in notifications %}
+        <li class="{% if not notif.is_read %}bg-green-50{% else %}bg-white{% endif %} hover:bg-gray-50 transition-colors">
+          <form
+            method="post"
+            action="{% url 'notifications:mark_read' notif.id %}"
+            hx-post="{% url 'notifications:mark_read' notif.id %}"
+            hx-target="#notification-bell-badge"
+            hx-swap="outerHTML"
+            class="block px-4 py-3 cursor-pointer"
+          >
+            {% csrf_token %}
+            <button type="submit" class="w-full text-left">
+              <div class="flex items-start gap-2">
+                {% if notif.severity == "critical" %}
+                  <span class="mt-0.5 w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                {% elif notif.severity == "warning" %}
+                  <span class="mt-0.5 w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></span>
+                {% else %}
+                  <span class="mt-0.5 w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></span>
+                {% endif %}
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-800 truncate">{{ notif.title }}</p>
+                  <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                    {{ notif.body|truncatechars:80 }}
+                  </p>
+                  <p class="text-xs text-gray-400 mt-1">{{ notif.created_at|timesince }} ago</p>
+                </div>
+              </div>
+            </button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="px-4 py-8 text-center text-sm text-gray-400">
+      No notifications yet
+    </div>
+  {% endif %}
+</div>

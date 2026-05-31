@@ -1,0 +1,10 @@
+from django.apps import AppConfig
+
+
+class NotificationsConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "apps.infrastructure.notifications"
+    label = "notifications"
+
+    def ready(self):
+        import apps.infrastructure.notifications.signals  # noqa: F401
