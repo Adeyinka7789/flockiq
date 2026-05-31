@@ -1,0 +1,24 @@
+{% if weather %}
+  <div class="flex gap-1 overflow-x-auto">
+    {% for slot in weather.forecast|slice:":4" %}
+    <div class="flex-shrink-0 flex flex-col items-center px-2 py-1 rounded-lg
+      {% if slot.temp and slot.temp > 32 %}bg-red-100 border border-red-300{% else %}bg-blue-50 border border-blue-100{% endif %}">
+      <span class="text-lg">
+        {% if slot.temp and slot.temp > 32 %}🔥{% elif slot.rain_3h_mm and slot.rain_3h_mm > 10 %}🌧{% else %}🌤{% endif %}
+      </span>
+      <span class="text-xs font-semibold text-earth-700">
+        {% if slot.temp %}{{ slot.temp|floatformat:0 }}°C{% else %}—{% endif %}
+      </span>
+      <span class="text-xs text-earth-500 truncate max-w-16">{{ slot.description|truncatechars:10 }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if weather.current_temp and weather.current_temp > 32 %}
+  <div class="mt-1 px-2 py-1 bg-red-600 text-white text-xs rounded-md font-semibold">
+    ⚠ Heat Stress Risk — {{ weather.current_temp|floatformat:1 }}°C
+  </div>
+  {% endif %}
+{% else %}
+  <div class="text-xs text-earth-400 italic py-2">Weather unavailable</div>
+{% endif %}

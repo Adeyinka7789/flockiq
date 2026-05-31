@@ -1,0 +1,11 @@
+{% if tasks %}
+  <ul class="divide-y divide-earth-100 rounded-xl border border-earth-200 bg-white shadow-sm">
+    {% for task in tasks %}
+      {% include "tasks/_task_row.html" with task=task %}
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="text-center py-12 text-earth-400">
+    <p class="text-lg">No tasks for today.</p>
+  </div>
+{% endif %}

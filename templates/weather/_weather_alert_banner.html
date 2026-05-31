@@ -1,0 +1,24 @@
+<div id="alert-{{ alert.id }}"
+     class="flex items-start gap-3 px-4 py-3 rounded-lg border mb-2
+  {% if alert.severity == 'critical' %}bg-red-50 border-red-300{% elif alert.severity == 'warning' %}bg-amber-50 border-amber-300{% else %}bg-blue-50 border-blue-200{% endif %}">
+
+  <span class="text-lg flex-shrink-0">
+    {% if alert.severity == 'critical' %}🔴{% elif alert.severity == 'warning' %}🟡{% else %}🔵{% endif %}
+  </span>
+
+  <div class="flex-1 min-w-0">
+    <p class="text-sm font-semibold
+      {% if alert.severity == 'critical' %}text-red-800{% elif alert.severity == 'warning' %}text-amber-800{% else %}text-blue-800{% endif %}">
+      {{ alert.get_alert_type_display }}
+    </p>
+    <p class="text-xs text-earth-600 mt-0.5">{{ alert.description }}</p>
+  </div>
+
+  <button
+    hx-post="{% url 'weather:acknowledge' alert.id %}"
+    hx-target="#alert-{{ alert.id }}"
+    hx-swap="outerHTML"
+    class="flex-shrink-0 text-earth-400 hover:text-earth-600 focus:outline-none"
+    aria-label="Dismiss alert"
+  >&#10005;</button>
+</div>

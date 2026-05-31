@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Tasks — FlockIQ{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-6">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-earth-800">Today's Tasks</h1>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="flex gap-2 mb-4" role="tablist">
+    {% for tab, label in status_tabs %}
+    <button
+      hx-get="{% url 'tasks:list' %}?status={{ tab }}"
+      hx-target="#task-list"
+      hx-push-url="true"
+      class="px-4 py-2 rounded-full text-sm font-medium
+             {% if status_filter == tab %}bg-green-600 text-white{% else %}bg-white text-earth-600 border border-earth-200 hover:bg-earth-50{% endif %}"
+    >{{ label }}</button>
+    {% endfor %}
+  </div>
+
+  <div id="task-list">
+    {% include "tasks/_task_list_partial.html" %}
+  </div>
+</div>
+{% endblock %}

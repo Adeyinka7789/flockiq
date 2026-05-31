@@ -1,0 +1,35 @@
+<li id="task-{{ task.id }}" class="flex items-center gap-4 px-4 py-3
+  {% if task.status == 'complete' %}bg-green-50{% elif task.status == 'overdue' %}bg-red-50{% else %}bg-white{% endif %}">
+
+  <!-- Priority badge -->
+  <span class="inline-flex items-center justify-center w-2 h-2 rounded-full
+    {% if task.priority == 'high' %}bg-red-500{% elif task.priority == 'medium' %}bg-amber-400{% else %}bg-earth-300{% endif %}">
+  </span>
+
+  <!-- Task info -->
+  <div class="flex-1 min-w-0">
+    <p class="text-sm font-medium text-earth-800 truncate
+      {% if task.status == 'complete' %}line-through text-earth-400{% endif %}">
+      {{ task.title }}
+    </p>
+    <p class="text-xs text-earth-500">
+      {{ task.farm.name }}{% if task.batch %} · {{ task.batch.batch_name }}{% endif %}
+    </p>
+  </div>
+
+  <!-- Status / action -->
+  <div class="flex-shrink-0">
+    {% if task.status == 'complete' %}
+      <span class="text-green-600 text-sm font-medium">&#10003; Done</span>
+    {% elif task.status == 'overdue' %}
+      <span class="text-red-600 text-xs font-semibold uppercase">Overdue</span>
+    {% else %}
+      <button
+        hx-post="{% url 'tasks:complete' task.id %}"
+        hx-target="#task-{{ task.id }}"
+        hx-swap="outerHTML"
+        class="px-3 py-1 text-xs font-medium bg-green-600 text-white rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+      >Complete</button>
+    {% endif %}
+  </div>
+</li>
