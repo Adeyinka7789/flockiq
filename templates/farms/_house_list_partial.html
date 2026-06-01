@@ -8,6 +8,7 @@
           <th class="text-right px-5 py-3">Capacity</th>
           <th class="text-right px-5 py-3">Occupancy</th>
           <th class="text-right px-5 py-3">Status</th>
+          <th class="px-5 py-3"></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-50">
@@ -26,6 +27,17 @@
                 {% else %}bg-gray-100 text-gray-500{% endif %}">
                 {% if house.is_active %}Active{% else %}Inactive{% endif %}
               </span>
+            </td>
+            <td class="px-5 py-3 text-right">
+              {% if house.current_occupancy == 0 and house.is_active %}
+              <button hx-get="{% url 'flocks:create' farm_id %}?house={{ house.pk }}"
+                      hx-target="#modal-container"
+                      hx-swap="innerHTML"
+                      class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-white text-xs font-semibold"
+                      style="background:#3d5a99">
+                + Add Batch
+              </button>
+              {% endif %}
             </td>
           </tr>
         {% endfor %}

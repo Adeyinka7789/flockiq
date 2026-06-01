@@ -11,6 +11,7 @@ from .views import (
     BatchMetricsCardView,
     MortalityLogAPIView,
     MortalityLogView,
+    MortalityRecentView,
     WeightRecordView,
 )
 
@@ -21,6 +22,7 @@ urlpatterns = [
     path("batches/", BatchListView.as_view(), name="list"),
     path("batches/<uuid:pk>/", BatchDetailView.as_view(), name="detail"),
     path("batches/<uuid:pk>/mortality/", MortalityLogView.as_view(), name="mortality"),
+    path("batches/<uuid:pk>/mortality/recent/", MortalityRecentView.as_view(), name="mortality_recent"),
     path("batches/<uuid:pk>/weight/", WeightRecordView.as_view(), name="weight"),
     path("batches/<uuid:pk>/close/", BatchCloseView.as_view(), name="close"),
     path("batches/<uuid:pk>/metrics/", BatchMetricsCardView.as_view(), name="metrics"),

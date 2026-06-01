@@ -19,6 +19,7 @@ from .exceptions import (
     MortalityExceedsLiveBirdsError,
 )
 from .forms import BatchCloseForm, BatchCreateForm, MortalityLogForm, WeightRecordForm
+from apps.farm.farms.models import House
 from .models import Batch, MortalityLog, WeightRecord
 from .serializers import (
     BatchCreateSerializer,
@@ -63,8 +64,23 @@ class BatchCreateView(LoginRequiredMixin, View):
     """POST /farms/<uuid>/batches/create/ → Creates batch; returns toast + detail redirect."""
 
     def get(self, request, farm_pk):
-        form = BatchCreateForm(initial={"farm_id": farm_pk})
-        return render(request, "flocks/_batch_create_modal.html", {"form": form, "farm_pk": farm_pk})
+        org = _get_org(request)
+        preselected_house = None
+        initial = {"farm_id": farm_pk}
+        house_id = request.GET.get("house")
+        if house_id:
+            try:
+                with set_tenant_context(org):
+                    preselected_house = House.objects.get(id=house_id)
+                initial["house_id"] = house_id
+            except (House.DoesNotExist, Exception):
+                pass
+        form = BatchCreateForm(initial=initial)
+        return render(request, "flocks/_batch_create_modal.html", {
+            "form": form,
+            "farm_pk": farm_pk,
+            "preselected_house": preselected_house,
+        })
 
     def post(self, request, farm_pk):
         form = BatchCreateForm(request.POST)
@@ -98,6 +114,7 @@ class BatchCreateView(LoginRequiredMixin, View):
             if is_htmx:
                 response = HttpResponse(status=204)
                 response["HX-Trigger"] = json.dumps({
+                    "closeModal": True,
                     "showToast": {
                         "message": f'Batch "{batch.batch_name}" created.',
                         "type": "success",
@@ -140,8 +157,33 @@ class BatchDetailView(LoginRequiredMixin, View):
         return render(request, "flocks/batch_detail.html", context)
 
 
+class MortalityRecentView(LoginRequiredMixin, View):
+    """GET /batches/<uuid:pk>/mortality/recent/ → HTMX mortality table fragment."""
+
+    def get(self, request, pk):
+        org = _get_org(request)
+        with set_tenant_context(org):
+            try:
+                batch = Batch.objects.get(id=pk)
+            except Batch.DoesNotExist:
+                raise Http404("Batch not found.")
+            logs = list(MortalityLog.objects.filter(batch_id=pk).order_by("-date")[:30])
+        return render(
+            request,
+            "flocks/_mortality_table.html",
+            {"logs": logs, "batch": batch, "batch_pk": pk},
+        )
+
+
 class MortalityLogView(LoginRequiredMixin, View):
-    """POST /batches/<uuid>/mortality/ → HTMX mortality form submission."""
+    """GET /batches/<uuid>/mortality/ → modal form; POST → logs mortality and closes modal."""
+
+    def get(self, request, pk):
+        org = _get_org(request)
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch, id=pk)
+        form = MortalityLogForm()
+        return render(request, "flocks/_mortality_modal.html", {"form": form, "batch": batch})
 
     def post(self, request, pk):
         form = MortalityLogForm(request.POST)
@@ -158,36 +200,30 @@ class MortalityLogView(LoginRequiredMixin, View):
                         date=cd["date"],
                         notes=cd.get("notes", ""),
                     )
-                    batch = Batch.objects.get(id=pk)
-                    logs = list(
-                        MortalityLog.objects.filter(batch_id=pk).order_by("-date")[:30]
-                    )
             except (BatchClosedError, MortalityExceedsLiveBirdsError) as exc:
                 form.add_error(None, str(exc))
+                with set_tenant_context(org):
+                    batch = get_object_or_404(Batch, id=pk)
                 return render(
                     request,
-                    "flocks/_mortality_form.html",
-                    {"form": form, "batch_pk": pk},
+                    "flocks/_mortality_modal.html",
+                    {"form": form, "batch": batch},
                     status=422,
                 )
 
-            response = render(
-                request,
-                "flocks/_mortality_table.html",
-                {"logs": logs, "batch": batch, "batch_pk": pk},
-            )
+            response = HttpResponse("")
             response["HX-Trigger"] = json.dumps({
-                "showToast": {
-                    "message": f"{cd['count']} mortality logged.",
-                    "type": "success",
-                }
+                "showToast": {"message": f"{cd['count']} mortality logged.", "type": "success"},
+                "mortalityLogged": True,
             })
             return response
 
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch, id=pk)
         return render(
             request,
-            "flocks/_mortality_form.html",
-            {"form": form, "batch_pk": pk},
+            "flocks/_mortality_modal.html",
+            {"form": form, "batch": batch},
             status=422,
         )
 

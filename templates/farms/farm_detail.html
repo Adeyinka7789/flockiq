@@ -22,7 +22,14 @@
           {{ farm.latitude }}, {{ farm.longitude }}
         </p>
       </div>
-      <div class="flex flex-col items-end gap-2">
+      <div class="flex flex-col items-end gap-3">
+        <button hx-get="{% url 'flocks:create' farm.pk %}"
+                hx-target="#modal-container"
+                hx-swap="innerHTML"
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold"
+                style="background:#3d5a99">
+          + Add Batch
+        </button>
         <span class="px-3 py-1 rounded-full text-sm font-medium
           {% if farm.farm_type == 'layer' %}bg-yellow-100 text-yellow-700
           {% elif farm.farm_type == 'broiler' %}bg-blue-100 text-blue-700
@@ -78,6 +85,9 @@
     toast.textContent = message;
     document.getElementById("toast-container").appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
+  });
+  document.body.addEventListener("closeModal", function() {
+    document.getElementById("modal-container").innerHTML = "";
   });
 </script>
 {% endblock %}

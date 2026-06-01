@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import views
+from .views import MedicationListView
 
 app_name = "health"
 
@@ -19,6 +20,11 @@ urlpatterns = [
         "health/medications/<uuid:batch_pk>/log/",
         views.MedicationLogView.as_view(),
         name="medication_log",
+    ),
+    path(
+        "health/medications/<uuid:batch_pk>/list/",
+        MedicationListView.as_view(),
+        name="medication_list",
     ),
     path(
         "health/symptoms/<uuid:batch_pk>/log/",

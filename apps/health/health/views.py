@@ -132,6 +132,20 @@ class MedicationLogView(LoginRequiredMixin, View):
         return response
 
 
+class MedicationListView(LoginRequiredMixin, View):
+    """GET /health/medications/<uuid:batch_pk>/list/ → HTMX medication list fragment."""
+
+    def get(self, request, batch_pk):
+        org = _get_org(request)
+        with set_tenant_context(org):
+            meds = HealthService(org).get_health_summary(str(batch_pk))["active_medications"]
+        return render(
+            request,
+            "health/_medication_list.html",
+            {"medications": meds, "batch_pk": batch_pk},
+        )
+
+
 class SymptomLogView(LoginRequiredMixin, View):
     """POST /health/symptoms/<uuid:batch_pk>/log/ — Records symptoms."""
 

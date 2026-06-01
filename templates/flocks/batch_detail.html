@@ -5,7 +5,8 @@
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-8" x-data="{ tab: 'overview' }">
 
-  <div class="flex items-center gap-3 mb-6">
+  <!-- Batch header -->
+  <div class="flex flex-wrap items-center gap-3 mb-6">
     <h1 class="text-2xl font-bold text-gray-900">{{ batch.batch_name }}</h1>
     {% if batch.breed_name %}
     <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">{{ batch.breed_name }}</span>
@@ -22,76 +23,239 @@
     {% else %}
     <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">Culled</span>
     {% endif %}
-  </div>
-
-  <!-- Metrics cards (lazy-loaded) -->
-  <div id="metrics-cards"
-       hx-get="{% url 'flocks:metrics' batch.pk %}"
-       hx-trigger="load"
-       hx-swap="innerHTML">
-    {% include "partials/_skeleton_metric_cards.html" %}
-  </div>
-
-  <!-- Tabs -->
-  <div class="mt-6 border-b border-gray-200 flex gap-4">
-    <button @click="tab='overview'" :class="tab==='overview' ? 'border-b-2 border-green-600 text-green-700 font-medium' : 'text-gray-500'" class="pb-2 text-sm">Overview</button>
-    <button @click="tab='mortality'" :class="tab==='mortality' ? 'border-b-2 border-green-600 text-green-700 font-medium' : 'text-gray-500'" class="pb-2 text-sm">Mortality</button>
-    {% if batch.bird_type == 'broiler' %}
-    <button @click="tab='weight'" :class="tab==='weight' ? 'border-b-2 border-green-600 text-green-700 font-medium' : 'text-gray-500'" class="pb-2 text-sm">Weights</button>
+    {% if batch.cycle_day is not None %}
+    <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">Day {{ batch.cycle_day }}</span>
     {% endif %}
-    <button @click="tab='reconciliation'" :class="tab==='reconciliation' ? 'border-b-2 border-green-600 text-green-700 font-medium' : 'text-gray-500'" class="pb-2 text-sm">Reconciliation</button>
   </div>
 
-  <!-- Tab: Overview -->
-  <div x-show="tab==='overview'" class="mt-6">
-    <p class="text-sm text-gray-500">Farm: <strong>{{ batch.farm.name }}</strong> &nbsp;|&nbsp; House: <strong>{{ batch.house.name }}</strong></p>
-    <p class="text-sm text-gray-500 mt-1">Placement date: <strong>{{ batch.placement_date }}</strong></p>
-  </div>
-
-  <!-- Tab: Mortality -->
-  <div x-show="tab==='mortality'" class="mt-6">
-    {% if batch.is_active %}
-    {% include "flocks/_mortality_form.html" with batch_pk=batch.pk form=mortality_form %}
+  <!-- Tab buttons -->
+  <div class="border-b border-gray-200 flex gap-1 overflow-x-auto">
+    <button @click="tab = 'overview'"
+            :class="tab === 'overview' ? 'border-b-2 border-[#3d5a99] text-[#3d5a99] font-semibold' : 'text-gray-500 hover:text-gray-700'"
+            class="px-4 py-3 text-sm transition-colors whitespace-nowrap">
+      Overview
+    </button>
+    {% if batch.bird_type == 'layer' %}
+    <button @click="tab = 'production'"
+            :class="tab === 'production' ? 'border-b-2 border-[#3d5a99] text-[#3d5a99] font-semibold' : 'text-gray-500 hover:text-gray-700'"
+            class="px-4 py-3 text-sm transition-colors whitespace-nowrap">
+      Production
+    </button>
     {% endif %}
-    <div id="mortality-table">
-      {% include "flocks/_mortality_table.html" %}
+    <button @click="tab = 'health'"
+            :class="tab === 'health' ? 'border-b-2 border-[#3d5a99] text-[#3d5a99] font-semibold' : 'text-gray-500 hover:text-gray-700'"
+            class="px-4 py-3 text-sm transition-colors whitespace-nowrap">
+      Health
+    </button>
+    <button @click="tab = 'finance'"
+            :class="tab === 'finance' ? 'border-b-2 border-[#3d5a99] text-[#3d5a99] font-semibold' : 'text-gray-500 hover:text-gray-700'"
+            class="px-4 py-3 text-sm transition-colors whitespace-nowrap">
+      Finance
+    </button>
+    <button @click="tab = 'ai'"
+            :class="tab === 'ai' ? 'border-b-2 border-[#3d5a99] text-[#3d5a99] font-semibold' : 'text-gray-500 hover:text-gray-700'"
+            class="px-4 py-3 text-sm transition-colors whitespace-nowrap">
+      AI Insights
+    </button>
+  </div>
+
+  <!-- TAB 1: Overview -->
+  <div x-show="tab === 'overview'" class="mt-6">
+
+    <!-- Metric cards -->
+    <div id="metrics-cards"
+         hx-get="{% url 'flocks:metrics' batch.pk %}"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      {% include "partials/_skeleton_metric_cards.html" %}
+    </div>
+
+    <!-- Quick actions -->
+    <div class="flex flex-wrap gap-3 mt-6">
+      <button hx-get="{% url 'flocks:mortality' batch.pk %}"
+              hx-target="#modal-container"
+              hx-swap="innerHTML"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Log Mortality
+      </button>
+      {% if batch.bird_type == 'layer' %}
+      <button hx-get="{% url 'production:log' batch.pk %}"
+              hx-target="#modal-container"
+              hx-swap="innerHTML"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white text-sm font-medium rounded-lg hover:bg-yellow-600 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <ellipse cx="12" cy="13" rx="6" ry="8" stroke="currentColor" stroke-width="2" fill="none"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5V3"/>
+        </svg>
+        Log Eggs
+      </button>
+      {% endif %}
+      <button hx-get="{% url 'feed:log' batch.pk %}"
+              hx-target="#modal-container"
+              hx-swap="innerHTML"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-[#3d5a99] text-white text-sm font-medium rounded-lg hover:bg-[#2e4577] transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+        </svg>
+        Log Feed
+      </button>
+      <button hx-get="{% url 'water:log' batch.pk %}"
+              hx-target="#modal-container"
+              hx-swap="innerHTML"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 text-white text-sm font-medium rounded-lg hover:bg-sky-600 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0L12 2.69z"/>
+        </svg>
+        Log Water
+      </button>
+    </div>
+
+    <!-- Weather strip -->
+    <div class="mt-6"
+         hx-get="/weather/farm/{{ batch.farm.pk }}/strip/"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+      <div class="h-12 bg-gray-100 rounded-lg animate-pulse"></div>
+    </div>
+
+    <!-- Recent mortality -->
+    <div id="mortality-table"
+         class="mt-6"
+         hx-get="{% url 'flocks:mortality_recent' batch.pk %}"
+         hx-trigger="load, mortalityLogged from:body"
+         hx-swap="innerHTML">
+      {% include "partials/_skeleton_table.html" %}
+    </div>
+
+  </div>
+
+  <!-- TAB 2: Production (layer only) -->
+  <div x-show="tab === 'production'" x-cloak class="mt-6">
+    {% if batch.bird_type == 'layer' %}
+      <div hx-get="{% url 'production:summary' batch.pk %}"
+           hx-trigger="intersect once">
+        {% include 'partials/_skeleton_metric_cards.html' %}
+      </div>
+      <div class="mt-6"
+           hx-get="{% url 'production:chart' batch.pk %}"
+           hx-trigger="intersect once">
+        {% include 'partials/_skeleton_chart.html' %}
+      </div>
+      <div class="mt-6"
+           hx-get="{% url 'production:table' batch.pk %}"
+           hx-trigger="intersect once">
+        {% include 'partials/_skeleton_table.html' %}
+      </div>
+    {% else %}
+      <div class="text-center py-12 text-gray-400">
+        Weight tracking for broilers is in the Overview tab.
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- TAB 3: Health -->
+  <div x-show="tab === 'health'" x-cloak class="mt-6">
+    <div hx-get="{% url 'health:summary' batch.pk %}"
+         hx-trigger="intersect once">
+      {% include 'partials/_skeleton_metric_cards.html' %}
+    </div>
+    <div class="mt-6"
+         hx-get="{% url 'health:medication_list' batch.pk %}"
+         hx-trigger="intersect once">
+      {% include 'partials/_skeleton_table.html' %}
+    </div>
+    <div class="flex flex-wrap gap-3 mt-6">
+      <button hx-get="{% url 'health:medication_log' batch.pk %}"
+              hx-target="#modal-container"
+              hx-swap="innerHTML"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-[#3d5a99] text-white text-sm font-medium rounded-lg hover:bg-[#2e4577] transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Log Medication
+      </button>
+      <button hx-get="{% url 'health:symptom_log' batch.pk %}"
+              hx-target="#modal-container"
+              hx-swap="innerHTML"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+        </svg>
+        Log Symptoms
+      </button>
     </div>
   </div>
 
-  <!-- Tab: Weights (broiler only) -->
-  {% if batch.bird_type == 'broiler' %}
-  <div x-show="tab==='weight'" class="mt-6">
-    {% if batch.is_active %}
-    {% include "flocks/_weight_form.html" with batch_pk=batch.pk form=weight_form %}
-    {% endif %}
-    <div id="weight-table">{% include "flocks/_weight_table.html" %}</div>
+  <!-- TAB 4: Finance -->
+  <div x-show="tab === 'finance'" x-cloak class="mt-6">
+    <div hx-get="{% url 'finance:pl' batch.pk %}"
+         hx-trigger="intersect once">
+      {% include 'partials/_skeleton_metric_cards.html' %}
+    </div>
+    <div class="mt-6"
+         hx-get="{% url 'finance:breakeven' batch.pk %}"
+         hx-trigger="intersect once">
+      {% include 'partials/_skeleton_card.html' %}
+    </div>
+    <div class="mt-6"
+         hx-get="{% url 'expenses:breakdown' batch.pk %}"
+         hx-trigger="intersect once">
+      {% include 'partials/_skeleton_chart.html' %}
+    </div>
+    <div class="flex flex-wrap gap-3 mt-6">
+      <button hx-get="{% url 'finance:sale_log' batch.pk %}"
+              hx-target="#modal-container"
+              hx-swap="innerHTML"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Record Sale
+      </button>
+      <button hx-get="{% url 'expenses:log' batch.pk %}"
+              hx-target="#modal-container"
+              hx-swap="innerHTML"
+              class="inline-flex items-center gap-2 px-4 py-2 bg-[#3d5a99] text-white text-sm font-medium rounded-lg hover:bg-[#2e4577] transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Record Expense
+      </button>
+    </div>
   </div>
-  {% endif %}
 
-  <!-- Tab: Reconciliation -->
-  <div x-show="tab==='reconciliation'" class="mt-6">
-    {% if batch.is_active %}
-    <form method="post" action="{% url 'flocks:close' batch.pk %}" hx-post="{% url 'flocks:close' batch.pk %}" hx-target="#close-result" hx-swap="innerHTML">
-      {% csrf_token %}
-      {{ close_form.as_p }}
-      <button type="submit" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg">Close Batch</button>
-    </form>
+  <!-- TAB 5: AI Insights -->
+  <div x-show="tab === 'ai'" x-cloak class="mt-6">
+    <div hx-get="{% url 'analytics:forecast' batch.pk %}"
+         hx-trigger="intersect once">
+      {% include 'partials/_skeleton_chart.html' %}
+    </div>
+    <div class="mt-6"
+         hx-get="{% url 'analytics:anomalies' batch.pk %}"
+         hx-trigger="intersect once">
+      {% include 'partials/_skeleton_table.html' %}
+    </div>
+    {% if batch.bird_type == 'broiler' %}
+    <div class="mt-6"
+         hx-get="{% url 'analytics:sale_timing' batch.pk %}"
+         hx-trigger="intersect once">
+      {% include 'partials/_skeleton_card.html' %}
+    </div>
     {% endif %}
-    <div id="close-result"></div>
+    <div class="mt-6"
+         hx-get="{% url 'analytics:theft' batch.pk %}"
+         hx-trigger="intersect once">
+      {% include 'partials/_skeleton_card.html' %}
+    </div>
   </div>
 
 </div>
+
 <div id="modal-container"></div>
-<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
-<script>
-  document.body.addEventListener("showToast", function(evt) {
-    const { message, type } = evt.detail;
-    const bg = type === "success" ? "bg-green-600" : "bg-red-600";
-    const toast = document.createElement("div");
-    toast.className = `${bg} text-white text-sm px-4 py-3 rounded-lg shadow-lg`;
-    toast.textContent = message;
-    document.getElementById("toast-container").appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
-  });
-</script>
 {% endblock %}
