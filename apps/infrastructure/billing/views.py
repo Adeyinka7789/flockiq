@@ -2,6 +2,7 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
+from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 from django.utils import timezone
@@ -149,7 +150,7 @@ class PaystackWebhookView(View):
         logger.warning("webhook.invoice_payment_failed", org=str(org.id))
 
 
-class BillingPageView(LoginRequiredMixin, View):
+class BillingPageView(TenantRequiredMixin, View):
     def get(self, request):
         svc = BillingService(request.user.org)
         summary = svc.get_billing_summary()

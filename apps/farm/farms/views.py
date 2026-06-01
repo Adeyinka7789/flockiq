@@ -2,6 +2,7 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
+from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views import View
@@ -34,7 +35,7 @@ def _get_org(request):
 
 # ── HTMX views ────────────────────────────────────────────────────────────────
 
-class FarmListView(LoginRequiredMixin, View):
+class FarmListView(TenantRequiredMixin, View):
     """
     GET  /farms/      → Full farm list page (or HTMX partial if HX-Request).
     """
@@ -109,7 +110,7 @@ class FarmCreateView(LoginRequiredMixin, View):
         return render(request, "farms/farm_list.html", {"form": form})
 
 
-class FarmDetailView(LoginRequiredMixin, View):
+class FarmDetailView(TenantRequiredMixin, View):
     """GET /farms/<uuid>/  → Farm detail page with houses."""
 
     def get(self, request, pk):

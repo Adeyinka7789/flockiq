@@ -1,36 +1,46 @@
 {% if batches %}
-<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-  <table class="min-w-full divide-y divide-gray-100">
-    <thead class="bg-gray-50">
+<div class="overflow-x-auto">
+  <table class="min-w-full divide-y divide-earth-100">
+    <thead class="bg-earth-50">
       <tr>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Farm</th>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">House</th>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Batch</th>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Day</th>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Live Birds</th>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mortality %</th>
-        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Farm</th>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">House</th>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Batch</th>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Type</th>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Day</th>
+        <th class="px-4 py-3 text-right text-xs font-semibold text-earth-500 uppercase tracking-wide">Live Birds</th>
+        <th class="px-4 py-3 text-right text-xs font-semibold text-earth-500 uppercase tracking-wide">Mortality %</th>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Status</th>
       </tr>
     </thead>
-    <tbody class="divide-y divide-gray-50">
+    <tbody class="divide-y divide-earth-50 bg-white">
       {% for batch in batches %}
-      <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='/batches/{{ batch.pk }}/'">
-        <td class="px-4 py-3 text-sm text-gray-700">{{ batch.farm.name }}</td>
-        <td class="px-4 py-3 text-sm text-gray-500">{{ batch.house.name }}</td>
-        <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ batch.batch_name }}</td>
+      <tr class="hover:bg-earth-50 transition-colors cursor-pointer"
+          onclick="window.location='/batches/{{ batch.pk }}/'">
+        <td class="px-4 py-3 text-sm text-earth-600">{{ batch.farm.name }}</td>
+        <td class="px-4 py-3 text-sm text-earth-500">{{ batch.house.name }}</td>
+        <td class="px-4 py-3 text-sm font-medium text-earth-900">{{ batch.batch_name }}</td>
         <td class="px-4 py-3">
           {% if batch.bird_type == 'layer' %}
-          <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">Layer</span>
+          <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full"
+                style="background:#e8eef8;color:#3d5a99">Layer</span>
           {% else %}
-          <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded-full">Broiler</span>
+          <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Broiler</span>
           {% endif %}
         </td>
-        <td class="px-4 py-3 text-sm tabular-nums text-gray-700">{{ batch.cycle_day }}</td>
-        <td class="px-4 py-3 text-sm font-bold tabular-nums text-gray-900">{{ batch.current_count|floatformat:"0" }}</td>
-        <td class="px-4 py-3 text-sm tabular-nums text-gray-600">{{ batch.mortality_rate_pct }}%</td>
+        <td class="px-4 py-3 text-sm tabular-nums text-earth-700">{{ batch.cycle_day }}</td>
+        <td class="px-4 py-3 text-sm font-bold tabular-nums text-earth-900 text-right">{{ batch.current_count|floatformat:"0" }}</td>
+        <td class="px-4 py-3 text-sm tabular-nums text-earth-600 text-right">{{ batch.mortality_rate_pct }}%</td>
         <td class="px-4 py-3">
-          <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">Active</span>
+          {% if batch.status == 'active' %}
+          <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700">Active</span>
+          {% elif batch.status == 'closed' %}
+          <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">Closed</span>
+          {% elif batch.status == 'culled' %}
+          <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700">Culled</span>
+          {% else %}
+          <span class="inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-600">{{ batch.status|capfirst }}</span>
+          {% endif %}
         </td>
       </tr>
       {% endfor %}
@@ -38,8 +48,9 @@
   </table>
 </div>
 {% else %}
-<div class="text-center py-16 text-gray-400">
-  <p class="text-lg font-medium">No active batches</p>
-  <p class="text-sm mt-1">Add a batch from a farm's detail page.</p>
+<div class="text-center py-16">
+  <div class="text-4xl mb-3">🐔</div>
+  <p class="text-base font-semibold text-earth-900 mb-1">No active batches</p>
+  <p class="text-sm text-earth-500">Add a batch from a farm's detail page.</p>
 </div>
 {% endif %}

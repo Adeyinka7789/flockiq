@@ -2,6 +2,7 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
+from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views import View
@@ -41,7 +42,7 @@ def _get_org(request):
 
 # ── HTMX views ─────────────────────────────────────────────────────────────────
 
-class BatchListView(LoginRequiredMixin, View):
+class BatchListView(TenantRequiredMixin, View):
     """GET /batches/ → Full batch list page."""
 
     def get(self, request):
@@ -137,7 +138,7 @@ class BatchCreateView(LoginRequiredMixin, View):
         return render(request, "flocks/_batch_create_modal.html", {"form": form, "farm_pk": farm_pk})
 
 
-class BatchDetailView(LoginRequiredMixin, View):
+class BatchDetailView(TenantRequiredMixin, View):
     """GET /batches/<uuid>/ → Full batch detail page with Alpine.js tabs."""
 
     def get(self, request, pk):

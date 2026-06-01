@@ -2,6 +2,7 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
+from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.views import View
@@ -23,7 +24,7 @@ def _get_org(request):
     return org
 
 
-class VaccinationCalendarView(LoginRequiredMixin, View):
+class VaccinationCalendarView(TenantRequiredMixin, View):
     """GET /health/vaccinations/ — Full vaccination calendar across all farms."""
 
     def get(self, request):
@@ -223,7 +224,7 @@ class HealthSummaryView(LoginRequiredMixin, View):
         )
 
 
-class OutbreakAlertView(LoginRequiredMixin, View):
+class OutbreakAlertView(TenantRequiredMixin, View):
     """GET /health/outbreaks/ — Lists active outbreak alerts."""
 
     def get(self, request):

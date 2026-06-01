@@ -4,6 +4,7 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
+from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 from django.views import View
@@ -43,7 +44,7 @@ def _build_seasonal_data():
     return seasonal_data
 
 
-class MarketPriceView(LoginRequiredMixin, View):
+class MarketPriceView(TenantRequiredMixin, View):
     """GET /market/prices/ — full page market intelligence view."""
 
     def get(self, request):

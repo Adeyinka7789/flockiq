@@ -1,10 +1,20 @@
 import json
 
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import redirect_to_login
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.views.generic import TemplateView
+
+
+class TenantRequiredMixin:
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        if not request.user.org:
+            return redirect('/')
+        return super().dispatch(request, *args, **kwargs)
 
 
 class HtmxMixin:
@@ -46,8 +56,33 @@ class HtmxMixin:
         return response
 
 
-class DashboardView(LoginRequiredMixin, TemplateView):
+class DashboardView(TemplateView):
     template_name = "dashboard.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return render(request, "landing.html")
+        if request.user.role == "super_admin" or request.user.is_superuser:
+            return self.super_admin_view(request)
+        if not request.user.org:
+            return render(request, "landing.html")
+        return super().dispatch(request, *args, **kwargs)
+
+    def super_admin_view(self, request):
+        from apps.infrastructure.accounts.models import CustomUser
+        from apps.infrastructure.tenants.models import Organization
+
+        orgs = Organization.objects.all().order_by("-created_at")
+        total_users = CustomUser.objects.filter(
+            role__in=["owner", "manager", "supervisor", "data_entry"]
+        ).count()
+
+        return render(request, "admin_dashboard.html", {
+            "orgs": orgs,
+            "total_orgs": orgs.count(),
+            "active_orgs": orgs.filter(is_active=True).count(),
+            "total_users": total_users,
+        })
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

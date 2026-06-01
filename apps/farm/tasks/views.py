@@ -3,6 +3,7 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
+from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import Http404
 from django.shortcuts import render
 from django.views import View
@@ -21,7 +22,7 @@ def _get_org(request):
     return org
 
 
-class TaskListView(LoginRequiredMixin, View):
+class TaskListView(TenantRequiredMixin, View):
     """GET /tasks/ → Full task list page with sectioned pending/overdue/completed cards."""
 
     def get(self, request):

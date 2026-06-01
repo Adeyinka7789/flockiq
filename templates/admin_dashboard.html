@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Platform Admin{% endblock %}
+{% block breadcrumb %}Platform Overview{% endblock %}
+
+{% block content %}
+<style>
+  .admin-wrap { max-width: 1100px; margin: 0 auto; }
+  .admin-header { margin-bottom: 24px; }
+  .admin-title { font-size: 20px; font-weight: 800; color: #1a2744; }
+  .admin-sub { font-size: 13px; color: #8a96a8; margin-top: 3px; }
+
+  .admin-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px; margin-bottom: 24px;
+  }
+  .admin-stat {
+    background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 18px;
+    position: relative; overflow: hidden;
+  }
+  .admin-stat::before {
+    content: ''; position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 14px 14px 0 0;
+  }
+  .admin-stat.navy::before { background: #3d5a99; }
+  .admin-stat.green::before { background: #8bc87a; }
+  .admin-stat.amber::before { background: #fbbf24; }
+  .admin-stat.blue::before { background: #5b8dd9; }
+  .admin-stat-label {
+    font-size: 10px; font-weight: 700;
+    color: #8a96a8; text-transform: uppercase;
+    letter-spacing: 0.06em; margin-bottom: 8px;
+  }
+  .admin-stat-value {
+    font-size: 32px; font-weight: 800;
+    color: #1a2744; line-height: 1;
+  }
+
+  .admin-section {
+    background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .admin-section-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .admin-section-title {
+    font-size: 13px; font-weight: 700; color: #1a2744;
+  }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .admin-table th {
+    text-align: left; padding: 10px 18px;
+    font-size: 10px; font-weight: 700;
+    color: #8a96a8; text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fafafa;
+  }
+  .admin-table td {
+    padding: 12px 18px;
+    border-bottom: 1px solid #f8faff;
+    color: #1a2744;
+  }
+  .admin-table tr:last-child td { border-bottom: none; }
+  .admin-table tr:hover td { background: #f8faff; }
+
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .status-badge.active { background: #dcfce7; color: #166534; }
+  .status-badge.trial { background: #e8eef8; color: #3d5a99; }
+  .status-badge.suspended { background: #fee2e2; color: #dc2626; }
+
+  .plan-badge {
+    display: inline-flex; padding: 2px 8px;
+    border-radius: 20px; font-size: 10px; font-weight: 700;
+    background: #f1f5f9; color: #475569;
+    text-transform: uppercase;
+  }
+
+  .admin-link {
+    color: #3d5a99; text-decoration: none;
+    font-weight: 600; font-size: 12px;
+  }
+  .admin-link:hover { text-decoration: underline; }
+</style>
+
+<div class="admin-wrap">
+  <div class="admin-header">
+    <div class="admin-title">Platform Overview</div>
+    <div class="admin-sub">FlockIQ — ADM Tech Hub Super Admin</div>
+  </div>
+
+  <div class="admin-stats">
+    <div class="admin-stat navy">
+      <div class="admin-stat-label">Total Tenants</div>
+      <div class="admin-stat-value">{{ total_orgs }}</div>
+    </div>
+    <div class="admin-stat green">
+      <div class="admin-stat-label">Active Tenants</div>
+      <div class="admin-stat-value">{{ active_orgs }}</div>
+    </div>
+    <div class="admin-stat amber">
+      <div class="admin-stat-label">Total Users</div>
+      <div class="admin-stat-value">{{ total_users }}</div>
+    </div>
+    <div class="admin-stat blue">
+      <div class="admin-stat-label">Django Admin</div>
+      <div class="admin-stat-value" style="font-size:14px;padding-top:8px">
+        <a href="/admin/" class="admin-link">Open Admin →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-section">
+    <div class="admin-section-header">
+      <span class="admin-section-title">All Tenants</span>
+      <a href="/admin/tenants/organization/add/" class="admin-link">+ Add Tenant</a>
+    </div>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Organisation</th>
+          <th>Subdomain</th>
+          <th>Plan</th>
+          <th>Status</th>
+          <th>Owner</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for org in orgs %}
+        <tr>
+          <td style="font-weight:600">{{ org.name }}</td>
+          <td style="color:#8a96a8;font-family:monospace">{{ org.subdomain }}.flockiq.com</td>
+          <td><span class="plan-badge">{{ org.plan_tier }}</span></td>
+          <td>
+            <span class="status-badge {{ org.subscription_status }}">
+              {{ org.subscription_status|title }}
+            </span>
+          </td>
+          <td style="color:#4a5568">{{ org.owner_email|default:"—" }}</td>
+          <td style="color:#8a96a8">{{ org.created_at|date:"M d, Y" }}</td>
+          <td>
+            <a href="/admin/tenants/organization/{{ org.pk }}/change/" class="admin-link">Edit</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" style="text-align:center;padding:40px;color:#8a96a8">
+            No tenants yet.
+            <a href="/admin/tenants/organization/add/" class="admin-link">Add the first one</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

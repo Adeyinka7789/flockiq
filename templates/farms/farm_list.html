@@ -22,19 +22,22 @@
     </button>
   </div>
 
-  <!-- Dashboard summary -->
-  <div class="grid grid-cols-3 gap-4 mb-8">
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-      <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Total Farms</p>
-      <p class="text-3xl font-bold text-gray-900 mt-1">{{ dashboard.total_farms }}</p>
+  <!-- Summary strip -->
+  <div class="flex flex-wrap items-center gap-3 mb-8">
+    <div class="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-gray-200 shadow-sm text-sm">
+      <span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+      <span class="font-semibold text-gray-900 tabular-nums">{{ dashboard.total_farms }}</span>
+      <span class="text-gray-500">Total Farms</span>
     </div>
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-      <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Live Birds</p>
-      <p class="text-3xl font-bold text-gray-900 mt-1">{{ dashboard.total_live_birds|default:"0" }}</p>
+    <div class="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-gray-200 shadow-sm text-sm">
+      <span class="w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+      <span class="font-semibold text-gray-900 tabular-nums">{{ dashboard.total_live_birds|default:"0" }}</span>
+      <span class="text-gray-500">Total Live Birds</span>
     </div>
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-      <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Active Batches</p>
-      <p class="text-3xl font-bold text-gray-900 mt-1">{{ dashboard.total_active_batches|default:"0" }}</p>
+    <div class="flex items-center gap-2 px-4 py-2 bg-white rounded-lg border border-gray-200 shadow-sm text-sm">
+      <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+      <span class="font-semibold text-gray-900 tabular-nums">{{ dashboard.total_active_batches|default:"0" }}</span>
+      <span class="text-gray-500">Active Batches</span>
     </div>
   </div>
 
