@@ -1,63 +1,269 @@
-<div id="health-summary" class="space-y-4">
-  <div class="flex items-center gap-4">
-    <div class="text-center">
-      <div class="text-3xl font-bold
-        {% if vaccination_compliance_pct >= 80 %}text-green-600
-        {% elif vaccination_compliance_pct >= 50 %}text-yellow-600
-        {% else %}text-red-600{% endif %}">
-        {{ vaccination_compliance_pct }}%
+<style>
+  .health-wrap { display: flex; flex-direction: column; gap: 14px; }
+
+  .health-stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .health-stat {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .health-stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+  }
+  .health-stat.green::before { background: #8bc87a; }
+  .health-stat.red::before   { background: #f87171; }
+  .health-stat.blue::before  { background: #5b8dd9; }
+
+  .health-stat-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #8a96a8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+
+  .health-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .health-stat-value.good { color: #166534; }
+  .health-stat-value.warn { color: #dc2626; }
+  .health-stat-value.info { color: #3d5a99; }
+
+  .health-stat-sub {
+    font-size: 11px;
+    color: #8a96a8;
+  }
+
+  .health-section {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .health-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .health-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a2744;
+  }
+
+  .vacc-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-bottom: 1px solid #f8faff;
+    font-size: 13px;
+  }
+  .vacc-item:last-child { border-bottom: none; }
+
+  .vacc-name { font-weight: 500; color: #1a2744; }
+  .vacc-date { color: #8a96a8; font-size: 12px; margin-top: 2px; }
+
+  .vacc-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .vacc-badge.upcoming { background: #e8eef8; color: #3d5a99; }
+  .vacc-badge.overdue  { background: #fee2e2; color: #991b1b; }
+  .vacc-badge.done     { background: #dcfce7; color: #166534; }
+
+  .med-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-bottom: 1px solid #f8faff;
+    font-size: 13px;
+  }
+  .med-item:last-child { border-bottom: none; }
+
+  .withdrawal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .empty-state {
+    padding: 24px 18px;
+    text-align: center;
+    color: #8a96a8;
+    font-size: 13px;
+  }
+
+  .action-row {
+    display: flex;
+    gap: 10px;
+    padding: 14px 18px;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .action-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    color: #3d5a99;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .action-btn:hover {
+    background: #e8eef8;
+    border-color: #3d5a99;
+  }
+</style>
+
+<div class="health-wrap">
+
+  <!-- Stat cards -->
+  <div class="health-stat-row">
+    <div class="health-stat {% if vaccination_compliance_pct >= 80 %}green{% else %}red{% endif %}">
+      <div class="health-stat-label">Vaccination Compliance</div>
+      <div class="health-stat-value {% if vaccination_compliance_pct >= 80 %}good{% else %}warn{% endif %}">
+        {{ vaccination_compliance_pct|floatformat:0 }}%
       </div>
-      <div class="text-xs text-gray-500">Vaccination Compliance</div>
+      <div class="health-stat-sub">
+        {% if vaccination_compliance_pct >= 80 %}On track{% else %}Needs attention{% endif %}
+      </div>
     </div>
-    {% if withdrawal_active %}
-    <div class="bg-red-100 text-red-800 px-3 py-2 rounded text-sm font-medium">
-      Withdrawal Period Active
+
+    <div class="health-stat blue">
+      <div class="health-stat-label">Upcoming (7 days)</div>
+      <div class="health-stat-value info">
+        {{ upcoming_vaccinations|length }}
+      </div>
+      <div class="health-stat-sub">vaccinations due</div>
     </div>
+
+    <div class="health-stat {% if active_medications %}red{% else %}green{% endif %}">
+      <div class="health-stat-label">Active Medications</div>
+      <div class="health-stat-value {% if active_medications %}warn{% else %}good{% endif %}">
+        {{ active_medications|length }}
+      </div>
+      <div class="health-stat-sub">
+        {% if withdrawal_active %}withdrawal active{% else %}all clear{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming vaccinations -->
+  <div class="health-section">
+    <div class="health-section-header">
+      <span class="health-section-title">Upcoming Vaccinations</span>
+    </div>
+    {% if upcoming_vaccinations %}
+      {% for vacc in upcoming_vaccinations %}
+      <div class="vacc-item">
+        <div>
+          <div class="vacc-name">{{ vacc.vaccine_name }}</div>
+          <div class="vacc-date">
+            {{ vacc.due_date }} · {{ vacc.get_route_display }}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          {% if vacc.is_overdue %}
+            <span class="vacc-badge overdue">Overdue</span>
+          {% else %}
+            <span class="vacc-badge upcoming">
+              {{ vacc.days_until_due }}d
+            </span>
+          {% endif %}
+          <button hx-post="{% url 'health:complete' vacc.pk %}"
+                  hx-target="closest .vacc-item"
+                  hx-swap="outerHTML"
+                  style="padding:5px 12px;border-radius:8px;font-size:11px;
+                         font-weight:600;border:none;cursor:pointer;
+                         background:#3d5a99;color:#fff">
+            Done
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">No upcoming vaccinations</div>
     {% endif %}
   </div>
 
-  {% if overdue_vaccinations %}
-  <div>
-    <h4 class="font-semibold text-red-700 text-sm">Overdue Vaccinations ({{ overdue_vaccinations|length }})</h4>
-    <ul class="text-sm space-y-1 mt-1">
-      {% for v in overdue_vaccinations %}
-      <li class="text-red-600">{{ v.vaccine_name }} — due {{ v.due_date }}</li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
-
-  {% if upcoming_vaccinations %}
-  <div>
-    <h4 class="font-semibold text-sm">Upcoming Vaccinations</h4>
-    <ul class="text-sm space-y-1 mt-1">
-      {% for v in upcoming_vaccinations %}
-      <li class="text-gray-700">{{ v.vaccine_name }} — {{ v.due_date }} ({{ v.get_route_display }})</li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
-
-  {% if active_medications %}
-  <div>
-    <h4 class="font-semibold text-sm">Active Medications</h4>
-    {% include "health/_medication_list.html" with medications=active_medications %}
-  </div>
-  {% endif %}
-
-  {% if recent_symptom_logs %}
-  <div>
-    <h4 class="font-semibold text-sm">Recent Symptom Logs</h4>
-    <ul class="text-sm space-y-1 mt-1">
-      {% for log in recent_symptom_logs %}
-      <li class="text-gray-700">
-        {{ log.record_date }} — {{ log.affected_count }} birds —
-        <span class="{% if log.severity == 'severe' %}text-red-600 font-medium{% elif log.severity == 'moderate' %}text-orange-600{% endif %}">
-          {{ log.get_severity_display }}
+  <!-- Active medications -->
+  <div class="health-section">
+    <div class="health-section-header">
+      <span class="health-section-title">Active Medications</span>
+    </div>
+    {% if active_medications %}
+      {% for med in active_medications %}
+      <div class="med-item">
+        <div>
+          <div style="font-weight:500;color:#1a2744;font-size:13px">
+            {{ med.drug_name }}
+          </div>
+          <div style="font-size:11px;color:#8a96a8;margin-top:2px">
+            {{ med.drug_type|title }} · ends {{ med.end_date }}
+          </div>
+        </div>
+        {% if med.withdrawal_active %}
+        <span class="withdrawal-badge">
+          ⚠ {{ med.days_until_clear }}d withdrawal
         </span>
-      </li>
+        {% endif %}
+      </div>
       {% endfor %}
-    </ul>
+    {% else %}
+      <div class="empty-state">No active medications</div>
+    {% endif %}
+
+    <div class="action-row">
+      <button hx-get="{% url 'health:medication_log' batch_pk %}"
+              hx-target="#modal-container"
+              hx-swap="innerHTML"
+              class="action-btn">
+        + Log Medication
+      </button>
+      <button hx-get="{% url 'health:symptom_log' batch_pk %}"
+              hx-target="#modal-container"
+              hx-swap="innerHTML"
+              class="action-btn">
+        + Log Symptoms
+      </button>
+    </div>
   </div>
-  {% endif %}
+
 </div>

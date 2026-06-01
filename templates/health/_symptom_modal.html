@@ -1,0 +1,70 @@
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+     x-data
+     @keydown.escape.window="document.getElementById('modal-container').innerHTML = ''">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4"
+       style="max-height:90vh;overflow-y:auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 class="text-base font-semibold" style="color:#1a2744">Log Symptoms</h2>
+      <button @click="document.getElementById('modal-container').innerHTML = ''"
+              class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form hx-post="{% url 'health:symptom_log' batch_pk %}"
+          hx-target="#modal-container"
+          hx-swap="innerHTML"
+          class="p-5 flex flex-col gap-4">
+      {% csrf_token %}
+      {% if error %}
+      <div class="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">
+        {{ error }}
+      </div>
+      {% endif %}
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Affected Birds</label>
+        <input type="number" name="affected_count" min="1" required placeholder="0"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-2">Symptoms Observed</label>
+        <div class="grid grid-cols-2 gap-2">
+          {% for symptom, label in symptoms_choices %}
+          <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <input type="checkbox" name="symptoms" value="{{ symptom }}"
+                   class="rounded border-gray-300 text-[#3d5a99]">
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Severity</label>
+        <select name="severity"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+          <option value="mild">Mild</option>
+          <option value="moderate">Moderate</option>
+          <option value="severe">Severe</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Treatment Notes</label>
+        <textarea name="treatment_notes" rows="3" placeholder="Any observations or treatment given..."
+                  class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9] resize-none"></textarea>
+      </div>
+      <div class="flex gap-3">
+        <button type="button"
+                @click="document.getElementById('modal-container').innerHTML = ''"
+                class="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+          Cancel
+        </button>
+        <button type="submit"
+                class="flex-1 px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors"
+                style="background:#e05a2b">
+          Log Symptoms
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

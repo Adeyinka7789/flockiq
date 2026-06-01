@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}{{ batch.batch_name }} — FlockIQ{% endblock %}
+{% block breadcrumb %}{{ batch.batch_name }}{% endblock %}
 
 {% block content %}
 <div class="max-w-6xl mx-auto px-4 py-8" x-data="{ tab: 'overview' }">
@@ -166,7 +167,7 @@
     </div>
     <div class="mt-6"
          hx-get="{% url 'health:medication_list' batch.pk %}"
-         hx-trigger="intersect once">
+         hx-trigger="intersect once, medicationLogged from:body">
       {% include 'partials/_skeleton_table.html' %}
     </div>
     <div class="flex flex-wrap gap-3 mt-6">

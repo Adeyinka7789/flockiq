@@ -1,0 +1,53 @@
+<div style="padding:24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;
+              margin-bottom:20px">
+    <h3 style="font-size:15px;font-weight:700;color:#1a2744">Edit Profile</h3>
+    <button @click="$dispatch('close-modal')"
+            style="color:#8a96a8;background:none;border:none;
+                   cursor:pointer;font-size:18px">✕</button>
+  </div>
+  <form hx-post="{% url 'accounts:edit_profile' %}"
+        hx-target="#modal-body"
+        style="display:flex;flex-direction:column;gap:14px">
+    {% csrf_token %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;
+                      color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+          First Name
+        </label>
+        <input type="text" name="first_name"
+               value="{{ request.user.first_name }}"
+               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                      border-radius:10px;font-size:13px;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;
+                      color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+          Last Name
+        </label>
+        <input type="text" name="last_name"
+               value="{{ request.user.last_name }}"
+               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                      border-radius:10px;font-size:13px;box-sizing:border-box">
+      </div>
+    </div>
+    <div>
+      <label style="display:block;font-size:11px;font-weight:600;
+                    color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+        Phone Number
+      </label>
+      <input type="text" name="phone"
+             value="{{ request.user.phone }}"
+             placeholder="+234..."
+             style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                    border-radius:10px;font-size:13px;box-sizing:border-box">
+    </div>
+    <button type="submit"
+            style="width:100%;padding:12px;background:#3d5a99;color:#fff;
+                   border:none;border-radius:10px;font-size:13px;
+                   font-weight:600;cursor:pointer;margin-top:4px">
+      Save Changes
+    </button>
+  </form>
+</div>

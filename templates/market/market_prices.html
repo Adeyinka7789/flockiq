@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Market Prices{% endblock %}
+{% block breadcrumb %}Market Intelligence{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- Page header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-xl font-bold" style="color:#1a2744">Market Prices</h1>
+      <p class="text-sm text-gray-500 mt-0.5">
+        Current egg and live bird prices in your region
+      </p>
+    </div>
+    {% if request.user.role in 'owner,manager' %}
+    <button hx-get="{% url 'market:record_price' %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML"
+            hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))"
+            class="px-4 py-2 rounded-xl text-white text-sm font-semibold"
+            style="background:#3d5a99">
+      + Record Price
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Seasonal demand strip -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    {% for month_data in seasonal_data %}
+    <div class="bg-white rounded-xl border border-gray-100 p-4">
+      <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">
+        {{ month_data.month_name }}
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="flex-1 bg-gray-100 rounded-full h-2">
+          <div class="h-2 rounded-full"
+               style="width:{{ month_data.index_pct }}%;
+                      background:{% if month_data.demand_index >= 8 %}#8bc87a
+                                 {% elif month_data.demand_index >= 5 %}#fbbf24
+                                 {% else %}#f87171{% endif %}">
+          </div>
+        </div>
+        <span class="text-sm font-semibold" style="color:#1a2744">
+          {{ month_data.demand_index }}/10
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Price table -->
+  {% if prices %}
+  <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h2 class="text-sm font-bold" style="color:#1a2744">Recent Prices</h2>
+    </div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-gray-100">
+          <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400
+                     uppercase tracking-wide">Product</th>
+          <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400
+                     uppercase tracking-wide">Price</th>
+          <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400
+                     uppercase tracking-wide">Market</th>
+          <th class="text-left px-5 py-3 text-xs font-semibold text-gray-400
+                     uppercase tracking-wide">Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for price in prices %}
+        <tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+          <td class="px-5 py-3">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full
+                         text-xs font-medium
+                         {% if price.product_type == 'eggs' %}
+                         bg-amber-100 text-amber-800
+                         {% else %}bg-blue-100 text-blue-800{% endif %}">
+              {{ price.get_product_type_display }}
+            </span>
+          </td>
+          <td class="px-5 py-3 font-semibold tabular-nums" style="color:#1a2744">
+            ₦{{ price.price_per_unit_naira|floatformat:0 }}
+            <span class="text-gray-400 font-normal text-xs">
+              {{ price.unit }}
+            </span>
+          </td>
+          <td class="px-5 py-3 text-gray-600">{{ price.market_name }}</td>
+          <td class="px-5 py-3 text-gray-400">{{ price.date }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-xl border border-gray-100 p-12 text-center">
+    <div class="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center
+                justify-center" style="background:#e8eef8">
+      <svg class="w-6 h-6" style="stroke:#3d5a99" fill="none" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0
+                 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2
+                 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2
+                 2 0 01-2-2z"/>
+      </svg>
+    </div>
+    <h3 class="font-semibold mb-1" style="color:#1a2744">No prices recorded yet</h3>
+    <p class="text-sm text-gray-400 mb-5">
+      Record current market prices to track trends and plan sales
+    </p>
+    {% if request.user.role in 'owner,manager' %}
+    <button hx-get="{% url 'market:record_price' %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML"
+            hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))"
+            class="px-5 py-2.5 rounded-xl text-white text-sm font-semibold"
+            style="background:#3d5a99">
+      + Record First Price
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

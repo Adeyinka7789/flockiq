@@ -1,6 +1,8 @@
+import json
+
 import structlog
 from axes.decorators import axes_dispatch
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
@@ -157,3 +159,56 @@ class WebLogoutView(LoginRequiredMixin, View):
     def post(self, request):
         logout(request)
         return redirect("login")
+
+
+class ProfilePageView(LoginRequiredMixin, View):
+    """Profile page — displays user details."""
+
+    def get(self, request):
+        return render(request, "accounts/profile.html")
+
+
+class EditProfileView(LoginRequiredMixin, View):
+    """GET/POST /profile/edit/ — HTMX modal for editing profile fields."""
+
+    def get(self, request):
+        return render(request, "accounts/_edit_profile_form.html")
+
+    def post(self, request):
+        user = request.user
+        user.first_name = request.POST.get("first_name", "").strip()
+        user.last_name = request.POST.get("last_name", "").strip()
+        user.phone = request.POST.get("phone", "").strip()
+        user.save(update_fields=["first_name", "last_name", "phone"])
+        logger.info("profile_updated", user_id=str(user.id))
+        response = render(request, "accounts/_edit_profile_form.html")
+        response["HX-Trigger"] = json.dumps({
+            "showToast": {"message": "Profile updated.", "type": "success"},
+        })
+        response["HX-Refresh"] = "true"
+        return response
+
+
+class WebChangePasswordView(LoginRequiredMixin, View):
+    """POST /profile/change-password/ — HTMX fragment for #pw-result."""
+
+    def post(self, request):
+        old_password = request.POST.get("old_password", "")
+        new_password = request.POST.get("new_password", "")
+        confirm_password = request.POST.get("confirm_password", "")
+
+        if not request.user.check_password(old_password):
+            return render(request, "accounts/_pw_result.html",
+                          {"error": "Current password is incorrect."})
+        if len(new_password) < 8:
+            return render(request, "accounts/_pw_result.html",
+                          {"error": "New password must be at least 8 characters."})
+        if new_password != confirm_password:
+            return render(request, "accounts/_pw_result.html",
+                          {"error": "Passwords do not match."})
+
+        request.user.set_password(new_password)
+        request.user.save(update_fields=["password"])
+        update_session_auth_hash(request, request.user)
+        logger.info("password_changed", user_id=str(request.user.id))
+        return render(request, "accounts/_pw_result.html", {"success": True})

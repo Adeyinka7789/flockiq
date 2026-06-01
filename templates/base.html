@@ -218,9 +218,6 @@
         <!-- OVERVIEW -->
         <div class="sb-group"><span class="sb-text sb-group-label">Overview</span></div>
         <a href="{% url 'dashboard' %}"
-           hx-get="{% url 'dashboard' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
            class="sb-item {% if url_name == 'dashboard' and not app_name %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -232,9 +229,6 @@
         <!-- FARM -->
         <div class="sb-group"><span class="sb-text sb-group-label">Farm</span></div>
         <a href="{% url 'farms:list' %}"
-           hx-get="{% url 'farms:list' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
            class="sb-item {% if app_name == 'farms' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -243,9 +237,6 @@
           <span class="sb-text">Farms</span>
         </a>
         <a href="{% url 'flocks:list' %}"
-           hx-get="{% url 'flocks:list' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
            class="sb-item {% if app_name == 'flocks' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -254,9 +245,6 @@
           <span class="sb-text">Batches</span>
         </a>
         <a href="{% url 'tasks:list' %}"
-           hx-get="{% url 'tasks:list' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
            class="sb-item {% if app_name == 'tasks' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -268,45 +256,17 @@
         <!-- PRODUCTION -->
         <div class="sb-group"><span class="sb-text sb-group-label">Production</span></div>
         <a href="{% url 'flocks:list' %}"
-           hx-get="{% url 'flocks:list' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
            class="sb-item {% if app_name == 'production' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <ellipse cx="12" cy="13" rx="6" ry="8" stroke="currentColor" stroke-width="2" fill="none"/>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5V3"/>
           </svg>
-          <span class="sb-text">Eggs</span>
-        </a>
-        <a href="{% url 'flocks:list' %}"
-           hx-get="{% url 'flocks:list' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
-           class="sb-item {% if app_name == 'feed' %}active{% endif %}">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-          </svg>
-          <span class="sb-text">Feed</span>
-        </a>
-        <a href="{% url 'flocks:list' %}"
-           hx-get="{% url 'flocks:list' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
-           class="sb-item {% if app_name == 'water' %}active{% endif %}">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0L12 2.69z"/>
-          </svg>
-          <span class="sb-text">Water</span>
+          <span class="sb-text">Production</span>
         </a>
 
         <!-- HEALTH -->
         <div class="sb-group"><span class="sb-text sb-group-label">Health</span></div>
         <a href="{% url 'health:calendar' %}"
-           hx-get="{% url 'health:calendar' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
            class="sb-item {% if app_name == 'health' and url_name == 'calendar' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -315,10 +275,7 @@
           <span class="sb-text">Vaccinations</span>
         </a>
         <a href="{% url 'health:outbreaks' %}"
-           hx-get="{% url 'health:outbreaks' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
-           class="sb-item {% if app_name == 'health' and url_name != 'calendar' %}active{% endif %}">
+           class="sb-item {% if app_name == 'health' and url_name == 'outbreaks' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
@@ -329,9 +286,6 @@
         <!-- FINANCE -->
         <div class="sb-group"><span class="sb-text sb-group-label">Finance</span></div>
         <a href="{% url 'flocks:list' %}"
-           hx-get="{% url 'flocks:list' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
            class="sb-item {% if app_name == 'expenses' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -339,21 +293,7 @@
           </svg>
           <span class="sb-text">Expenses</span>
         </a>
-        <a href="{% url 'flocks:list' %}"
-           hx-get="{% url 'flocks:list' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
-           class="sb-item {% if app_name == 'finance' %}active{% endif %}">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
-          </svg>
-          <span class="sb-text">Sales</span>
-        </a>
         <a href="{% url 'market:prices' %}"
-           hx-get="{% url 'market:prices' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
            class="sb-item {% if app_name == 'market' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -365,9 +305,6 @@
         <!-- SETTINGS -->
         <div class="sb-group"><span class="sb-text sb-group-label">Settings</span></div>
         <a href="{% url 'billing:billing_page' %}"
-           hx-get="{% url 'billing:billing_page' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
            class="sb-item {% if app_name == 'billing' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -376,9 +313,6 @@
           <span class="sb-text">Billing</span>
         </a>
         <a href="{% url 'accounts:profile' %}"
-           hx-get="{% url 'accounts:profile' %}"
-           hx-target="#main-content"
-           hx-push-url="true"
            class="sb-item {% if app_name == 'accounts' and url_name == 'profile' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -574,8 +508,28 @@
     </div>
   </div>
 
-  <!-- Global modal target -->
-  <div id="modal-container"></div>
+  <!-- Global modal -->
+  <div id="modal-container"
+       x-data="{ open: false }"
+       @open-modal.window="open = true"
+       @close-modal.window="open = false"
+       @keydown.escape.window="open = false"
+       x-show="open"
+       x-cloak
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-black/50" @click="open = false"></div>
+    <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden z-10">
+      <button @click="open = false"
+              class="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400
+                     hover:text-gray-600 hover:bg-gray-100 transition-colors z-10">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
 
   <!-- Django messages → Alpine toast bridge -->
   {% if messages %}

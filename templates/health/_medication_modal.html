@@ -1,0 +1,102 @@
+<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+     x-data
+     @keydown.escape.window="document.getElementById('modal-container').innerHTML = ''">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4"
+       style="max-height:90vh;overflow-y:auto">
+    <div class="flex items-center justify-between p-5 border-b border-gray-100">
+      <h2 class="text-base font-semibold" style="color:#1a2744">Log Medication</h2>
+      <button @click="document.getElementById('modal-container').innerHTML = ''"
+              class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form hx-post="{% url 'health:medication_log' batch_pk %}"
+          hx-target="#modal-container"
+          hx-swap="innerHTML"
+          class="p-5 grid grid-cols-2 gap-4">
+      {% csrf_token %}
+      {% if error %}
+      <div class="col-span-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">
+        {{ error }}
+      </div>
+      {% endif %}
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Drug Name</label>
+        <input name="drug_name" required placeholder="e.g. Tylosin"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Drug Type</label>
+        <select name="drug_type"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+          <option value="antibiotic">Antibiotic</option>
+          <option value="antiviral">Antiviral</option>
+          <option value="antifungal">Antifungal</option>
+          <option value="antiparasitic">Antiparasitic</option>
+          <option value="vitamin">Vitamin</option>
+          <option value="vaccine">Vaccine</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Start Date</label>
+        <input type="date" name="start_date" required
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Duration (days)</label>
+        <input type="number" name="duration_days" min="1" required placeholder="5"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Withdrawal Period (days)</label>
+        <input type="number" name="withdrawal_period_days" min="0" value="0"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Dosage</label>
+        <input name="dosage" required placeholder="e.g. 1ml per litre"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Quantity Used</label>
+        <input type="number" step="0.01" name="quantity_used" required placeholder="0.00"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Unit</label>
+        <select name="unit"
+                class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+          <option value="ml">ml</option>
+          <option value="g">g</option>
+          <option value="tablets">Tablets</option>
+          <option value="sachets">Sachets</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Cost (₦)</label>
+        <input type="number" step="0.01" name="cost" value="0"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Vet Name</label>
+        <input name="vet_name" placeholder="Optional"
+               class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#5b8dd9]">
+      </div>
+      <div class="col-span-2 flex gap-3 mt-2">
+        <button type="button"
+                @click="document.getElementById('modal-container').innerHTML = ''"
+                class="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+          Cancel
+        </button>
+        <button type="submit"
+                class="flex-1 px-4 py-2 text-white text-sm font-medium rounded-lg transition-colors"
+                style="background:#3d5a99">
+          Record Medication
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

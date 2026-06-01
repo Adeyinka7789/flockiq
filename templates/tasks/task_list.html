@@ -1,28 +1,375 @@
 {% extends "base.html" %}
-
-{% block title %}Tasks — FlockIQ{% endblock %}
+{% block title %}Tasks{% endblock %}
+{% block breadcrumb %}Today's Tasks{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 py-6">
-  <div class="flex items-center justify-between mb-6">
-    <h1 class="text-2xl font-bold text-earth-800">Today's Tasks</h1>
+<style>
+  .tasks-wrap { max-width: 900px; margin: 0 auto; }
+
+  .tasks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .tasks-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a2744;
+  }
+
+  .tasks-subtitle {
+    font-size: 13px;
+    color: #8a96a8;
+    margin-top: 3px;
+  }
+
+  .tasks-stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .task-stat {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .task-stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+  }
+  .task-stat.pending::before  { background: #5b8dd9; }
+  .task-stat.overdue::before  { background: #f87171; }
+  .task-stat.done::before     { background: #8bc87a; }
+
+  .task-stat-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #8a96a8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+
+  .task-stat-value {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+    color: #1a2744;
+  }
+
+  .task-stat-sub {
+    font-size: 11px;
+    color: #8a96a8;
+    margin-top: 5px;
+  }
+
+  .tasks-section {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+
+  .tasks-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .tasks-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1a2744;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .section-badge.red   { background: #fee2e2; color: #dc2626; }
+  .section-badge.blue  { background: #e8eef8; color: #3d5a99; }
+  .section-badge.green { background: #dcfce7; color: #166534; }
+
+  .task-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 18px;
+    border-bottom: 1px solid #f8faff;
+    transition: background 0.1s;
+  }
+  .task-row:last-child { border-bottom: none; }
+  .task-row:hover { background: #f8faff; }
+
+  .task-check {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 2px solid #e2e8f0;
+    flex-shrink: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    background: #fff;
+  }
+  .task-check:hover {
+    border-color: #3d5a99;
+    background: #e8eef8;
+  }
+  .task-check.done {
+    background: #8bc87a;
+    border-color: #8bc87a;
+  }
+
+  .task-info { flex: 1; min-width: 0; }
+
+  .task-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1a2744;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .task-title.done {
+    text-decoration: line-through;
+    color: #8a96a8;
+  }
+
+  .task-meta {
+    font-size: 11px;
+    color: #8a96a8;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .priority-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .priority-dot.high   { background: #f87171; }
+  .priority-dot.medium { background: #fbbf24; }
+  .priority-dot.low    { background: #8bc87a; }
+
+  .task-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .task-badge.overdue  { background: #fee2e2; color: #dc2626; }
+  .task-badge.pending  { background: #e8eef8; color: #3d5a99; }
+  .task-badge.complete { background: #dcfce7; color: #166534; }
+
+  .empty-tasks {
+    padding: 40px 18px;
+    text-align: center;
+  }
+  .empty-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #e8eef8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+  }
+  .empty-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a2744;
+    margin-bottom: 4px;
+  }
+  .empty-sub {
+    font-size: 12px;
+    color: #8a96a8;
+  }
+</style>
+
+<div class="tasks-wrap">
+
+  <!-- Header -->
+  <div class="tasks-header">
+    <div>
+      <div class="tasks-title">Today's Tasks</div>
+      <div class="tasks-subtitle">
+        {{ today|date:"l, F j, Y" }}
+      </div>
+    </div>
   </div>
 
-  <!-- Filter tabs -->
-  <div class="flex gap-2 mb-4" role="tablist">
-    {% for tab, label in status_tabs %}
-    <button
-      hx-get="{% url 'tasks:list' %}?status={{ tab }}"
-      hx-target="#task-list"
-      hx-push-url="true"
-      class="px-4 py-2 rounded-full text-sm font-medium
-             {% if status_filter == tab %}bg-green-600 text-white{% else %}bg-white text-earth-600 border border-earth-200 hover:bg-earth-50{% endif %}"
-    >{{ label }}</button>
+  <!-- Stat cards -->
+  <div class="tasks-stat-row">
+    <div class="task-stat pending">
+      <div class="task-stat-label">Pending</div>
+      <div class="task-stat-value">{{ summary.pending_count|default:0 }}</div>
+      <div class="task-stat-sub">due today</div>
+    </div>
+    <div class="task-stat overdue">
+      <div class="task-stat-label">Overdue</div>
+      <div class="task-stat-value"
+           style="color:{% if summary.overdue_count %}#dc2626{% else %}#1a2744{% endif %}">
+        {{ summary.overdue_count|default:0 }}
+      </div>
+      <div class="task-stat-sub">need attention</div>
+    </div>
+    <div class="task-stat done">
+      <div class="task-stat-label">Completed</div>
+      <div class="task-stat-value" style="color:#166534">
+        {{ summary.completed_today_count|default:0 }}
+      </div>
+      <div class="task-stat-sub">today</div>
+    </div>
+  </div>
+
+  <!-- Overdue tasks -->
+  {% if overdue_tasks %}
+  <div class="tasks-section">
+    <div class="tasks-section-header">
+      <div class="tasks-section-title">
+        <span>Overdue</span>
+        <span class="section-badge red">{{ overdue_tasks|length }}</span>
+      </div>
+    </div>
+    {% for task in overdue_tasks %}
+    <div class="task-row" id="task-{{ task.pk }}">
+      <button hx-post="{% url 'tasks:complete' task.pk %}"
+              hx-target="#task-{{ task.pk }}"
+              hx-swap="outerHTML"
+              class="task-check">
+        <svg width="10" height="10" fill="none" viewBox="0 0 24 24"
+             stroke="white" stroke-width="3">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+        </svg>
+      </button>
+      <div class="task-info">
+        <div class="task-title">{{ task.title }}</div>
+        <div class="task-meta">
+          <div class="priority-dot {{ task.priority }}"></div>
+          {{ task.farm.name }}
+          {% if task.batch %} · {{ task.batch.batch_name }}{% endif %}
+          · Due {{ task.due_date }}
+        </div>
+      </div>
+      <span class="task-badge overdue">Overdue</span>
+    </div>
     {% endfor %}
   </div>
+  {% endif %}
 
-  <div id="task-list">
-    {% include "tasks/_task_list_partial.html" %}
+  <!-- Pending tasks -->
+  <div class="tasks-section">
+    <div class="tasks-section-header">
+      <div class="tasks-section-title">
+        <span>Pending</span>
+        <span class="section-badge blue">{{ pending_tasks|length }}</span>
+      </div>
+    </div>
+    {% if pending_tasks %}
+      {% for task in pending_tasks %}
+      <div class="task-row" id="task-{{ task.pk }}">
+        <button hx-post="{% url 'tasks:complete' task.pk %}"
+                hx-target="#task-{{ task.pk }}"
+                hx-swap="outerHTML"
+                class="task-check">
+          <svg width="10" height="10" fill="none" viewBox="0 0 24 24"
+               stroke="white" stroke-width="3">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+        </button>
+        <div class="task-info">
+          <div class="task-title">{{ task.title }}</div>
+          <div class="task-meta">
+            <div class="priority-dot {{ task.priority }}"></div>
+            {{ task.farm.name }}
+            {% if task.batch %} · {{ task.batch.batch_name }}{% endif %}
+          </div>
+        </div>
+        <span class="task-badge pending">Pending</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty-tasks">
+        <div class="empty-icon">
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24"
+               stroke="#3d5a99" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0
+                     002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2
+                     0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+        </div>
+        <div class="empty-label">No tasks for today</div>
+        <div class="empty-sub">
+          Tasks are auto-generated daily from your active batches
+        </div>
+      </div>
+    {% endif %}
   </div>
+
+  <!-- Completed tasks -->
+  {% if completed_tasks %}
+  <div class="tasks-section">
+    <div class="tasks-section-header">
+      <div class="tasks-section-title">
+        <span>Completed Today</span>
+        <span class="section-badge green">{{ completed_tasks|length }}</span>
+      </div>
+    </div>
+    {% for task in completed_tasks %}
+    <div class="task-row" id="task-{{ task.pk }}">
+      <div class="task-check done">
+        <svg width="10" height="10" fill="none" viewBox="0 0 24 24"
+             stroke="white" stroke-width="3">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+      <div class="task-info">
+        <div class="task-title done">{{ task.title }}</div>
+        <div class="task-meta">
+          {{ task.farm.name }}
+          {% if task.completed_by %}
+            · Done by {{ task.completed_by.get_full_name }}
+          {% endif %}
+        </div>
+      </div>
+      <span class="task-badge complete">Done</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
 </div>
 {% endblock %}

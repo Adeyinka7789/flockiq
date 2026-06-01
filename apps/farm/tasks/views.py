@@ -1,3 +1,4 @@
+import datetime
 import json
 
 import structlog
@@ -21,24 +22,40 @@ def _get_org(request):
 
 
 class TaskListView(LoginRequiredMixin, View):
-    """GET /tasks/ → Full task list page with HTMX filter tabs."""
+    """GET /tasks/ → Full task list page with sectioned pending/overdue/completed cards."""
 
     def get(self, request):
+        from apps.farm.tasks.models import FarmTask
+
         org = _get_org(request)
-        is_htmx = request.headers.get("HX-Request") == "true"
-        status_filter = request.GET.get("status", "all")
+        today = datetime.date.today()
 
         with set_tenant_context(org):
             service = TaskService(org)
-            qs = service.get_todays_tasks()
-            if status_filter != "all":
-                qs = qs.filter(status=status_filter)
-            tasks = list(qs)
 
-        context = {"tasks": tasks, "status_filter": status_filter}
+            overdue_tasks = list(service.get_overdue_tasks())
 
-        if is_htmx:
-            return render(request, "tasks/_task_list_partial.html", context)
+            pending_tasks = list(
+                service.get_todays_tasks().filter(status=FarmTask.Status.PENDING)
+            )
+
+            completed_tasks = list(
+                FarmTask.objects.filter(
+                    org=org,
+                    status=FarmTask.Status.COMPLETE,
+                    completed_at__date=today,
+                ).select_related("farm", "batch", "completed_by")
+            )
+
+            summary = service.get_task_summary()
+
+        context = {
+            "today": today,
+            "pending_tasks": pending_tasks,
+            "overdue_tasks": overdue_tasks,
+            "completed_tasks": completed_tasks,
+            "summary": summary,
+        }
         return render(request, "tasks/task_list.html", context)
 
 

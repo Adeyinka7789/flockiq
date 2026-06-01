@@ -2,7 +2,7 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.views import View
 from rest_framework.permissions import IsAuthenticated
@@ -74,7 +74,10 @@ class VaccinationCompleteView(LoginRequiredMixin, View):
 
 
 class MedicationLogView(LoginRequiredMixin, View):
-    """POST /health/medications/<uuid:batch_pk>/log/ — Records medication."""
+    """GET+POST /health/medications/<uuid:batch_pk>/log/ — Records medication."""
+
+    def get(self, request, batch_pk):
+        return render(request, "health/_medication_modal.html", {"batch_pk": batch_pk})
 
     def post(self, request, batch_pk):
         import datetime
@@ -89,9 +92,8 @@ class MedicationLogView(LoginRequiredMixin, View):
             if not data.get(field):
                 return render(
                     request,
-                    "health/_medication_form.html",
+                    "health/_medication_modal.html",
                     {"error": f"{field} is required.", "batch_pk": batch_pk},
-                    status=422,
                 )
 
         try:
@@ -112,23 +114,18 @@ class MedicationLogView(LoginRequiredMixin, View):
                     reason=data.get("reason", "reactive"),
                     notes=data.get("notes", ""),
                 )
-                meds = svc.get_health_summary(str(batch_pk))["active_medications"]
         except ValueError as exc:
             return render(
                 request,
-                "health/_medication_form.html",
+                "health/_medication_modal.html",
                 {"error": str(exc), "batch_pk": batch_pk},
-                status=422,
             )
 
-        response = render(
-            request,
-            "health/_medication_list.html",
-            {"medications": meds, "batch_pk": batch_pk},
-        )
-        response["HX-Trigger"] = json.dumps(
-            {"showToast": {"message": "Medication recorded.", "type": "success"}}
-        )
+        response = HttpResponse('')
+        response["HX-Trigger"] = json.dumps({
+            "showToast": {"message": "Medication recorded.", "type": "success"},
+            "medicationLogged": {},
+        })
         return response
 
 
@@ -146,8 +143,28 @@ class MedicationListView(LoginRequiredMixin, View):
         )
 
 
+_SYMPTOM_CHOICES = [
+    ("lethargy", "Lethargy"),
+    ("reduced_feed", "Reduced Feed"),
+    ("nasal_discharge", "Nasal Discharge"),
+    ("coughing", "Coughing"),
+    ("diarrhoea", "Diarrhoea"),
+    ("ruffled_feathers", "Ruffled Feathers"),
+    ("swollen_eyes", "Swollen Eyes"),
+    ("sudden_death", "Sudden Death"),
+    ("reduced_laying", "Reduced Laying"),
+    ("lameness", "Lameness"),
+]
+
+
 class SymptomLogView(LoginRequiredMixin, View):
-    """POST /health/symptoms/<uuid:batch_pk>/log/ — Records symptoms."""
+    """GET+POST /health/symptoms/<uuid:batch_pk>/log/ — Records symptoms."""
+
+    def get(self, request, batch_pk):
+        return render(request, "health/_symptom_modal.html", {
+            "batch_pk": batch_pk,
+            "symptoms_choices": _SYMPTOM_CHOICES,
+        })
 
     def post(self, request, batch_pk):
         org = _get_org(request)
@@ -160,14 +177,14 @@ class SymptomLogView(LoginRequiredMixin, View):
         if not affected_count:
             return render(
                 request,
-                "health/_symptom_log_form.html",
-                {"error": "affected_count is required.", "batch_pk": batch_pk},
-                status=422,
+                "health/_symptom_modal.html",
+                {"error": "affected_count is required.", "batch_pk": batch_pk,
+                 "symptoms_choices": _SYMPTOM_CHOICES},
             )
 
         try:
             with set_tenant_context(org):
-                log = HealthService(org).log_symptoms(
+                HealthService(org).log_symptoms(
                     batch_id=str(batch_pk),
                     affected_count=int(affected_count),
                     symptoms=symptoms,
@@ -178,16 +195,12 @@ class SymptomLogView(LoginRequiredMixin, View):
         except ValueError as exc:
             return render(
                 request,
-                "health/_symptom_log_form.html",
-                {"error": str(exc), "batch_pk": batch_pk},
-                status=422,
+                "health/_symptom_modal.html",
+                {"error": str(exc), "batch_pk": batch_pk,
+                 "symptoms_choices": _SYMPTOM_CHOICES},
             )
 
-        response = render(
-            request,
-            "health/_symptom_result.html",
-            {"log": log},
-        )
+        response = HttpResponse('')
         response["HX-Trigger"] = json.dumps(
             {"showToast": {"message": "Symptoms logged.", "type": "success"}}
         )
