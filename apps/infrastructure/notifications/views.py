@@ -11,6 +11,8 @@ from .services import NotificationService
 
 class NotificationBellView(LoginRequiredMixin, View):
     def get(self, request):
+        if not request.user.org:
+            return HttpResponse("0")
         svc = NotificationService(request.user.org)
         count = svc.get_unread_count(request.user)
         html = render_to_string(
@@ -23,6 +25,12 @@ class NotificationBellView(LoginRequiredMixin, View):
 
 class NotificationDropdownView(LoginRequiredMixin, View):
     def get(self, request):
+        if not request.user.org:
+            return HttpResponse(render_to_string(
+                "notifications/_dropdown.html",
+                {"notifications": [], "unread_count": 0},
+                request=request,
+            ))
         svc = NotificationService(request.user.org)
         notifications = svc.get_notifications(request.user)
         html = render_to_string(

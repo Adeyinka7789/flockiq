@@ -1,20 +1,593 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-earth-50">
+{% load static %}
+<html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}FlockIQ{% endblock %}</title>
-  {% load static %}
-  <link rel="stylesheet" href="{% static 'css/skeletons.css' %}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#3d5a99">
+  <link rel="manifest" href="{% static 'manifest.json' %}">
+  <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}" onerror="this.remove()">
+  <title>{% block title %}FlockIQ{% endblock %} — FlockIQ</title>
+
   <link rel="stylesheet" href="{% static 'css/tailwind.output.css' %}">
-  <script src="https://unpkg.com/htmx.org@2.0.0" defer></script>
-  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <link rel="stylesheet" href="{% static 'css/skeletons.css' %}">
+
+  <style>
+    :root {
+      --navy: #3d5a99;
+      --blue: #5b8dd9;
+      --green: #8bc87a;
+      --bg: #f4f7fe;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────────── */
+    .sidebar {
+      background: var(--navy);
+      width: 60px;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+      display: none;
+    }
+
+    @media (min-width: 768px) {
+      .sidebar {
+        display: flex;
+        transition: width 0.25s ease;
+      }
+      .sidebar:hover { width: 240px; }
+      .sidebar.pinned { width: 240px; }
+      .sidebar.pinned:hover { width: 240px; }
+    }
+
+    @media (max-width: 767px) {
+      .sidebar {
+        display: flex;
+        position: fixed;
+        top: 0; left: 0; bottom: 0;
+        z-index: 40;
+        width: 240px;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        overflow-y: auto;
+      }
+      .sidebar.sidebar-mobile-open {
+        transform: translateX(0);
+      }
+    }
+
+    /* Text that fades in when sidebar expands */
+    .sb-text {
+      opacity: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      transition: opacity 0.15s ease;
+      flex-shrink: 0;
+    }
+    @media (min-width: 768px) {
+      .sidebar:hover .sb-text,
+      .sidebar.pinned .sb-text { opacity: 1; }
+    }
+    @media (max-width: 767px) {
+      .sb-text { opacity: 1; }
+    }
+
+    /* Nav group label */
+    .sb-group {
+      padding: 14px 0 3px 15px;
+    }
+    .sb-group-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      white-space: nowrap;
+    }
+
+    /* Nav item */
+    .sb-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 12px;
+      margin: 1px 8px 1px 0;
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+      font-size: 14px;
+      border-left: 3px solid transparent;
+      border-radius: 0 8px 8px 0;
+      min-height: 40px;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .sb-item:hover {
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+    }
+    .sb-item.active {
+      background: rgba(91,141,217,0.25);
+      color: #fff;
+      border-left-color: var(--blue);
+    }
+    .sb-item svg { flex-shrink: 0; }
+
+    /* Pin toggle button */
+    .sb-pin {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid var(--navy);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      color: var(--navy);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      padding: 0;
+    }
+    @media (min-width: 768px) {
+      .sidebar:hover .sb-pin,
+      .sidebar.pinned .sb-pin { opacity: 1; }
+    }
+
+    /* Sign-out link in user row */
+    .sb-signout {
+      color: rgba(255,255,255,0.5);
+      transition: color 0.15s ease;
+      flex-shrink: 0;
+    }
+    .sb-signout:hover { color: rgba(255,255,255,0.9); }
+
+    /* Main content area */
+    #main-content { background: var(--bg); }
+  </style>
+
+  <!-- app.js must load before Alpine so flockApp() is defined when Alpine initialises -->
+  <script src="{% static 'js/app.js' %}" defer></script>
+  <script src="{% static 'js/htmx.min.js' %}" defer></script>
+  <script src="{% static 'js/alpine.min.js' %}" defer></script>
+  <script src="{% static 'js/chart.min.js' %}" defer></script>
+
   {% block extra_head %}{% endblock %}
 </head>
-<body class="h-full font-sans text-earth-800"
+
+<body class="h-full text-earth-900 antialiased"
+      x-data="flockApp()" x-init="initApp()"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
-  {% block content %}{% endblock %}
+  <!-- Offline banner -->
+  <div x-show="!online"
+       x-transition
+       class="fixed top-0 inset-x-0 z-50 bg-flock-amber-500 text-white
+              text-sm text-center py-2 font-medium"
+       aria-live="assertive">
+    You're offline. Data entry will sync when you reconnect.
+  </div>
+
+  <!-- Mobile backdrop -->
+  <div class="fixed inset-0 z-30 bg-black/50 md:hidden"
+       x-show="mobileMenuOpen"
+       x-transition:enter="transition-opacity ease-linear duration-300"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition-opacity ease-linear duration-300"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       @click="mobileMenuOpen = false">
+  </div>
+
+  <div class="flex h-full">
+
+    <!-- ── SIDEBAR ────────────────────────────────────────────────── -->
+    <aside id="sidebar"
+           class="sidebar"
+           :class="{ 'pinned': pinned, 'sidebar-mobile-open': mobileMenuOpen }">
+
+      <!-- Logo area -->
+      <div class="flex items-center gap-3 px-3 shrink-0"
+           style="min-height:64px; border-bottom:1px solid rgba(255,255,255,0.1);">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center
+                    font-bold text-sm shrink-0"
+             style="background:var(--green); color:#2d5a27; font-size:13px;">FQ</div>
+        <div class="sb-text flex-1 flex flex-col min-w-0">
+          <span class="font-bold text-white" style="font-size:15px; line-height:1.3;">FlockIQ</span>
+          <span style="font-size:11px; color:rgba(255,255,255,0.5); line-height:1.3;">Farm Management</span>
+        </div>
+        <button class="sb-pin"
+                @click="pinned = !pinned"
+                :title="pinned ? 'Unpin sidebar' : 'Pin sidebar open'">
+          <svg class="transition-transform" :class="pinned ? '' : 'rotate-180'"
+               style="width:10px;height:10px;"
+               fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
+                  d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="flex-1 py-2" style="overflow-y:auto; overflow-x:hidden;">
+        {% with app_name=request.resolver_match.app_name url_name=request.resolver_match.url_name %}
+
+        <!-- OVERVIEW -->
+        <div class="sb-group"><span class="sb-text sb-group-label">Overview</span></div>
+        <a href="{% url 'dashboard' %}"
+           hx-get="{% url 'dashboard' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if url_name == 'dashboard' and not app_name %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+          <span class="sb-text">Dashboard</span>
+        </a>
+
+        <!-- FARM -->
+        <div class="sb-group"><span class="sb-text sb-group-label">Farm</span></div>
+        <a href="{% url 'farms:list' %}"
+           hx-get="{% url 'farms:list' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'farms' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+          </svg>
+          <span class="sb-text">Farms</span>
+        </a>
+        <a href="{% url 'flocks:list' %}"
+           hx-get="{% url 'flocks:list' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'flocks' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+          </svg>
+          <span class="sb-text">Batches</span>
+        </a>
+        <a href="{% url 'tasks:list' %}"
+           hx-get="{% url 'tasks:list' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'tasks' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+          </svg>
+          <span class="sb-text">Tasks</span>
+        </a>
+
+        <!-- PRODUCTION -->
+        <div class="sb-group"><span class="sb-text sb-group-label">Production</span></div>
+        <a href="{% url 'flocks:list' %}"
+           hx-get="{% url 'flocks:list' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'production' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <ellipse cx="12" cy="13" rx="6" ry="8" stroke="currentColor" stroke-width="2" fill="none"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5V3"/>
+          </svg>
+          <span class="sb-text">Eggs</span>
+        </a>
+        <a href="{% url 'flocks:list' %}"
+           hx-get="{% url 'flocks:list' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'feed' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          </svg>
+          <span class="sb-text">Feed</span>
+        </a>
+        <a href="{% url 'flocks:list' %}"
+           hx-get="{% url 'flocks:list' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'water' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0L12 2.69z"/>
+          </svg>
+          <span class="sb-text">Water</span>
+        </a>
+
+        <!-- HEALTH -->
+        <div class="sb-group"><span class="sb-text sb-group-label">Health</span></div>
+        <a href="{% url 'health:calendar' %}"
+           hx-get="{% url 'health:calendar' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'health' and url_name == 'calendar' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+          <span class="sb-text">Vaccinations</span>
+        </a>
+        <a href="{% url 'health:outbreaks' %}"
+           hx-get="{% url 'health:outbreaks' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'health' and url_name != 'calendar' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+          </svg>
+          <span class="sb-text">Health</span>
+        </a>
+
+        <!-- FINANCE -->
+        <div class="sb-group"><span class="sb-text sb-group-label">Finance</span></div>
+        <a href="{% url 'flocks:list' %}"
+           hx-get="{% url 'flocks:list' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'expenses' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/>
+          </svg>
+          <span class="sb-text">Expenses</span>
+        </a>
+        <a href="{% url 'flocks:list' %}"
+           hx-get="{% url 'flocks:list' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'finance' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+          </svg>
+          <span class="sb-text">Sales</span>
+        </a>
+        <a href="{% url 'market:prices' %}"
+           hx-get="{% url 'market:prices' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'market' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          <span class="sb-text">Market</span>
+        </a>
+
+        <!-- SETTINGS -->
+        <div class="sb-group"><span class="sb-text sb-group-label">Settings</span></div>
+        <a href="{% url 'billing:billing_page' %}"
+           hx-get="{% url 'billing:billing_page' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'billing' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+          </svg>
+          <span class="sb-text">Billing</span>
+        </a>
+        <a href="{% url 'accounts:profile' %}"
+           hx-get="{% url 'accounts:profile' %}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           class="sb-item {% if app_name == 'accounts' and url_name == 'profile' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+          <span class="sb-text">Profile</span>
+        </a>
+
+        {% endwith %}
+      </nav>
+
+      <!-- User row -->
+      <div class="flex items-center gap-3 px-3 py-3 shrink-0"
+           style="border-top:1px solid rgba(255,255,255,0.1);">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center
+                    font-semibold text-sm shrink-0"
+             style="background:var(--green); color:#2d5a27;">
+          {% if request.user.is_authenticated %}
+            {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
+          {% else %}?{% endif %}
+        </div>
+        <div class="sb-text flex-1 min-w-0">
+          <p class="text-white text-sm font-medium truncate" style="line-height:1.3;">
+            {% if request.user.is_authenticated %}
+              {{ request.user.get_full_name|default:request.user.email }}
+            {% endif %}
+          </p>
+          <p class="text-xs capitalize" style="color:rgba(255,255,255,0.5); line-height:1.3;">
+            {% if request.user.is_authenticated %}{{ request.user.role }}{% endif %}
+          </p>
+        </div>
+        <a href="{% url 'logout' %}" class="sb-signout p-1.5 rounded-lg" title="Sign out">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+          </svg>
+        </a>
+      </div>
+    </aside>
+
+    <!-- ── MAIN AREA ─────────────────────────────────────────────── -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+      <!-- TOPBAR -->
+      <header class="bg-white border-b border-earth-200 px-4 h-16 flex items-center
+                     justify-between shrink-0 z-10">
+
+        <div class="flex items-center gap-3">
+          <!-- Mobile hamburger -->
+          <button class="md:hidden p-2 rounded-lg hover:bg-earth-100 min-h-[44px]
+                         flex items-center justify-center"
+                  @click="mobileMenuOpen = !mobileMenuOpen">
+            <svg class="w-5 h-5 text-earth-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </button>
+          <!-- Breadcrumb -->
+          <div class="hidden md:flex items-center gap-2 text-sm text-earth-500">
+            <span class="font-medium text-earth-800">
+              {% block breadcrumb %}Dashboard{% endblock %}
+            </span>
+          </div>
+        </div>
+
+        <!-- Right: notifications + user -->
+        <div class="flex items-center gap-2">
+
+          <!-- Notification bell -->
+          <div class="relative" x-data="{ open: false }">
+            <button @click="open = !open"
+                    class="relative p-2 rounded-lg hover:bg-earth-100 text-earth-600
+                           transition-colors min-h-[44px] flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              <span id="bell-count"
+                    hx-get="{% url 'notifications:bell' %}"
+                    hx-trigger="load, every 60s"
+                    hx-swap="innerHTML">
+              </span>
+            </button>
+            <div x-show="open"
+                 @click.away="open = false"
+                 x-transition:enter="transition ease-out duration-100"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 class="absolute right-0 top-12 z-40 w-80 shadow-lg rounded-xl
+                        border border-earth-200 overflow-hidden bg-white">
+              <div id="notification-dropdown"
+                   hx-get="{% url 'notifications:dropdown' %}"
+                   hx-trigger="intersect once"
+                   hx-swap="innerHTML">
+                <div class="p-4 text-sm text-earth-500">Loading…</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User menu -->
+          <div class="relative" x-data="{ open: false }">
+            <button @click="open = !open"
+                    class="flex items-center gap-2 px-2 py-1.5 rounded-lg
+                           hover:bg-earth-100 transition-colors min-h-[44px]">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center
+                          text-white text-sm font-semibold shrink-0"
+                   style="background:var(--green); color:#2d5a27;">
+                {% if request.user.is_authenticated %}
+                  {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
+                {% else %}?{% endif %}
+              </div>
+              <div class="hidden md:block text-left">
+                <p class="text-sm font-medium text-earth-800 leading-none">
+                  {% if request.user.is_authenticated %}
+                    {{ request.user.get_full_name|default:request.user.email }}
+                  {% endif %}
+                </p>
+                <p class="text-xs text-earth-500 capitalize mt-0.5">
+                  {% if request.user.is_authenticated %}{{ request.user.role }}{% endif %}
+                </p>
+              </div>
+              <svg class="w-4 h-4 text-earth-400 hidden md:block" fill="none"
+                   stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+            <div x-show="open"
+                 @click.away="open = false"
+                 x-transition:enter="transition ease-out duration-100"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 class="absolute right-0 top-12 w-48 bg-white rounded-xl shadow-lg
+                        border border-earth-200 z-40 py-1">
+              <a href="{% url 'billing:billing_page' %}"
+                 class="block px-4 py-2.5 text-sm text-earth-700 hover:bg-earth-50
+                        min-h-[44px] flex items-center transition-colors">
+                Billing
+              </a>
+              <hr class="my-1 border-earth-100">
+              <a href="{% url 'logout' %}"
+                 class="block px-4 py-2.5 text-sm text-flock-red-600 hover:bg-flock-red-50
+                        min-h-[44px] flex items-center transition-colors">
+                Sign out
+              </a>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- TOAST CONTAINER -->
+      <div id="toast-container"
+           class="fixed top-4 right-4 z-50 space-y-2 pointer-events-none max-w-sm w-full"
+           aria-live="polite">
+        <template x-for="toast in toasts" :key="toast.id">
+          <div :class="{
+                 'bg-flock-green-600 border-flock-green-700': toast.type === 'success',
+                 'bg-flock-amber-500 border-flock-amber-600': toast.type === 'warning',
+                 'bg-flock-red-600 border-flock-red-700':   toast.type === 'error',
+                 'bg-earth-700 border-earth-800':           toast.type === 'info',
+               }"
+               class="flex items-center gap-3 px-4 py-3 rounded-xl text-white text-sm
+                      shadow-lg pointer-events-auto border"
+               x-show="toast.visible"
+               x-transition:enter="transition ease-out duration-200"
+               x-transition:enter-start="opacity-0 translate-y-1"
+               x-transition:enter-end="opacity-100 translate-y-0"
+               x-transition:leave="transition ease-in duration-150"
+               x-transition:leave-start="opacity-100"
+               x-transition:leave-end="opacity-0">
+            <span x-text="toast.message" class="flex-1 font-medium"></span>
+            <button @click="removeToast(toast.id)"
+                    class="flex-shrink-0 opacity-70 hover:opacity-100 transition-opacity
+                           p-1 rounded min-h-[32px]">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </template>
+      </div>
+
+      <!-- MAIN CONTENT -->
+      <main id="main-content"
+            class="flex-1 overflow-y-auto focus:outline-none"
+            tabindex="-1">
+        <div class="px-4 py-6 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Global modal target -->
+  <div id="modal-container"></div>
+
+  <!-- Django messages → Alpine toast bridge -->
+  {% if messages %}
+  <script id="django-messages-data" type="application/json">
+    [{% for msg in messages %}{"message":"{{ msg|escapejs }}","type":"{% if msg.level >= 40 %}error{% elif msg.level >= 30 %}warning{% else %}success{% endif %}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+  </script>
+  {% endif %}
+
+  <!-- Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register("{% static 'js/sw.js' %}").catch(() => {});
+    }
+  </script>
 
   {% block extra_js %}{% endblock %}
 </body>

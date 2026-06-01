@@ -22,6 +22,7 @@ DJANGO_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",
+    "django.contrib.humanize",
 ]
 
 THIRD_PARTY_APPS = [
@@ -125,6 +126,8 @@ SESSION_CACHE_ALIAS = "default"
 
 # --- Auth ---
 AUTH_USER_MODEL = "accounts.CustomUser"
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -134,8 +137,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTHENTICATION_BACKENDS = [
-    "axes.backends.AxesStandaloneBackend",
     "django.contrib.auth.backends.ModelBackend",
+    "axes.backends.AxesStandaloneBackend",
 ]
 
 # --- Internationalisation ---

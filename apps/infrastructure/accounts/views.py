@@ -1,21 +1,25 @@
 import structlog
+from axes.decorators import axes_dispatch
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.shortcuts import redirect, render
+from django.utils.decorators import method_decorator
+from django.views import View
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
-from axes.decorators import axes_dispatch
-from django.utils.decorators import method_decorator
 
 from .models import CustomUser
 from .permissions import IsManagerOrAbove
 from .serializers import (
     ChangePasswordSerializer,
+    CustomTokenObtainPairSerializer,
     LoginSerializer,
     UserCreateSerializer,
     UserProfileSerializer,
-    CustomTokenObtainPairSerializer,
 )
 
 logger = structlog.get_logger(__name__)
@@ -113,3 +117,43 @@ class UserListView(APIView):
         users = CustomUser.objects.filter(org=request.user.org).order_by("email")
         serializer = UserProfileSerializer(users, many=True)
         return Response({"data": serializer.data})
+
+
+# ── Web / session-based auth views ────────────────────────────────────────────
+
+class WebLoginView(View):
+    """Session-based login for the HTMX web app (separate from JWT API)."""
+
+    def get(self, request):
+        if request.user.is_authenticated:
+            return redirect("dashboard")
+        next_url = request.GET.get("next", "")
+        return render(request, "accounts/login.html", {"next": next_url})
+
+    def post(self, request):
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+
+        user = authenticate(request, username=email, password=password)
+
+        if user is not None:
+            login(request, user)
+            next_url = request.GET.get('next', '/')
+            return redirect(next_url)
+
+        return render(request, 'accounts/login.html', {
+            'error': 'Invalid email or password. Please try again.',
+            'email': email,
+        })
+
+
+class WebLogoutView(LoginRequiredMixin, View):
+    """Session logout — clears Django session."""
+
+    def get(self, request):
+        logout(request)
+        return redirect("login")
+
+    def post(self, request):
+        logout(request)
+        return redirect("login")

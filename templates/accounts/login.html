@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en" class="h-full bg-earth-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#15803d">
+  <title>Sign in — FlockIQ</title>
+
+  <script>
+    tailwind = { config: {
+      theme: {
+        extend: {
+          colors: {
+            'flock-green': { 50:'#f0fdf4',100:'#dcfce7',200:'#bbf7d0',600:'#16a34a',700:'#15803d' },
+            'flock-red':   { 50:'#fef2f2',500:'#ef4444',600:'#dc2626' },
+            'earth':       { 50:'#fafaf9',100:'#f5f5f4',200:'#e7e5e4',300:'#d6d3d1',400:'#a8a29e',500:'#78716c',600:'#57534e',700:'#44403c',800:'#292524',900:'#1c1917' },
+          }
+        }
+      }
+    }}
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full bg-earth-50 font-sans antialiased">
+
+  <div class="min-h-full flex flex-col items-center justify-center px-4 py-12">
+
+    <!-- Logo card -->
+    <div class="w-full max-w-sm">
+
+      <!-- Brand -->
+      <div class="flex flex-col items-center mb-8">
+        <div class="w-14 h-14 bg-flock-green-600 rounded-2xl flex items-center
+                    justify-center text-white font-bold text-2xl shadow-lg mb-4">F</div>
+        <h1 class="text-2xl font-bold text-earth-900">FlockIQ</h1>
+        <p class="text-sm text-earth-500 mt-1">AI-powered poultry farm management</p>
+      </div>
+
+      <!-- Login form -->
+      <div class="bg-white rounded-2xl shadow-sm border border-earth-200 p-8">
+        <h2 class="text-lg font-semibold text-earth-900 mb-6">Sign in to your account</h2>
+
+        {% if error %}
+        <div class="flex items-start gap-3 bg-flock-red-50 border border-flock-red-200
+                    rounded-xl p-4 mb-5">
+          <svg class="w-5 h-5 text-flock-red-500 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd"
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                  clip-rule="evenodd"/>
+          </svg>
+          <p class="text-sm text-flock-red-700">{{ error }}</p>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'login' %}" class="space-y-5">
+          {% csrf_token %}
+          {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
+          {% endif %}
+
+          <!-- Email -->
+          <div class="space-y-1.5">
+            <label for="id_email"
+                   class="block text-sm font-medium text-earth-700">
+              Email address
+            </label>
+            <input type="email"
+                   id="id_email"
+                   name="email"
+                   value="{{ email|default:'' }}"
+                   required
+                   autocomplete="email"
+                   placeholder="you@example.com"
+                   class="w-full rounded-lg border border-earth-300 px-3 py-2.5
+                          text-sm text-earth-900 placeholder-earth-400
+                          focus:outline-none focus:ring-2 focus:ring-flock-green-600
+                          focus:border-transparent min-h-[44px]
+                          hover:border-earth-400 transition-colors">
+          </div>
+
+          <!-- Password -->
+          <div class="space-y-1.5">
+            <label for="id_password"
+                   class="block text-sm font-medium text-earth-700">
+              Password
+            </label>
+            <input type="password"
+                   id="id_password"
+                   name="password"
+                   required
+                   autocomplete="current-password"
+                   placeholder="••••••••"
+                   class="w-full rounded-lg border border-earth-300 px-3 py-2.5
+                          text-sm text-earth-900 placeholder-earth-400
+                          focus:outline-none focus:ring-2 focus:ring-flock-green-600
+                          focus:border-transparent min-h-[44px]
+                          hover:border-earth-400 transition-colors">
+          </div>
+
+          <!-- Submit -->
+          <button type="submit"
+                  class="w-full flex items-center justify-center gap-2 px-4 py-3
+                         bg-flock-green-600 text-white text-sm font-semibold rounded-xl
+                         hover:bg-flock-green-700 active:bg-flock-green-700
+                         transition-colors min-h-[44px] shadow-sm">
+            Sign in
+          </button>
+        </form>
+      </div>
+
+      <p class="text-center text-xs text-earth-400 mt-6">
+        FlockIQ — Poultry farm intelligence for West Africa
+      </p>
+    </div>
+  </div>
+
+</body>
+</html>

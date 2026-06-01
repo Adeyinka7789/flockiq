@@ -64,10 +64,14 @@ class TaskCompleteView(LoginRequiredMixin, View):
 class TaskSummaryWidget(LoginRequiredMixin, View):
     """GET /tasks/summary/ → HTMX dashboard widget fragment."""
 
+    EMPTY = {"pending_count": 0, "overdue_count": 0, "completed_today": 0}
+
     def get(self, request):
-        org = _get_org(request)
+        org = getattr(request.user, "org", None)
+        if not org:
+            return render(request, "tasks/_task_summary_widget.html", self.EMPTY)
 
         with set_tenant_context(org):
             summary = TaskService(org).get_task_summary()
 
-        return render(request, "tasks/_task_summary_widget.html", summary)
+        return render(request, "tasks/_task_summary_widget.html", summary or self.EMPTY)
