@@ -61,3 +61,54 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('showToast', (e) => {
   window.dispatchEvent(new CustomEvent('show-toast', { detail: e.detail }));
 });
+
+// ── Offline queue manager ────────────────────────────────────────────────────
+
+function offlineQueue() {
+  return {
+    async saveToQueue(type, url, data, csrfToken) {
+      const db = await this.openDB();
+      const tx = db.transaction(type, 'readwrite');
+      await tx.objectStore(type).add({ url, data, csrfToken, savedAt: Date.now() });
+
+      if ('serviceWorker' in navigator && 'SyncManager' in window) {
+        const reg = await navigator.serviceWorker.ready;
+        await reg.sync.register(`sync-${type}`);
+      }
+    },
+
+    openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('flockiq-offline', 1);
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = reject;
+      });
+    },
+  };
+}
+
+// Intercept HTMX requests when offline
+document.addEventListener('htmx:beforeRequest', function(e) {
+  if (!navigator.onLine) {
+    const form = e.detail.elt;
+    const url  = e.detail.requestConfig.path;
+
+    const offlineEndpoints = ['/mortality/', '/log/', '/water/'];
+    const isOfflineCapable = offlineEndpoints.some(ep => url.includes(ep));
+
+    if (isOfflineCapable && e.detail.requestConfig.verb === 'post') {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form));
+      const type = url.includes('mortality') ? 'mortality'
+                 : url.includes('eggs')      ? 'eggs'
+                 : url.includes('feed')      ? 'feed'
+                 : 'water';
+
+      offlineQueue().saveToQueue(type, url, data, data.csrfmiddlewaretoken);
+
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { message: 'Saved offline. Will sync when connected.', type: 'warning' },
+      }));
+    }
+  }
+});

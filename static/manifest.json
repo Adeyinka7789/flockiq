@@ -2,7 +2,25 @@
   "name": "FlockIQ",
   "short_name": "FlockIQ",
   "description": "AI-powered poultry farm management",
-  "theme_color": "#16a34a",
-  "background_color": "#f0fdf4",
-  "display": "standalone"
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3d5a99",
+  "orientation": "portrait-primary",
+  "icons": [
+    {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ],
+  "shortcuts": [
+    {
+      "name": "Log Mortality",
+      "url": "/batches/",
+      "description": "Quick mortality log"
+    },
+    {
+      "name": "Log Eggs",
+      "url": "/batches/",
+      "description": "Quick egg production log"
+    }
+  ]
 }

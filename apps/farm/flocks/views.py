@@ -353,6 +353,55 @@ class BatchMetricsCardView(LoginRequiredMixin, View):
         return render(request, "flocks/_batch_metrics_cards.html", data)
 
 
+# ── Export views ────────────────────────────────────────────────────────────────
+
+class BatchPDFExportView(LoginRequiredMixin, View):
+    """GET /batches/<uuid>/export/pdf/ → Waffle-gated PDF download."""
+
+    def get(self, request, pk):
+        from waffle import flag_is_active
+        if not flag_is_active(request, 'pdf_export'):
+            return HttpResponse('PDF export not enabled.', status=403)
+
+        org = _get_org(request)
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch.objects.select_related('farm', 'house'), id=pk)
+
+        from apps.infrastructure.core.exports import generate_batch_report
+        pdf_bytes = generate_batch_report(batch)
+
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = (
+            f'attachment; filename="batch-{batch.batch_name}.pdf"'
+        )
+        return response
+
+
+class BatchExcelExportView(LoginRequiredMixin, View):
+    """GET /batches/<uuid>/export/excel/ → Waffle-gated Excel download."""
+
+    def get(self, request, pk):
+        from waffle import flag_is_active
+        if not flag_is_active(request, 'excel_export'):
+            return HttpResponse('Excel export not enabled.', status=403)
+
+        org = _get_org(request)
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch.objects.select_related('farm', 'house'), id=pk)
+
+        from apps.infrastructure.core.exports import generate_batch_excel
+        xlsx_bytes = generate_batch_excel(batch)
+
+        response = HttpResponse(
+            xlsx_bytes,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = (
+            f'attachment; filename="batch-{batch.batch_name}.xlsx"'
+        )
+        return response
+
+
 # ── DRF API views ───────────────────────────────────────────────────────────────
 
 class BatchListAPIView(APIView):
