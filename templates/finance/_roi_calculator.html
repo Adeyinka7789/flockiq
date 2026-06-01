@@ -1,0 +1,62 @@
+<div x-data="roiCalc()" x-init="init()" class="p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+  <h3 class="text-sm font-semibold text-gray-700 mb-3">ROI Calculator</h3>
+
+  <div class="mb-4">
+    <label class="block text-xs text-gray-500 mb-1">Adjust Sale Price per Unit (₦)</label>
+    <input type="range" x-model="priceNaira" :min="minPrice" :max="maxPrice" step="10"
+           @input="recalculate()"
+           class="w-full">
+    <div class="flex justify-between text-xs text-gray-500 mt-1">
+      <span>₦<span x-text="minPrice"></span></span>
+      <span class="font-semibold text-indigo-600">₦<span x-text="priceNaira"></span></span>
+      <span>₦<span x-text="maxPrice"></span></span>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-3 gap-3 text-center text-sm">
+    <div class="bg-blue-50 rounded p-2">
+      <p class="text-xs text-blue-500">Revenue</p>
+      <p class="font-bold text-blue-800">₦<span x-text="projRevenue"></span></p>
+    </div>
+    <div :class="projProfit >= 0 ? 'bg-green-50' : 'bg-red-50'" class="rounded p-2">
+      <p :class="projProfit >= 0 ? 'text-green-500' : 'text-red-500'" class="text-xs">
+        <span x-text="projProfit >= 0 ? 'Profit' : 'Loss'"></span>
+      </p>
+      <p :class="projProfit >= 0 ? 'text-green-800' : 'text-red-800'" class="font-bold">
+        ₦<span x-text="Math.abs(projProfit).toLocaleString('en-NG')"></span>
+      </p>
+    </div>
+    <div class="bg-purple-50 rounded p-2">
+      <p class="text-xs text-purple-500">ROI</p>
+      <p class="font-bold text-purple-800"><span x-text="roi"></span>%</p>
+    </div>
+  </div>
+</div>
+
+<script>
+function roiCalc() {
+  const totalExpenses = {{ data.total_expenses_kobo }};
+  const birdCount = {{ data.initial_count }};
+  const scenarios = {{ data.scenarios|safe }};
+
+  return {
+    priceNaira: scenarios.length ? scenarios[2].price_per_unit_naira : 0,
+    minPrice: scenarios.length ? scenarios[0].price_per_unit_naira : 0,
+    maxPrice: scenarios.length ? scenarios[4].price_per_unit_naira : 0,
+    projRevenue: 0,
+    projProfit: 0,
+    roi: 0,
+
+    init() { this.recalculate(); },
+
+    recalculate() {
+      const priceKobo = Math.round(this.priceNaira * 100);
+      const revKobo = priceKobo * birdCount;
+      const profitKobo = revKobo - totalExpenses;
+      this.projRevenue = Math.round(revKobo / 100).toLocaleString('en-NG');
+      this.projProfit = Math.round(profitKobo / 100);
+      this.roi = totalExpenses > 0 ? (profitKobo / totalExpenses * 100).toFixed(1) : 0;
+    }
+  }
+}
+</script>

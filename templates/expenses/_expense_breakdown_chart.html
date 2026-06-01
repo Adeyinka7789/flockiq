@@ -1,0 +1,40 @@
+<div x-data="expenseBreakdown()" x-init="init()" class="p-4">
+  <h3 class="text-sm font-semibold text-gray-700 mb-3">
+    Expense Breakdown — Total: ₦{{ breakdown.total_kobo|divisibleby:100|floatformat:2 }}
+  </h3>
+  <canvas id="expenseDonut" width="300" height="300"></canvas>
+</div>
+
+<script>
+function expenseBreakdown() {
+  return {
+    init() {
+      const ctx = document.getElementById('expenseDonut').getContext('2d');
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: {{ breakdown.labels|safe }},
+          datasets: [{
+            data: {{ breakdown.data|safe }},
+            backgroundColor: [
+              '#6366f1','#f59e0b','#10b981','#3b82f6','#ef4444',
+              '#8b5cf6','#ec4899','#14b8a6','#f97316','#64748b'
+            ],
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'right' },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `₦${(ctx.raw / 100).toLocaleString('en-NG', {minimumFractionDigits:2})}`
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+}
+</script>

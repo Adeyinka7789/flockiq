@@ -1,0 +1,32 @@
+<div class="overflow-x-auto">
+  <table class="min-w-full divide-y divide-gray-200 text-sm">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
+        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Unit Price (₦)</th>
+        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Revenue (₦)</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for sale in sales %}
+      <tr class="hover:bg-gray-50">
+        <td class="px-4 py-2 text-gray-600">{{ sale.sale_date }}</td>
+        <td class="px-4 py-2">
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+            {{ sale.get_product_type_display }}
+          </span>
+        </td>
+        <td class="px-4 py-2 text-right text-gray-700">{{ sale.quantity }} {{ sale.unit }}</td>
+        <td class="px-4 py-2 text-right text-gray-700">{{ sale.unit_price_naira|floatformat:2 }}</td>
+        <td class="px-4 py-2 text-right font-semibold text-gray-900">{{ sale.total_revenue_naira|floatformat:2 }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="5" class="px-4 py-6 text-center text-gray-400 text-sm">No sales recorded yet.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

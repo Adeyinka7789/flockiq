@@ -1,0 +1,48 @@
+{% with profit=summary.gross_profit_naira %}
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
+
+  <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
+    <p class="text-xs text-blue-600 font-medium uppercase">Revenue</p>
+    <p class="text-2xl font-bold text-blue-800 mt-1">₦{{ summary.total_revenue_naira|floatformat:0 }}</p>
+  </div>
+
+  <div class="bg-orange-50 rounded-lg p-4 border border-orange-100">
+    <p class="text-xs text-orange-600 font-medium uppercase">Expenses</p>
+    <p class="text-2xl font-bold text-orange-800 mt-1">₦{{ summary.total_expenses_naira|floatformat:0 }}</p>
+  </div>
+
+  <div class="{% if profit >= 0 %}bg-green-50 border-green-100{% else %}bg-red-50 border-red-100{% endif %} rounded-lg p-4 border">
+    <p class="text-xs {% if profit >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-medium uppercase">
+      {% if profit >= 0 %}Profit{% else %}Loss{% endif %}
+    </p>
+    <p class="text-2xl font-bold {% if profit >= 0 %}text-green-800{% else %}text-red-800{% endif %} mt-1">
+      ₦{{ profit|floatformat:0 }}
+    </p>
+  </div>
+
+  <div class="bg-purple-50 rounded-lg p-4 border border-purple-100">
+    <p class="text-xs text-purple-600 font-medium uppercase">Margin</p>
+    <p class="text-2xl font-bold text-purple-800 mt-1">{{ summary.profit_margin_pct|floatformat:1 }}%</p>
+  </div>
+
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 px-4 pb-4">
+  <div class="text-center">
+    <p class="text-xs text-gray-500">ROI</p>
+    <p class="font-semibold text-gray-800">{{ summary.roi_pct|floatformat:1 }}%</p>
+  </div>
+  <div class="text-center">
+    <p class="text-xs text-gray-500">Cost/Bird</p>
+    <p class="font-semibold text-gray-800">₦{{ summary.cost_per_bird_naira|floatformat:2 }}</p>
+  </div>
+  <div class="text-center">
+    <p class="text-xs text-gray-500">Revenue/Bird</p>
+    <p class="font-semibold text-gray-800">₦{{ summary.revenue_per_bird_naira|floatformat:2 }}</p>
+  </div>
+  <div class="text-center">
+    <p class="text-xs text-gray-500">Break-Even Units</p>
+    <p class="font-semibold text-gray-800">{{ summary.break_even_quantity }}</p>
+  </div>
+</div>
+{% endwith %}

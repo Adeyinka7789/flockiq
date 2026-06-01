@@ -1,0 +1,47 @@
+{% if forecast.available %}
+<div class="p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+  <h3 class="text-sm font-semibold text-gray-700 mb-3">
+    Seasonal Demand — {{ product_type|title }}
+  </h3>
+
+  <div class="flex items-center gap-3 mb-4">
+    <div class="text-center">
+      <p class="text-xs text-gray-500">Now (Month {{ forecast.current_month }})</p>
+      <div class="w-8 h-full flex flex-col items-center justify-end mx-auto">
+        <div class="w-8 bg-indigo-500 rounded-t"
+             style="height: {{ forecast.current_index }}0px;">
+        </div>
+        <p class="text-xs font-bold mt-1">{{ forecast.current_index }}</p>
+      </div>
+    </div>
+    {% for m in forecast.next_months %}
+    <div class="text-center">
+      <p class="text-xs text-gray-500">Month {{ m.month }}</p>
+      <div class="w-8 flex flex-col items-center">
+        <div class="w-8 bg-gray-300 rounded-t"
+             style="height: {{ m.index }}0px;">
+        </div>
+        <p class="text-xs mt-1">{{ m.index }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="flex items-center gap-2 mb-3">
+    <span class="text-sm font-medium text-gray-700">Trend:</span>
+    {% if forecast.trend == "up" %}
+      <span class="text-green-600 font-semibold">↑ Rising</span>
+    {% elif forecast.trend == "down" %}
+      <span class="text-red-600 font-semibold">↓ Falling</span>
+    {% else %}
+      <span class="text-gray-600 font-semibold">→ Stable</span>
+    {% endif %}
+  </div>
+
+  <div class="p-3 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
+    {{ forecast.recommendation }}
+  </div>
+</div>
+{% else %}
+<div class="p-4 text-sm text-gray-400">Seasonal data not available for this product type.</div>
+{% endif %}

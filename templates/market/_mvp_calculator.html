@@ -1,0 +1,37 @@
+<div class="p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+  <h3 class="text-sm font-semibold text-gray-700 mb-4">Minimum Viable Price</h3>
+
+  <div class="grid grid-cols-3 gap-3 text-center text-sm">
+    <div class="bg-red-50 rounded-lg p-3 border border-red-100">
+      <p class="text-xs text-red-500 font-medium">Min Price</p>
+      <p class="text-xl font-bold text-red-800 mt-1">₦{{ data.min_price_naira|floatformat:2 }}</p>
+      <p class="text-xs text-red-400 mt-1">Break-even</p>
+    </div>
+    <div class="bg-green-50 rounded-lg p-3 border border-green-100">
+      <p class="text-xs text-green-500 font-medium">Recommended</p>
+      <p class="text-xl font-bold text-green-800 mt-1">₦{{ data.recommended_price_naira|floatformat:2 }}</p>
+      <p class="text-xs text-green-400 mt-1">+20% margin</p>
+    </div>
+    <div class="bg-blue-50 rounded-lg p-3 border border-blue-100">
+      <p class="text-xs text-blue-500 font-medium">Market Price</p>
+      <p class="text-xl font-bold text-blue-800 mt-1">
+        {% if data.current_market_price_naira %}
+          ₦{{ data.current_market_price_naira|floatformat:2 }}
+        {% else %}
+          —
+        {% endif %}
+      </p>
+      <p class="text-xs text-blue-400 mt-1">Current</p>
+    </div>
+  </div>
+
+  {% if data.current_market_price_naira and data.current_market_price_naira >= data.min_price_naira %}
+  <div class="mt-3 p-2 bg-green-50 border border-green-200 rounded text-green-700 text-xs text-center">
+    Market price is above your minimum — profitable to sell now.
+  </div>
+  {% elif data.current_market_price_naira %}
+  <div class="mt-3 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs text-center">
+    Market price is below break-even — consider holding or reducing costs.
+  </div>
+  {% endif %}
+</div>
