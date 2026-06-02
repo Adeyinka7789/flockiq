@@ -23,6 +23,7 @@ EVENT_TYPE_CHOICES = [
     ("incomplete_tasks", "Incomplete Tasks"),
     ("disease_outbreak", "Disease Outbreak"),
     ("medication_withdrawal", "Medication Withdrawal"),
+    ("ai_anomaly", "AI Anomaly"),
 ]
 
 SEVERITY_CHOICES = [
@@ -114,6 +115,7 @@ class NotificationLog(TenantAwareModel):
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
     outbox_event_id = models.UUIDField(null=True, blank=True)
+    batch_reference = models.CharField(max_length=100, blank=True, default="")
     acknowledged = models.BooleanField(default=False)
     acknowledged_at = models.DateTimeField(null=True, blank=True)
     acknowledged_by = models.ForeignKey(

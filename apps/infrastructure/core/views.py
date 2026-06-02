@@ -198,6 +198,14 @@ class DashboardView(TemplateView):
                 except Exception:
                     pass
 
+        daily_brief = {}
+        if org:
+            try:
+                from apps.health.analytics.daily_brief import DailyBriefService
+                daily_brief = DailyBriefService(org).get_cached()
+            except Exception:
+                pass
+
         ctx.update(
             {
                 "farms_count": farms_count,
@@ -211,6 +219,7 @@ class DashboardView(TemplateView):
                 "egg_trend": egg_trend,
                 "upcoming_vaccinations": upcoming_vaccinations,
                 "task_summary": task_summary,
+                "daily_brief": daily_brief,
             }
         )
         return ctx

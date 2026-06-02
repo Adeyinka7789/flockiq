@@ -144,24 +144,43 @@ class SaleTimingView(LoginRequiredMixin, View):
 
 
 class DiagnosisView(LoginRequiredMixin, View):
-    """POST /analytics/diagnose/ — Symptom diagnosis."""
+    """POST /analytics/diagnose/ — Symptom diagnosis using disease pattern engine."""
 
     def post(self, request):
-        if not waffle.switch_is_active("ai_symptom_diagnosis"):
-            return _coming_soon(request)
+        from apps.health.analytics.disease_patterns import DiseaseDiagnosisEngine
+        from apps.farm.flocks.models import MortalityLog
+        from django.db.models import Avg
+        from datetime import date, timedelta
 
         org = _get_org(request)
         symptoms = request.POST.getlist("symptoms")
         batch_id = request.POST.get("batch_id")
-        batch = None
+
+        age_weeks = 0
+        mortality_rate = 0.0
 
         if batch_id:
             batch = _get_batch(org, batch_id)
+            age_weeks = (batch.cycle_day or 0) / 7
 
-        with set_tenant_context(org):
-            result = DiagnosisEngine(org).diagnose(symptoms, batch=batch)
+            with set_tenant_context(org):
+                week_mort = (
+                    MortalityLog.objects.filter(
+                        batch=batch,
+                        date__gte=date.today() - timedelta(days=7),
+                    )
+                    .aggregate(avg=Avg("count"))["avg"] or 0
+                )
+            mortality_rate = (week_mort / max(batch.current_count, 1)) * 100
 
-        return render(request, "analytics/_diagnosis_result.html", {"result": result})
+        engine = DiseaseDiagnosisEngine()
+        results = engine.diagnose(symptoms, age_weeks, mortality_rate)
+
+        return render(
+            request,
+            "health/analytics/_diagnosis_result.html",
+            {"results": results, "no_match": not results},
+        )
 
 
 class AIAnalyticsPageView(TenantRequiredMixin, View):

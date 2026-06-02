@@ -53,9 +53,22 @@ class MarketPriceView(TenantRequiredMixin, View):
         with set_tenant_context(org):
             prices = MarketService(org).get_current_prices(product_type=product_type)
         seasonal_data = _build_seasonal_data()
+
+        seasonal_insight = None
+        placement_recommendation = None
+        try:
+            from apps.finance.market.seasonal_advisor import SeasonalAdvisor
+            advisor = SeasonalAdvisor()
+            seasonal_insight = advisor.get_current_season_insight()
+            placement_recommendation = advisor.get_placement_recommendation()
+        except Exception:
+            pass
+
         return render(request, "market/market_prices.html", {
             "prices": prices,
             "seasonal_data": seasonal_data,
+            "seasonal_insight": seasonal_insight,
+            "placement_recommendation": placement_recommendation,
         })
 
 

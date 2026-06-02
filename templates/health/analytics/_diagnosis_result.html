@@ -1,0 +1,42 @@
+{% if no_match %}
+<div style="padding:16px;background:#f4f7fe;border-radius:10px;
+            font-size:13px;color:#8a96a8;text-align:center">
+  No disease pattern matched. Select more symptoms or
+  consult a veterinarian.
+</div>
+{% else %}
+{% for result in results %}
+<div style="border:1.5px solid
+            {% if forloop.first %}#ef4444{% else %}#e2e8f0{% endif %};
+            border-radius:12px;padding:16px;margin-bottom:10px">
+  <div style="display:flex;align-items:center;
+              justify-content:space-between;margin-bottom:10px">
+    <div style="font-size:14px;font-weight:800;color:#1a2744">
+      {{ result.disease }}
+    </div>
+    <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;
+                 {% if result.confidence >= 70 %}background:#fee2e2;color:#991b1b
+                 {% elif result.confidence >= 50 %}background:#fef3c7;color:#92400e
+                 {% else %}background:#e8eef8;color:#2d4578{% endif %}">
+      {{ result.confidence }}% match
+    </span>
+  </div>
+  <p style="font-size:12px;color:#4a5568;line-height:1.6;margin-bottom:10px">
+    {{ result.description }}
+  </p>
+  <div style="font-size:11px;font-weight:700;color:#1a2744;margin-bottom:6px">
+    Recommended actions:
+  </div>
+  {% for action in result.actions %}
+  <div style="font-size:12px;color:#4a5568;padding:3px 0;display:flex;gap:8px">
+    <span style="color:#3d5a99;font-weight:700;flex-shrink:0">{{ forloop.counter }}.</span>
+    {{ action }}
+  </div>
+  {% endfor %}
+  <div style="margin-top:10px;padding:8px 12px;background:#edfae8;border-radius:8px;
+              font-size:11px;color:#166534">
+    Prevention: {{ result.prevention }}
+  </div>
+</div>
+{% endfor %}
+{% endif %}

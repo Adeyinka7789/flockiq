@@ -113,6 +113,96 @@
 
   </div>
 
+  <!-- AI Daily Brief -->
+  {% if daily_brief.alerts or daily_brief.recommendations %}
+  <div style="background:linear-gradient(135deg,#1a2744,#2d4578);
+              border-radius:16px;padding:20px 24px;
+              margin-bottom:16px;color:white;
+              position:relative;overflow:hidden">
+
+    <div style="position:absolute;width:150px;height:150px;
+                border-radius:50%;background:rgba(255,255,255,0.03);
+                right:-30px;top:-40px"></div>
+
+    <div style="display:flex;align-items:flex-start;
+                justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <div style="width:7px;height:7px;border-radius:50%;
+                      background:#8bc87a;
+                      animation:blink 2s ease-in-out infinite"></div>
+          <span style="font-size:11px;font-weight:700;
+                       color:rgba(255,255,255,0.6);
+                       text-transform:uppercase;letter-spacing:0.08em">
+            AI Daily Brief
+          </span>
+        </div>
+        <div style="font-size:16px;font-weight:800">
+          {% if daily_brief.total_issues == 0 %}
+            All {{ daily_brief.active_batches }} batch{{ daily_brief.active_batches|pluralize:"es" }} normal ✓
+          {% elif daily_brief.total_issues == 1 %}
+            1 issue needs your attention
+          {% else %}
+            {{ daily_brief.total_issues }} issues need attention
+          {% endif %}
+        </div>
+      </div>
+      <a href="{% url 'analytics:analytics' %}"
+         style="font-size:11px;color:rgba(255,255,255,0.6);
+                text-decoration:none;font-weight:600;
+                background:rgba(255,255,255,0.08);
+                padding:5px 10px;border-radius:8px">
+        Full report →
+      </a>
+    </div>
+
+    {% for alert in daily_brief.alerts|slice:":2" %}
+    <div style="display:flex;gap:10px;align-items:flex-start;
+                padding:10px 12px;margin-bottom:6px;
+                background:rgba(255,255,255,0.06);
+                border-radius:10px;
+                border-left:3px solid {% if alert.severity == 'critical' %}#ef4444{% else %}#f59e0b{% endif %}">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:white;margin-bottom:2px">
+          {{ alert.title }}
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.6);line-height:1.5">
+          {{ alert.body|truncatechars:120 }}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    {% for rec in daily_brief.recommendations|slice:":2" %}
+    <div style="display:flex;gap:10px;align-items:center;
+                padding:8px 12px;margin-bottom:4px;
+                background:rgba(255,255,255,0.04);
+                border-radius:8px">
+      <span style="font-size:13px">
+        {% if rec.type == 'sale_timing' %}💰
+        {% elif rec.type == 'vaccination' %}💉
+        {% elif rec.type == 'tasks' %}📋
+        {% else %}💡{% endif %}
+      </span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:white">{{ rec.title }}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.5)">
+          {{ rec.body|truncatechars:80 }}
+        </div>
+      </div>
+      {% if rec.batch %}
+      <a href="{% url 'flocks:detail' rec.batch.pk %}"
+         style="font-size:11px;color:#8bc87a;text-decoration:none;
+                font-weight:600;flex-shrink:0">
+        View →
+      </a>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+  </div>
+  {% endif %}
+
   <!-- Quick action buttons -->
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
     <a href="{% url 'farms:list' %}"

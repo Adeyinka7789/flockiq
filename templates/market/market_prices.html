@@ -27,6 +27,41 @@
     {% endif %}
   </div>
 
+  <!-- Seasonal Advisor card -->
+  {% if seasonal_insight %}
+  <div style="background:linear-gradient(135deg,#1a2744,#2d4578);border-radius:14px;
+              padding:20px 24px;margin-bottom:20px;color:white">
+    <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);
+                text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">
+      Seasonal Demand Forecast &mdash; {{ seasonal_insight.month }}
+    </div>
+    {% if seasonal_insight.current_events %}
+    <div style="font-size:14px;font-weight:700;color:#8bc87a;margin-bottom:6px">
+      Active now:
+      {% for event in seasonal_insight.current_events %}
+      {{ event.name }}
+      (Eggs +{{ event.egg_demand_multiplier|floatformat:0 }}&times;,
+      Broilers +{{ event.broiler_demand_multiplier|floatformat:0 }}&times;){% if not forloop.last %},{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if seasonal_insight.upcoming_events %}
+    <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:10px">
+      Coming next month:
+      {% for event in seasonal_insight.upcoming_events %}
+      {{ event.name }} &mdash; {{ event.note }}{% if not forloop.last %};{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if placement_recommendation %}
+    <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;
+                font-size:13px;color:rgba(255,255,255,0.9)">
+      {{ placement_recommendation }}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <!-- Seasonal demand strip -->
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
     {% for month_data in seasonal_data %}

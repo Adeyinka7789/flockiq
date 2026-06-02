@@ -47,6 +47,10 @@ class Command(BaseCommand):
             minute='0', hour='1', day_of_week='*',
             day_of_month='1', month_of_year='*'
         )
+        at630am, _ = CrontabSchedule.objects.get_or_create(
+            minute='30', hour='6', day_of_week='*',
+            day_of_month='*', month_of_year='*'
+        )
 
         tasks = [
             {
@@ -113,6 +117,12 @@ class Command(BaseCommand):
                 'name': 'Process monthly billing cycle',
                 'task': 'apps.infrastructure.billing.tasks.process_monthly_billing_cycle',
                 'schedule': monthly1st,
+                'schedule_type': 'crontab',
+            },
+            {
+                'name': 'Generate daily brief all orgs',
+                'task': 'apps.health.analytics.tasks.generate_daily_brief_all_orgs',
+                'schedule': at630am,
                 'schedule_type': 'crontab',
             },
         ]

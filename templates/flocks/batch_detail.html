@@ -78,6 +78,106 @@
       {% include "partials/_skeleton_metric_cards.html" %}
     </div>
 
+    <!-- Exit Optimizer (broiler only) -->
+    {% if exit_analysis %}
+    <div id="exit-optimizer-card" style="background:white;border:1px solid #e2e8f0;
+         border-radius:14px;overflow:hidden;margin-top:16px">
+      <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;
+                  display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:700;color:#1a2744">Exit Optimizer</span>
+        <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;
+                     {% if exit_analysis.recommendation == 'sell_now' %}background:#edfae8;color:#166534
+                     {% elif exit_analysis.recommendation == 'urgent' %}background:#fee2e2;color:#991b1b
+                     {% else %}background:#e8eef8;color:#2d4578{% endif %}">
+          {% if exit_analysis.recommendation == 'sell_now' %}Sell Now
+          {% elif exit_analysis.recommendation == 'urgent' %}Urgent
+          {% else %}Wait{% endif %}
+        </span>
+      </div>
+      <div style="padding:18px">
+        <div style="font-size:14px;font-weight:600;color:#1a2744;margin-bottom:16px">
+          {{ exit_analysis.message }}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+          <div style="background:#f4f7fe;border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;margin-bottom:5px">Est. Weight</div>
+            <div style="font-size:20px;font-weight:800;color:#1a2744">{{ exit_analysis.est_weight_kg }}kg</div>
+            <div style="font-size:10px;color:#8a96a8">~{{ exit_analysis.estimated_weight_g }}g/bird</div>
+          </div>
+          <div style="background:#f4f7fe;border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;margin-bottom:5px">Est. Revenue</div>
+            <div style="font-size:20px;font-weight:800;color:#166534">&#8358;{{ exit_analysis.est_revenue|floatformat:0 }}</div>
+            <div style="font-size:10px;color:#8a96a8">@ &#8358;{{ exit_analysis.price_per_kg }}/kg</div>
+          </div>
+          <div style="background:#f4f7fe;border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;margin-bottom:5px">Daily Net</div>
+            <div style="font-size:20px;font-weight:800;
+                        color:{% if exit_analysis.net_daily_value > 0 %}#166534{% else %}#dc2626{% endif %}">
+              {% if exit_analysis.net_daily_value > 0 %}+{% endif %}&#8358;{{ exit_analysis.net_daily_value|floatformat:0 }}
+            </div>
+            <div style="font-size:10px;color:#8a96a8">gain vs feed cost</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#4a5568">
+          <span>Adjust market price: &#8358;</span>
+          <form hx-get="{% url 'flocks:detail' batch.pk %}"
+                hx-target="#exit-optimizer-card"
+                hx-swap="outerHTML"
+                hx-push-url="false"
+                style="display:flex;gap:6px;align-items:center">
+            <input type="number" name="price_per_kg"
+                   value="{{ exit_analysis.price_per_kg }}"
+                   min="1000" max="5000" step="50"
+                   style="width:80px;padding:5px 8px;border:1.5px solid #e2e8f0;
+                          border-radius:8px;font-size:12px;font-weight:600;text-align:center"
+                   onchange="this.form.requestSubmit()">
+            <span>/kg</span>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- FCR Analysis (broiler only) -->
+    {% if fcr_analysis %}
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:18px;margin-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <span style="font-size:13px;font-weight:700;color:#1a2744">Feed Efficiency (FCR)</span>
+        <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;
+                     {% if fcr_analysis.status == 'good' %}background:#edfae8;color:#166534
+                     {% elif fcr_analysis.status == 'warning' %}background:#fef3c7;color:#92400e
+                     {% else %}background:#fee2e2;color:#991b1b{% endif %}">
+          {% if fcr_analysis.status == 'good' %}On Target
+          {% elif fcr_analysis.status == 'warning' %}Watch
+          {% else %}Below Target{% endif %}
+        </span>
+      </div>
+      <div style="display:flex;gap:20px;align-items:center;margin-bottom:14px">
+        <div style="text-align:center">
+          <div style="font-size:32px;font-weight:800;
+                      color:{% if fcr_analysis.status == 'good' %}#166534
+                            {% elif fcr_analysis.status == 'warning' %}#d97706
+                            {% else %}#dc2626{% endif %}">
+            {{ fcr_analysis.actual }}
+          </div>
+          <div style="font-size:11px;color:#8a96a8">Your FCR</div>
+        </div>
+        <div style="flex:1;height:1px;background:#e2e8f0"></div>
+        <div style="text-align:center">
+          <div style="font-size:32px;font-weight:800;color:#8a96a8">{{ fcr_analysis.target }}</div>
+          <div style="font-size:11px;color:#8a96a8">Cobb 500 target</div>
+        </div>
+      </div>
+      <div style="background:#f4f7fe;border-radius:10px;padding:12px 14px;
+                  font-size:12px;color:#4a5568;line-height:1.6">
+        {{ fcr_analysis.advice }}
+      </div>
+      <div style="font-size:11px;color:#8a96a8;margin-top:8px">
+        Total feed consumed: {{ fcr_analysis.total_feed_kg }}kg
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Quick actions -->
     <div class="flex flex-wrap gap-3 mt-6">
       <button hx-get="{% url 'flocks:mortality' batch.pk %}"
@@ -197,6 +297,47 @@
         </svg>
         Log Symptoms
       </button>
+    </div>
+
+    <!-- AI Symptom Checker -->
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;margin-top:16px">
+      <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9">
+        <span style="font-size:13px;font-weight:700;color:#1a2744">AI Symptom Checker</span>
+      </div>
+      <div style="padding:18px">
+        <p style="font-size:12px;color:#8a96a8;margin-bottom:14px">
+          Select all symptoms you are observing in this batch:
+        </p>
+        <form hx-post="{% url 'analytics:diagnose' %}"
+              hx-target="#diagnosis-result"
+              hx-swap="innerHTML"
+              style="display:flex;flex-direction:column;gap:10px">
+          {% csrf_token %}
+          <input type="hidden" name="batch_id" value="{{ batch.pk }}">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            {% for value, label in symptom_choices %}
+            <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;
+                          border:1.5px solid #e2e8f0;border-radius:8px;cursor:pointer;
+                          font-size:12px;color:#1a2744;transition:all 0.15s"
+                   onmouseover="this.style.borderColor='#3d5a99'"
+                   onmouseout="if(!this.querySelector('input').checked)this.style.borderColor='#e2e8f0'">
+              <input type="checkbox" name="symptoms" value="{{ value }}"
+                     style="accent-color:#3d5a99"
+                     onchange="this.closest('label').style.borderColor=this.checked?'#3d5a99':'#e2e8f0';
+                               this.closest('label').style.background=this.checked?'#e8eef8':'white'">
+              {{ label }}
+            </label>
+            {% endfor %}
+          </div>
+          <button type="submit"
+                  style="padding:10px;background:#3d5a99;color:white;border:none;
+                         border-radius:10px;font-size:13px;font-weight:700;
+                         cursor:pointer;margin-top:6px">
+            Analyze Symptoms &rarr;
+          </button>
+        </form>
+        <div id="diagnosis-result" style="margin-top:14px"></div>
+      </div>
     </div>
   </div>
 

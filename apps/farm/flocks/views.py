@@ -207,12 +207,68 @@ class BatchDetailView(TenantRequiredMixin, View):
                     import json as _json
                     weight_data_json = _json.dumps(weight_data)
 
+        exit_analysis = None
+        fcr_analysis = None
+        if batch.bird_type == "broiler":
+            from apps.health.analytics.exit_optimizer import BroilerExitOptimizer
+            from apps.production.feed.models import FeedLog
+            from django.db.models import Sum as _Sum
+
+            price = int(request.GET.get("price_per_kg", 1850))
+            exit_analysis = BroilerExitOptimizer().analyze(batch, price)
+
+            with set_tenant_context(org):
+                total_feed = (
+                    FeedLog.objects.filter(batch=batch)
+                    .aggregate(total=_Sum("quantity_kg"))["total"] or 0
+                )
+
+            estimated_weight_kg = batch.current_count * exit_analysis["estimated_weight_g"] / 1000
+            if estimated_weight_kg > 0 and total_feed > 0:
+                actual_fcr = round(float(total_feed) / estimated_weight_kg, 2)
+                cobb_target = 1.75
+                if actual_fcr <= cobb_target:
+                    fcr_status = "good"
+                elif actual_fcr <= cobb_target * 1.1:
+                    fcr_status = "warning"
+                else:
+                    fcr_status = "poor"
+                fcr_diff_pct = round(abs(actual_fcr - cobb_target) / cobb_target * 100)
+                fcr_analysis = {
+                    "actual": actual_fcr,
+                    "target": cobb_target,
+                    "status": fcr_status,
+                    "diff_pct": fcr_diff_pct,
+                    "advice": {
+                        "good": "Excellent FCR — on track with Cobb 500 standard.",
+                        "warning": "FCR slightly above target. Monitor feed quality.",
+                        "poor": (
+                            f"FCR is {fcr_diff_pct}% above Cobb 500 target. "
+                            f"Check: feed quality, disease, ventilation."
+                        ),
+                    }[fcr_status],
+                    "total_feed_kg": round(float(total_feed), 1),
+                }
+
         context = {
             "batch": batch,
             "mortality_form": MortalityLogForm(),
             "weight_form": WeightRecordForm(),
             "close_form": BatchCloseForm(),
             "weight_data_json": weight_data_json,
+            "exit_analysis": exit_analysis,
+            "fcr_analysis": fcr_analysis,
+            "symptom_choices": [
+                ("respiratory", "Respiratory distress / coughing"),
+                ("sudden_death", "Sudden unexplained death"),
+                ("diarrhoea", "Diarrhoea"),
+                ("bloody_diarrhoea", "Bloody diarrhoea"),
+                ("lethargy", "Lethargy / ruffled feathers"),
+                ("drop_in_production", "Drop in egg production"),
+                ("poor_growth", "Poor growth / bad FCR"),
+                ("nervous", "Twisted neck / nervous signs"),
+                ("watery_eggs", "Watery/poor quality eggs"),
+            ],
         }
         return render(request, "flocks/batch_detail.html", context)
 

@@ -4,6 +4,47 @@ from celery import shared_task
 logger = structlog.get_logger(__name__)
 
 
+@shared_task(name="analytics.generate_daily_brief_all_orgs")
+def generate_daily_brief_all_orgs():
+    """Beat: 06:30 daily. Fan-out daily brief generation to all active orgs."""
+    from apps.infrastructure.core.rls import no_tenant_context
+
+    with no_tenant_context():
+        from apps.infrastructure.tenants.models import Organization
+
+        org_ids = list(
+            Organization.objects.filter(
+                is_active=True,
+                subscription_status__in=["active", "trial"],
+            ).values_list("id", flat=True)
+        )
+
+    for org_id in org_ids:
+        generate_daily_brief_for_org.delay(str(org_id))
+
+
+@shared_task(name="analytics.generate_daily_brief_for_org")
+def generate_daily_brief_for_org(org_id: str):
+    """Invalidates and regenerates the daily brief for one org."""
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.tenants.models import Organization
+    from .daily_brief import DailyBriefService
+
+    with set_tenant_context(org_id):
+        try:
+            org = Organization.objects.get(id=org_id)
+            svc = DailyBriefService(org)
+            svc.invalidate()
+            svc.generate()
+        except Exception as exc:
+            logger.error(
+                "Daily brief generation failed",
+                org_id=org_id,
+                error=str(exc),
+            )
+            raise
+
+
 @shared_task(name="analytics.check_mortality_anomaly")
 def check_mortality_anomaly(org_id: str, batch_id: str):
     """Fired from MortalityLog signal after save. Sets tenant context first."""
