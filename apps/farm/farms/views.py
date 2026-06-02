@@ -45,9 +45,23 @@ class FarmListView(TenantRequiredMixin, View):
         is_htmx = request.headers.get("HX-Request") == "true"
 
         with set_tenant_context(org):
-            service = FarmService(org)
-            farms = list(service.list_farms(active_only=True))
-            dashboard = service.get_dashboard_data()
+            from django.db.models import Count, Q, Sum
+            farms = list(
+                Farm.objects.filter(is_active=True)
+                .annotate(
+                    live_birds=Sum(
+                        "batches__current_count",
+                        filter=Q(batches__status="active"),
+                    ),
+                    active_batches=Count(
+                        "batches",
+                        filter=Q(batches__status="active"),
+                        distinct=True,
+                    ),
+                )
+                .order_by("name")
+            )
+            dashboard = FarmService(org).get_dashboard_data()
 
         context = {
             "farms": farms,

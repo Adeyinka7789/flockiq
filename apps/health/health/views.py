@@ -1,8 +1,10 @@
 import json
+from datetime import date, timedelta
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
+from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.views import View
@@ -28,17 +30,93 @@ class VaccinationCalendarView(TenantRequiredMixin, View):
     """GET /health/vaccinations/ — Full vaccination calendar across all farms."""
 
     def get(self, request):
+        from apps.farm.farms.models import Farm
+        from .models import VaccinationSchedule
+
+        today = date.today()
         org = _get_org(request)
+
+        status_filter = request.GET.get("status", "upcoming")
+        farm_id = request.GET.get("farm")
         days_ahead = int(request.GET.get("days_ahead", 30))
 
         with set_tenant_context(org):
-            vaccinations = HealthService(org).get_vaccination_calendar(days_ahead=days_ahead)
+            qs = VaccinationSchedule.objects.select_related(
+                "batch__farm", "batch__house"
+            ).order_by("due_date")
 
-        return render(
-            request,
-            "health/vaccination_calendar.html",
-            {"vaccinations": vaccinations, "days_ahead": days_ahead},
-        )
+            if farm_id:
+                qs = qs.filter(batch__farm_id=farm_id)
+
+            if status_filter == "overdue":
+                qs = qs.filter(status="scheduled", due_date__lt=today)
+            elif status_filter == "today":
+                qs = qs.filter(status="scheduled", due_date=today)
+            elif status_filter == "this_week":
+                qs = qs.filter(
+                    status="scheduled",
+                    due_date__gte=today,
+                    due_date__lte=today + timedelta(days=7),
+                )
+            elif status_filter == "completed":
+                qs = qs.filter(status="completed")
+            else:
+                qs = qs.filter(
+                    Q(status="scheduled", due_date__lt=today)
+                    | Q(status="scheduled", due_date__lte=today + timedelta(days=days_ahead))
+                )
+
+            vaccinations = list(qs)
+
+            overdue_count = VaccinationSchedule.objects.filter(
+                status="scheduled", due_date__lt=today
+            ).count()
+            due_this_week = VaccinationSchedule.objects.filter(
+                status="scheduled",
+                due_date__gte=today,
+                due_date__lte=today + timedelta(days=7),
+            ).count()
+            completed_month = VaccinationSchedule.objects.filter(
+                status="completed",
+                administered_date__gte=today.replace(day=1),
+            ).count()
+            total_scheduled = VaccinationSchedule.objects.filter(status="scheduled").count()
+
+            farms = Farm.objects.filter(is_active=True)
+
+            for v in vaccinations:
+                delta = (v.due_date - today).days
+                if v.status == "completed":
+                    v.urgency = "completed"
+                    v.days_label = "Done"
+                elif delta < 0:
+                    v.urgency = "overdue"
+                    v.days_label = f"{abs(delta)}d overdue"
+                elif delta == 0:
+                    v.urgency = "today"
+                    v.days_label = "Today!"
+                elif delta <= 3:
+                    v.urgency = "soon"
+                    v.days_label = f"In {delta}d"
+                else:
+                    v.urgency = "upcoming"
+                    v.days_label = f"In {delta}d"
+
+        context = {
+            "vaccinations": vaccinations,
+            "overdue_count": overdue_count,
+            "due_this_week": due_this_week,
+            "completed_month": completed_month,
+            "total_scheduled": total_scheduled,
+            "farms": farms,
+            "active_status": status_filter,
+            "active_farm": farm_id,
+            "today": today,
+        }
+
+        if request.headers.get("HX-Request"):
+            return render(request, "health/_vaccination_table.html", context)
+        return render(request, "health/vaccination_calendar.html", context)
 
 
 class VaccinationCompleteView(LoginRequiredMixin, View):
@@ -62,6 +140,9 @@ class VaccinationCompleteView(LoginRequiredMixin, View):
                     {"vacc": None, "error": str(exc)},
                     status=422,
                 )
+
+        vacc.urgency = "completed"
+        vacc.days_label = "Done"
 
         response = render(
             request,

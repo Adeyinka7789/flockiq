@@ -1,0 +1,142 @@
+<!-- Trend chart -->
+<div class="prod-section" style="margin-bottom:16px">
+  <div class="prod-section-hd">
+    <span class="prod-section-title">Egg Production Trend</span>
+    <span style="font-size:11px;color:#8a96a8">{{ date_from }} &mdash; {{ date_to }}</span>
+  </div>
+  <div style="padding:16px;height:200px;position:relative">
+    <canvas id="prodTrendChart"></canvas>
+  </div>
+</div>
+
+<!-- Per-batch table -->
+<div class="prod-section">
+  <div class="prod-section-hd">
+    <span class="prod-section-title">Batch Performance</span>
+    <span style="font-size:12px;color:#8a96a8">Today's data</span>
+  </div>
+
+  {% for summary in batch_summaries %}
+  <div class="batch-row">
+
+    <!-- Batch info -->
+    <div style="min-width:0;flex:1">
+      <div style="font-size:13px;font-weight:700;color:#1a2744">
+        {{ summary.batch.batch_name }}
+      </div>
+      <div style="font-size:11px;color:#8a96a8;margin-top:1px">
+        {{ summary.batch.farm.name }} &middot;
+        Day {{ summary.batch.cycle_day }} &middot;
+        {{ summary.batch.current_count }} hens
+      </div>
+    </div>
+
+    <!-- Today's eggs -->
+    <div style="text-align:center;min-width:70px">
+      <div style="font-size:18px;font-weight:800;color:#1a2744;
+                  font-variant-numeric:tabular-nums">
+        {{ summary.todays_eggs }}
+      </div>
+      <div style="font-size:10px;color:#8a96a8;
+                  text-transform:uppercase;letter-spacing:0.05em">eggs</div>
+    </div>
+
+    <!-- Hen-day % with bar -->
+    <div style="min-width:140px">
+      <div style="display:flex;align-items:center;
+                  justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:11px;color:#8a96a8">Hen-Day%</span>
+        <span style="font-size:12px;font-weight:700;
+                     color:{% if summary.todays_hen_day >= 85 %}#166534{% elif summary.todays_hen_day >= 70 %}#92400e{% else %}#991b1b{% endif %}">
+          {{ summary.todays_hen_day }}%
+        </span>
+      </div>
+      <div class="hen-day-bar">
+        <div class="hen-day-fill"
+             style="width:{{ summary.todays_hen_day }}%;
+                    background:{% if summary.todays_hen_day >= 85 %}#8bc87a{% elif summary.todays_hen_day >= 70 %}#f59e0b{% else %}#ef4444{% endif %}">
+        </div>
+      </div>
+    </div>
+
+    <!-- 7-day avg -->
+    <div style="text-align:center;min-width:70px">
+      <div style="font-size:13px;font-weight:700;color:#3d5a99">
+        {{ summary.avg_7day_hen_day }}%
+      </div>
+      <div style="font-size:10px;color:#8a96a8">7d avg</div>
+    </div>
+
+    <!-- Log button + link -->
+    <div style="display:flex;gap:8px;align-items:center">
+      {% if summary.logged_today %}
+      <span class="log-btn logged">&#10003; Logged</span>
+      {% else %}
+      <button class="log-btn not-logged"
+              hx-get="{% url 'production:log' summary.batch.pk %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML"
+              hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))">
+        + Log Eggs
+      </button>
+      {% endif %}
+      <a href="{% url 'flocks:detail' summary.batch.pk %}"
+         style="font-size:11px;color:#3d5a99;text-decoration:none;font-weight:600">
+        View &rarr;
+      </a>
+    </div>
+
+  </div>
+  {% empty %}
+  <div style="padding:32px;text-align:center;color:#8a96a8;font-size:13px">
+    No layer batches match the current filter.
+  </div>
+  {% endfor %}
+</div>
+
+{{ trend_data|json_script:"prod-trend-data" }}
+<script>
+(function () {
+  function initProdChart() {
+    var canvas = document.getElementById('prodTrendChart');
+    if (!canvas) return;
+    if (typeof Chart === 'undefined') return;
+    if (canvas._prodChart) { canvas._prodChart.destroy(); }
+    var data = JSON.parse(document.getElementById('prod-trend-data').textContent);
+    canvas._prodChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: data.map(function(d) { return d.date; }),
+        datasets: [{
+          data: data.map(function(d) { return d.total; }),
+          borderColor: '#8bc87a',
+          backgroundColor: 'rgba(139,200,122,0.08)',
+          fill: true, tension: 0.3,
+          pointRadius: 2, borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 9 }, color: '#9ca3af', maxTicksLimit: 10 }
+          },
+          y: {
+            grid: { color: '#f3f4f6' },
+            ticks: { font: { size: 9 }, color: '#9ca3af' },
+            beginAtZero: true,
+          }
+        }
+      }
+    });
+  }
+
+  if (typeof Chart !== 'undefined') {
+    initProdChart();
+  } else {
+    document.addEventListener('DOMContentLoaded', initProdChart);
+  }
+})();
+</script>

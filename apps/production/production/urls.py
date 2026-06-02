@@ -6,6 +6,11 @@ app_name = "production"
 
 urlpatterns = [
     path(
+        "production/",
+        views.ProductionOverviewView.as_view(),
+        name="overview",
+    ),
+    path(
         "production/eggs/<uuid:batch_pk>/log/",
         views.ProductionLogView.as_view(),
         name="log",

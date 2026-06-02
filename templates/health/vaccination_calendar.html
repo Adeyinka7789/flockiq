@@ -1,27 +1,251 @@
 {% extends "base.html" %}
-{% block title %}Vaccination Calendar{% endblock %}
-{% block breadcrumb %}Vaccinations{% endblock %}
+{% block title %}Vaccinations{% endblock %}
+{% block breadcrumb %}Vaccination Calendar{% endblock %}
+
 {% block content %}
-<div id="vaccination-calendar" class="p-4">
-  <h1 class="text-2xl font-bold mb-4">Vaccination Calendar</h1>
-  <table class="w-full table-auto border-collapse">
-    <thead>
-      <tr class="bg-gray-100">
-        <th class="p-2 text-left">Vaccine</th>
-        <th class="p-2 text-left">Batch</th>
-        <th class="p-2 text-left">Farm</th>
-        <th class="p-2 text-left">Due Date</th>
-        <th class="p-2 text-left">Status</th>
-        <th class="p-2 text-left">Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for vacc in vaccinations %}
-        {% include "health/_vaccination_row.html" with vacc=vacc %}
-      {% empty %}
-        <tr><td colspan="6" class="p-4 text-center text-gray-500">No upcoming vaccinations.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<style>
+  .vacc-wrap { max-width: 1000px; margin: 0 auto; }
+
+  .vacc-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+    gap: 14px; margin-bottom: 20px;
+  }
+  .vacc-metric {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 16px 18px;
+    position: relative; overflow: hidden;
+  }
+  .vacc-metric::before {
+    content: ''; position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 14px 14px 0 0;
+  }
+  .vacc-metric.red::before    { background: #ef4444; }
+  .vacc-metric.amber::before  { background: #f59e0b; }
+  .vacc-metric.green::before  { background: #8bc87a; }
+  .vacc-metric.navy::before   { background: #3d5a99; }
+  .vacc-metric-lbl {
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+  .vacc-metric-val {
+    font-size: 28px; font-weight: 800; color: #1a2744;
+    line-height: 1;
+  }
+  .vacc-metric-val.danger  { color: #dc2626; }
+  .vacc-metric-val.warning { color: #d97706; }
+
+  .vacc-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+  }
+
+  .vacc-tabs {
+    display: flex; align-items: center;
+    gap: 4px; padding: 12px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    flex-wrap: wrap;
+  }
+  .vacc-tab {
+    padding: 6px 14px; border-radius: 8px;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; border: 1.5px solid #e2e8f0;
+    background: white; color: #4a5568;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .vacc-tab.active {
+    background: #3d5a99; color: white;
+    border-color: #3d5a99;
+  }
+  .vacc-tab.danger.active {
+    background: #ef4444; border-color: #ef4444;
+  }
+  .vacc-tab-count {
+    background: rgba(255,255,255,0.2);
+    border-radius: 20px; padding: 1px 6px;
+    font-size: 10px; font-weight: 700;
+  }
+  .vacc-tab:not(.active) .vacc-tab-count {
+    background: #f1f5f9; color: #475569;
+  }
+
+  .farm-filter {
+    margin-left: auto;
+    padding: 6px 12px; border: 1.5px solid #e2e8f0;
+    border-radius: 8px; font-size: 12px; color: #1a2744;
+    background: white; cursor: pointer; outline: none;
+  }
+
+  #vacc-table-wrap { min-height: 200px; }
+
+  .vacc-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f8faff;
+    border-left: 3px solid transparent;
+    transition: background 0.1s;
+  }
+  .vacc-row:last-child { border-bottom: none; }
+  .vacc-row:hover { background: #fafbff; }
+  .vacc-row.overdue { border-left-color: #ef4444; }
+  .vacc-row.today   { border-left-color: #f59e0b; }
+  .vacc-row.soon    { border-left-color: #8bc87a; }
+
+  .vacc-vaccine-name {
+    font-size: 13px; font-weight: 700; color: #1a2744;
+    min-width: 160px;
+  }
+  .vacc-batch-info { flex: 1; min-width: 0; }
+  .vacc-batch-name {
+    font-size: 13px; font-weight: 600; color: #3d5a99;
+  }
+  .vacc-farm-name {
+    font-size: 11px; color: #8a96a8; margin-top: 1px;
+  }
+
+  .vacc-due-date {
+    font-size: 12px; color: #4a5568;
+    min-width: 100px; font-weight: 500;
+  }
+
+  .days-badge {
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+    min-width: 80px; text-align: center;
+    white-space: nowrap;
+  }
+  .days-badge.overdue   { background: #fee2e2; color: #991b1b; }
+  .days-badge.today     { background: #fef3c7; color: #92400e; }
+  .days-badge.soon      { background: #edfae8; color: #166534; }
+  .days-badge.upcoming  { background: #e8eef8; color: #2d4578; }
+  .days-badge.completed { background: #f1f5f9; color: #475569; }
+
+  .status-badge {
+    padding: 3px 9px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .status-scheduled { background: #fef9c3; color: #713f12; }
+  .status-completed { background: #dcfce7; color: #166534; }
+  .status-skipped   { background: #f1f5f9; color: #475569; }
+
+  .mark-done-btn {
+    padding: 7px 14px; border-radius: 8px;
+    background: #3d5a99; color: white;
+    border: none; font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .mark-done-btn:hover { background: #2d4578; }
+  .mark-done-btn.done {
+    background: #f1f5f9; color: #8a96a8;
+    cursor: default;
+  }
+
+  .empty-vacc {
+    padding: 48px; text-align: center; color: #8a96a8;
+    font-size: 13px;
+  }
+</style>
+
+<div class="vacc-wrap">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <h1 style="font-size:20px;font-weight:800;color:#1a2744">Vaccination Calendar</h1>
+      <p style="font-size:13px;color:#8a96a8;margin-top:3px">
+        Scheduled and completed vaccinations across all batches
+      </p>
+    </div>
+  </div>
+
+  <div class="vacc-metrics">
+    <div class="vacc-metric red">
+      <div class="vacc-metric-lbl">Overdue</div>
+      <div class="vacc-metric-val {% if overdue_count %}danger{% endif %}">{{ overdue_count }}</div>
+    </div>
+    <div class="vacc-metric amber">
+      <div class="vacc-metric-lbl">Due This Week</div>
+      <div class="vacc-metric-val {% if due_this_week %}warning{% endif %}">{{ due_this_week }}</div>
+    </div>
+    <div class="vacc-metric green">
+      <div class="vacc-metric-lbl">Completed This Month</div>
+      <div class="vacc-metric-val">{{ completed_month }}</div>
+    </div>
+    <div class="vacc-metric navy">
+      <div class="vacc-metric-lbl">Total Scheduled</div>
+      <div class="vacc-metric-val">{{ total_scheduled }}</div>
+    </div>
+  </div>
+
+  <div class="vacc-card">
+
+    <div class="vacc-tabs">
+      <button class="vacc-tab {% if active_status == 'upcoming' %}active{% endif %}"
+              hx-get="{% url 'health:calendar' %}"
+              hx-vals='{"status":"upcoming"}'
+              hx-target="#vacc-table-wrap"
+              hx-include="[name='farm']"
+              hx-push-url="true">
+        All Upcoming
+      </button>
+      <button class="vacc-tab danger {% if active_status == 'overdue' %}active{% endif %}"
+              hx-get="{% url 'health:calendar' %}"
+              hx-vals='{"status":"overdue"}'
+              hx-target="#vacc-table-wrap"
+              hx-include="[name='farm']"
+              hx-push-url="true">
+        Overdue
+        {% if overdue_count %}<span class="vacc-tab-count">{{ overdue_count }}</span>{% endif %}
+      </button>
+      <button class="vacc-tab {% if active_status == 'today' %}active{% endif %}"
+              hx-get="{% url 'health:calendar' %}"
+              hx-vals='{"status":"today"}'
+              hx-target="#vacc-table-wrap"
+              hx-include="[name='farm']"
+              hx-push-url="true">
+        Today
+      </button>
+      <button class="vacc-tab {% if active_status == 'this_week' %}active{% endif %}"
+              hx-get="{% url 'health:calendar' %}"
+              hx-vals='{"status":"this_week"}'
+              hx-target="#vacc-table-wrap"
+              hx-include="[name='farm']"
+              hx-push-url="true">
+        This Week
+        {% if due_this_week %}<span class="vacc-tab-count">{{ due_this_week }}</span>{% endif %}
+      </button>
+      <button class="vacc-tab {% if active_status == 'completed' %}active{% endif %}"
+              hx-get="{% url 'health:calendar' %}"
+              hx-vals='{"status":"completed"}'
+              hx-target="#vacc-table-wrap"
+              hx-include="[name='farm']"
+              hx-push-url="true">
+        Completed
+      </button>
+
+      <select name="farm" class="farm-filter"
+              hx-get="{% url 'health:calendar' %}"
+              hx-target="#vacc-table-wrap"
+              hx-include="[name='farm']"
+              hx-vals='{"status":"{{ active_status }}"}'
+              hx-push-url="true">
+        <option value="">All Farms</option>
+        {% for farm in farms %}
+        <option value="{{ farm.pk }}"
+                {% if active_farm == farm.pk|stringformat:'s' %}selected{% endif %}>
+          {{ farm.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div id="vacc-table-wrap">
+      {% include 'health/_vaccination_table.html' %}
+    </div>
+
+  </div>
 </div>
 {% endblock %}

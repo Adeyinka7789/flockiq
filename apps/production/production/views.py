@@ -1,7 +1,9 @@
 import json
+from datetime import date, timedelta
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Avg, Sum
 from django.http import Http404
 from django.shortcuts import render
 from django.views import View
@@ -10,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.infrastructure.core.rls import set_tenant_context
+from apps.infrastructure.core.views import TenantRequiredMixin
 
 from .exceptions import BatchNotLayerError, ProductionBatchClosedError
 from .models import EggProductionLog
@@ -28,8 +31,112 @@ def _get_org(request):
 
 # ── HTMX Views ──────────────────────────────────────────────────────────────
 
+class ProductionOverviewView(TenantRequiredMixin, View):
+    """GET /production/ → Production overview with metrics, filters, and per-batch table."""
+
+    def get(self, request):
+        from apps.infrastructure.core.filters import DateRangeFilter
+        from apps.farm.flocks.models import Batch
+        from apps.farm.farms.models import Farm
+
+        org = request.user.org
+        date_filter = DateRangeFilter()
+        date_from, date_to = date_filter.get_date_range(request)
+        today = date.today()
+
+        farm_id = request.GET.get('farm') or ''
+        batch_id = request.GET.get('batch') or ''
+        preset = request.GET.get('preset', '30d')
+
+        with set_tenant_context(org):
+            qs = Batch.objects.filter(
+                status='active', bird_type='layer'
+            ).select_related('farm', 'house')
+            if farm_id:
+                qs = qs.filter(farm_id=farm_id)
+            if batch_id:
+                qs = qs.filter(pk=batch_id)
+            layer_batches = list(qs)
+
+            farms = list(Farm.objects.filter(is_active=True))
+
+            todays_qs = EggProductionLog.objects.filter(
+                record_date=today,
+                batch__bird_type='layer',
+                batch__status='active',
+            )
+            if farm_id:
+                todays_qs = todays_qs.filter(farm_id=farm_id)
+            if batch_id:
+                todays_qs = todays_qs.filter(batch_id=batch_id)
+
+            todays_eggs = todays_qs.aggregate(total=Sum('total_eggs'))['total'] or 0
+            todays_hen_day = todays_qs.aggregate(avg=Avg('hen_day_pct'))['avg'] or 0
+            todays_crates = round(todays_eggs / 30, 1)
+
+            batch_summaries = []
+            for batch in layer_batches:
+                latest_log = EggProductionLog.objects.filter(
+                    batch=batch, record_date=today
+                ).first()
+                avg_7day = EggProductionLog.objects.filter(
+                    batch=batch,
+                    record_date__gte=today - timedelta(days=7)
+                ).aggregate(avg=Avg('hen_day_pct'))['avg'] or 0
+                batch_summaries.append({
+                    'batch': batch,
+                    'todays_eggs': latest_log.total_eggs if latest_log else 0,
+                    'todays_hen_day': float(latest_log.hen_day_pct) if latest_log and latest_log.hen_day_pct else 0,
+                    'avg_7day_hen_day': round(float(avg_7day), 1),
+                    'logged_today': latest_log is not None,
+                })
+
+            trend_data = []
+            delta = (date_to - date_from).days + 1
+            for i in range(delta):
+                day = date_from + timedelta(days=i)
+                day_qs = EggProductionLog.objects.filter(record_date=day)
+                if farm_id:
+                    day_qs = day_qs.filter(farm_id=farm_id)
+                if batch_id:
+                    day_qs = day_qs.filter(batch_id=batch_id)
+                total = day_qs.aggregate(total=Sum('total_eggs'))['total'] or 0
+                trend_data.append({'date': day.strftime('%d %b'), 'total': total})
+
+        context = {
+            'todays_eggs': todays_eggs,
+            'todays_crates': todays_crates,
+            'todays_hen_day': round(float(todays_hen_day), 1),
+            'active_layer_batches': len(layer_batches),
+            'batch_summaries': batch_summaries,
+            'trend_data': trend_data,
+            'farms': farms,
+            'layer_batches': layer_batches,
+            'active_farm': farm_id,
+            'active_batch': batch_id,
+            'active_preset': preset,
+            'date_from': date_from.strftime('%Y-%m-%d'),
+            'date_to': date_to.strftime('%Y-%m-%d'),
+            'today': today,
+            'no_layer_batches': not batch_summaries,
+        }
+
+        is_htmx = request.headers.get("HX-Request") == "true"
+        if is_htmx:
+            return render(request,
+                'production/production/_production_overview_partial.html', context)
+        return render(request,
+            'production/production/production_overview.html', context)
+
+
 class ProductionLogView(LoginRequiredMixin, View):
-    """POST /production/eggs/<batch_pk>/log/ → Returns updated summary card."""
+    """GET/POST /production/eggs/<batch_pk>/log/ → Returns log form or updated summary card."""
+
+    def get(self, request, batch_pk):
+        from .forms import EggProductionLogForm
+        return render(request, "production/production/_production_log_form.html", {
+            "form": EggProductionLogForm(), "batch_pk": batch_pk,
+        })
 
     def post(self, request, batch_pk):
         from .forms import EggProductionLogForm

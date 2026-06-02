@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Production{% endblock %}
+{% block breadcrumb %}Egg Production{% endblock %}
+
+{% block content %}
+<style>
+  .prod-wrap { max-width: 1100px; margin: 0 auto; }
+
+  .prod-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px; margin-bottom: 16px;
+  }
+  .prod-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 18px;
+    position: relative; overflow: hidden;
+  }
+  .prod-card::before {
+    content: ''; position: absolute;
+    top: 0; left: 0; right: 0; height: 3px;
+    border-radius: 14px 14px 0 0;
+  }
+  .prod-card.green::before { background: #8bc87a; }
+  .prod-card.navy::before  { background: #3d5a99; }
+  .prod-card.amber::before { background: #f59e0b; }
+  .prod-card.blue::before  { background: #5b8dd9; }
+
+  .prod-card-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+  }
+  .prod-card-lbl {
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 5px;
+  }
+  .prod-card-val {
+    font-size: 28px; font-weight: 800; color: #1a2744;
+    line-height: 1; font-variant-numeric: tabular-nums;
+  }
+  .prod-card-sub {
+    font-size: 11px; color: #8a96a8; margin-top: 4px;
+  }
+
+  .filter-bar {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 12px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap; margin-bottom: 16px;
+  }
+  .filter-preset {
+    padding: 6px 12px; border-radius: 8px;
+    font-size: 12px; font-weight: 600; cursor: pointer;
+    border: 1.5px solid #e2e8f0; background: white;
+    color: #4a5568; transition: all 0.15s;
+  }
+  .filter-preset.active {
+    background: #3d5a99; color: white;
+    border-color: #3d5a99;
+  }
+  .filter-select {
+    padding: 7px 12px; border: 1.5px solid #e2e8f0;
+    border-radius: 8px; font-size: 12px; color: #1a2744;
+    background: white; cursor: pointer; outline: none;
+  }
+
+  .prod-section {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .prod-section-hd {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .prod-section-title {
+    font-size: 13px; font-weight: 700; color: #1a2744;
+  }
+
+  .batch-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 18px; border-bottom: 1px solid #f8faff;
+    transition: background 0.1s;
+  }
+  .batch-row:last-child { border-bottom: none; }
+  .batch-row:hover { background: #f8faff; }
+
+  .hen-day-bar {
+    flex: 1; height: 6px; background: #f0f4ff;
+    border-radius: 3px; overflow: hidden;
+    min-width: 60px; max-width: 120px;
+  }
+  .hen-day-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.6s ease;
+  }
+
+  .log-btn {
+    padding: 6px 14px; border-radius: 8px;
+    font-size: 11px; font-weight: 700;
+    cursor: pointer; border: none;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .log-btn.logged {
+    background: #dcfce7; color: #166534;
+    cursor: default;
+  }
+  .log-btn.not-logged {
+    background: #3d5a99; color: white;
+  }
+  .log-btn.not-logged:hover { background: #2d4578; }
+
+  .empty-production {
+    padding: 60px 20px; text-align: center;
+  }
+  .empty-icon {
+    width: 56px; height: 56px; border-radius: 16px;
+    background: #e8eef8; margin: 0 auto 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+</style>
+
+<div class="prod-wrap">
+
+  <!-- Page header -->
+  <div style="display:flex;align-items:center;
+              justify-content:space-between;margin-bottom:20px">
+    <div>
+      <h1 style="font-size:20px;font-weight:800;color:#1a2744">
+        Egg Production
+      </h1>
+      <p style="font-size:13px;color:#8a96a8;margin-top:3px">
+        Layer batch production tracking &middot; {{ today|date:"l, F j" }}
+      </p>
+    </div>
+  </div>
+
+  {% if no_layer_batches %}
+  <!-- Empty state -->
+  <div class="prod-section">
+    <div class="empty-production">
+      <div class="empty-icon">
+        <svg width="26" height="26" fill="none" viewBox="0 0 24 24"
+             stroke="#3d5a99" stroke-width="1.5">
+          <ellipse cx="12" cy="13" rx="6" ry="8"/>
+          <path stroke-linecap="round" d="M12 5V3"/>
+        </svg>
+      </div>
+      <h3 style="font-size:15px;font-weight:700;
+                 color:#1a2744;margin-bottom:6px">
+        No active layer batches
+      </h3>
+      <p style="font-size:13px;color:#8a96a8;margin-bottom:20px">
+        Production tracking applies to layer batches only.
+        Place a layer batch to start tracking eggs.
+      </p>
+      <a href="{% url 'farms:list' %}"
+         style="display:inline-flex;align-items:center;gap:6px;
+                padding:10px 20px;background:#3d5a99;color:white;
+                border-radius:10px;font-size:13px;font-weight:700;
+                text-decoration:none">
+        Go to Farms &rarr;
+      </a>
+    </div>
+  </div>
+
+  {% else %}
+
+  <!-- Metric cards -->
+  <div class="prod-metrics">
+    <div class="prod-card green">
+      <div class="prod-card-icon" style="background:#edfae8">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+             stroke="#6aaa57" stroke-width="1.8">
+          <ellipse cx="12" cy="13" rx="6" ry="8"/>
+          <path stroke-linecap="round" d="M12 5V3"/>
+        </svg>
+      </div>
+      <div class="prod-card-lbl">Today's Eggs</div>
+      <div class="prod-card-val">{{ todays_eggs|default:0 }}</div>
+      <div class="prod-card-sub">{{ todays_crates }} crates</div>
+    </div>
+
+    <div class="prod-card amber">
+      <div class="prod-card-icon" style="background:#fef3c7">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+             stroke="#d97706" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0
+                   002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0
+                   012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2
+                   2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2
+                   0 01-2-2z"/>
+        </svg>
+      </div>
+      <div class="prod-card-lbl">Avg Hen-Day %</div>
+      <div class="prod-card-val">{{ todays_hen_day|default:0 }}%</div>
+      <div class="prod-card-sub">today across all batches</div>
+    </div>
+
+    <div class="prod-card navy">
+      <div class="prod-card-icon" style="background:#e8eef8">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+             stroke="#3d5a99" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10
+                   0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3
+                   3 0 015.356-1.857M7 20v-2c0-.656.126-1.283
+                   .356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3
+                   3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+      </div>
+      <div class="prod-card-lbl">Layer Batches</div>
+      <div class="prod-card-val">{{ active_layer_batches }}</div>
+      <div class="prod-card-sub">active</div>
+    </div>
+
+    <div class="prod-card blue">
+      <div class="prod-card-icon" style="background:#ddeeff">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+             stroke="#5b8dd9" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6
+                   7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002
+                   0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5
+                   m0 16H9m3 0h3"/>
+        </svg>
+      </div>
+      <div class="prod-card-lbl">Est. Crates Today</div>
+      <div class="prod-card-val">{{ todays_crates }}</div>
+      <div class="prod-card-sub">@ 30 eggs per crate</div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <button class="filter-preset {% if active_preset == 'today' %}active{% endif %}"
+            hx-get="{% url 'production:overview' %}"
+            hx-vals='{"preset":"today"}'
+            hx-target="#prod-content"
+            hx-push-url="true">Today</button>
+    <button class="filter-preset {% if active_preset == '7d' %}active{% endif %}"
+            hx-get="{% url 'production:overview' %}"
+            hx-vals='{"preset":"7d"}'
+            hx-target="#prod-content"
+            hx-push-url="true">7 days</button>
+    <button class="filter-preset {% if active_preset == '30d' %}active{% endif %}"
+            hx-get="{% url 'production:overview' %}"
+            hx-vals='{"preset":"30d"}'
+            hx-target="#prod-content"
+            hx-push-url="true">30 days</button>
+    <button class="filter-preset {% if active_preset == '90d' %}active{% endif %}"
+            hx-get="{% url 'production:overview' %}"
+            hx-vals='{"preset":"90d"}'
+            hx-target="#prod-content"
+            hx-push-url="true">90 days</button>
+
+    <select class="filter-select"
+            name="farm"
+            hx-get="{% url 'production:overview' %}"
+            hx-target="#prod-content"
+            hx-include="[name='preset']"
+            hx-push-url="true">
+      <option value="">All Farms</option>
+      {% for farm in farms %}
+      <option value="{{ farm.pk }}"
+              {% if active_farm == farm.pk|stringformat:'s' %}selected{% endif %}>
+        {{ farm.name }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <select class="filter-select"
+            name="batch"
+            hx-get="{% url 'production:overview' %}"
+            hx-target="#prod-content"
+            hx-include="[name='preset'],[name='farm']"
+            hx-push-url="true">
+      <option value="">All Batches</option>
+      {% for b in layer_batches %}
+      <option value="{{ b.pk }}"
+              {% if active_batch == b.pk|stringformat:'s' %}selected{% endif %}>
+        {{ b.batch_name }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <span style="margin-left:auto;font-size:12px;color:#8a96a8;font-weight:600">
+      {{ active_layer_batches }} batch{{ active_layer_batches|pluralize:"es" }}
+    </span>
+  </div>
+
+  <!-- Main content — HTMX target -->
+  <div id="prod-content">
+    {% include 'production/production/_production_overview_partial.html' %}
+  </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}

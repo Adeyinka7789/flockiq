@@ -17,11 +17,11 @@
 
   <div class="grid grid-cols-2 gap-3 mt-4 text-center">
     <div class="bg-gray-50 rounded-lg p-2">
-      <p class="text-lg font-bold text-gray-800">{{ farm.total_live_birds }}</p>
+      <p class="text-lg font-bold text-gray-800">{{ farm.live_birds|default:0 }}</p>
       <p class="text-xs text-gray-400">Live Birds</p>
     </div>
     <div class="bg-gray-50 rounded-lg p-2">
-      <p class="text-lg font-bold text-gray-800">{{ farm.active_batch_count }}</p>
+      <p class="text-lg font-bold text-gray-800">{{ farm.active_batches|default:0 }}</p>
       <p class="text-xs text-gray-400">Active Batches</p>
     </div>
   </div>

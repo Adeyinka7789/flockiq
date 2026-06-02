@@ -1,0 +1,48 @@
+{% for v in vaccinations %}
+<div class="vacc-row {{ v.urgency }}">
+
+  <div class="vacc-vaccine-name">{{ v.vaccine_name }}</div>
+
+  <div class="vacc-batch-info">
+    <div class="vacc-batch-name">
+      <a href="{% url 'flocks:detail' v.batch.pk %}" style="color:#3d5a99;text-decoration:none">
+        {{ v.batch.batch_name }}
+      </a>
+    </div>
+    <div class="vacc-farm-name">
+      {{ v.batch.farm.name }} · {{ v.batch.bird_type|title }} · Day {{ v.batch.cycle_day }}
+    </div>
+  </div>
+
+  <div class="vacc-due-date">{{ v.due_date|date:"M d, Y" }}</div>
+
+  <span class="days-badge {{ v.urgency }}">{{ v.days_label }}</span>
+
+  <span class="status-badge status-{{ v.status }}">{{ v.status|title }}</span>
+
+  {% if v.status == 'scheduled' %}
+  <button class="mark-done-btn"
+          hx-post="{% url 'health:complete' v.pk %}"
+          hx-target="closest .vacc-row"
+          hx-swap="outerHTML"
+          hx-confirm="Mark {{ v.vaccine_name }} as completed?">
+    Mark Done
+  </button>
+  {% else %}
+  <button class="mark-done-btn done" disabled>&#10003; Done</button>
+  {% endif %}
+
+</div>
+{% empty %}
+<div class="empty-vacc">
+  {% if active_status == 'overdue' %}
+    &#10003; No overdue vaccinations
+  {% elif active_status == 'today' %}
+    No vaccinations due today
+  {% elif active_status == 'completed' %}
+    No completed vaccinations yet
+  {% else %}
+    No vaccinations scheduled
+  {% endif %}
+</div>
+{% endfor %}

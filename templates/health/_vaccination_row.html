@@ -1,33 +1,40 @@
-<tr id="vacc-row-{{ vacc.id }}" class="border-b {% if vacc.is_overdue %}bg-red-50{% endif %}">
-  {% if vacc %}
-  <td class="p-2">{{ vacc.vaccine_name }}</td>
-  <td class="p-2">{{ vacc.batch }}</td>
-  <td class="p-2">{{ vacc.farm }}</td>
-  <td class="p-2 {% if vacc.is_overdue %}text-red-600 font-semibold{% endif %}">
-    {{ vacc.due_date }}
-    {% if vacc.is_overdue %}<span class="ml-1 text-xs text-red-500">OVERDUE</span>{% endif %}
-  </td>
-  <td class="p-2">
-    <span class="px-2 py-1 rounded text-xs
-      {% if vacc.status == 'completed' %}bg-green-100 text-green-800
-      {% elif vacc.status == 'missed' %}bg-red-100 text-red-800
-      {% elif vacc.status == 'skipped' %}bg-gray-100 text-gray-600
-      {% else %}bg-yellow-100 text-yellow-800{% endif %}">
-      {{ vacc.get_status_display }}
-    </span>
-  </td>
-  <td class="p-2">
-    {% if vacc.status == 'scheduled' %}
-    <button
-      hx-post="{% url 'health:complete' vacc.id %}"
-      hx-target="#vacc-row-{{ vacc.id }}"
-      hx-swap="outerHTML"
-      class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">
-      Mark Done
-    </button>
-    {% endif %}
-  </td>
+{% if vacc %}
+<div class="vacc-row {{ vacc.urgency }}">
+
+  <div class="vacc-vaccine-name">{{ vacc.vaccine_name }}</div>
+
+  <div class="vacc-batch-info">
+    <div class="vacc-batch-name">
+      <a href="{% url 'flocks:detail' vacc.batch.pk %}" style="color:#3d5a99;text-decoration:none">
+        {{ vacc.batch.batch_name }}
+      </a>
+    </div>
+    <div class="vacc-farm-name">
+      {{ vacc.batch.farm.name }} · {{ vacc.batch.bird_type|title }} · Day {{ vacc.batch.cycle_day }}
+    </div>
+  </div>
+
+  <div class="vacc-due-date">{{ vacc.due_date|date:"M d, Y" }}</div>
+
+  <span class="days-badge {{ vacc.urgency }}">{{ vacc.days_label }}</span>
+
+  <span class="status-badge status-{{ vacc.status }}">{{ vacc.status|title }}</span>
+
+  {% if vacc.status == 'scheduled' %}
+  <button class="mark-done-btn"
+          hx-post="{% url 'health:complete' vacc.pk %}"
+          hx-target="closest .vacc-row"
+          hx-swap="outerHTML"
+          hx-confirm="Mark {{ vacc.vaccine_name }} as completed?">
+    Mark Done
+  </button>
   {% else %}
-  <td colspan="6" class="p-2 text-red-600">{{ error }}</td>
+  <button class="mark-done-btn done" disabled>&#10003; Done</button>
   {% endif %}
-</tr>
+
+</div>
+{% else %}
+<div class="vacc-row">
+  <div style="color:#dc2626;padding:8px;flex:1">{{ error }}</div>
+</div>
+{% endif %}
