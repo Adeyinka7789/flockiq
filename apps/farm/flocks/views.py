@@ -158,22 +158,61 @@ class BatchCreateView(LoginRequiredMixin, View):
         return render(request, "flocks/_batch_create_modal.html", {"form": form, "farm_pk": farm_pk})
 
 
+COBB_500_STANDARD = {
+    7: 170, 14: 400, 21: 780, 28: 1260,
+    35: 1800, 42: 2400, 49: 2950,
+}
+
+
+def _interpolate_cobb_standard(day):
+    days = sorted(COBB_500_STANDARD.keys())
+    if day <= days[0]:
+        return COBB_500_STANDARD[days[0]]
+    for i, d in enumerate(days):
+        if day <= d:
+            prev_d = days[i - 1]
+            ratio = (day - prev_d) / (d - prev_d)
+            return int(COBB_500_STANDARD[prev_d] + ratio * (COBB_500_STANDARD[d] - COBB_500_STANDARD[prev_d]))
+    return COBB_500_STANDARD[days[-1]]
+
+
 class BatchDetailView(TenantRequiredMixin, View):
     """GET /batches/<uuid>/ → Full batch detail page with Alpine.js tabs."""
 
     def get(self, request, pk):
         org = _get_org(request)
+        weight_data_json = "[]"
+
         with set_tenant_context(org):
             try:
                 batch = Batch.objects.select_related("farm", "house").get(id=pk)
             except Batch.DoesNotExist:
                 raise Http404("Batch not found.")
 
+            if batch.bird_type == "broiler":
+                weight_records = list(
+                    WeightRecord.objects.filter(batch=batch).order_by("sample_date")
+                )
+                if weight_records:
+                    weight_data = []
+                    for wr in weight_records:
+                        day = (wr.sample_date - batch.placement_date).days
+                        standard = _interpolate_cobb_standard(day)
+                        weight_data.append({
+                            "day": day,
+                            "date": wr.sample_date.strftime("%d %b"),
+                            "actual": round(float(wr.avg_weight_kg) * 1000, 1),
+                            "standard": standard,
+                        })
+                    import json as _json
+                    weight_data_json = _json.dumps(weight_data)
+
         context = {
             "batch": batch,
             "mortality_form": MortalityLogForm(),
             "weight_form": WeightRecordForm(),
             "close_form": BatchCloseForm(),
+            "weight_data_json": weight_data_json,
         }
         return render(request, "flocks/batch_detail.html", context)
 

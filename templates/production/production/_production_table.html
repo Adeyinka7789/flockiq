@@ -5,13 +5,12 @@
       <thead class="bg-gray-50">
         <tr>
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Date</th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Total Eggs</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Total</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Grade A</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Grade B</th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Grade C</th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Broken</th>
-          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">HDP %</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Cracked</th>
           <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Crates</th>
+          <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Hen-Day %</th>
           <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Recorded By</th>
         </tr>
       </thead>
@@ -22,16 +21,15 @@
           <td class="px-4 py-3 text-right tabular-nums font-semibold text-gray-900">{{ log.total_eggs }}</td>
           <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ log.grade_a|default:"—" }}</td>
           <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ log.grade_b|default:"—" }}</td>
-          <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ log.grade_c|default:"—" }}</td>
-          <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ log.broken|default:"—" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums text-gray-600">{{ log.cracked|default:"—" }}</td>
+          <td class="px-4 py-3 text-right tabular-nums text-gray-600">
+            {% if log.crates %}{{ log.crates }}{% else %}—{% endif %}
+          </td>
           <td class="px-4 py-3 text-right tabular-nums
             {% if log.hen_day_pct >= 80 %}text-green-600 font-semibold
             {% elif log.hen_day_pct >= 65 %}text-amber-500
             {% else %}text-red-600{% endif %}">
             {% if log.hen_day_pct %}{{ log.hen_day_pct }}%{% else %}—{% endif %}
-          </td>
-          <td class="px-4 py-3 text-right tabular-nums text-gray-600">
-            {% if log.crates %}{{ log.crates }}{% else %}—{% endif %}
           </td>
           <td class="px-4 py-3 text-gray-500 text-xs">
             {{ log.recorded_by.get_full_name|default:log.recorded_by.username|default:"—" }}

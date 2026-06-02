@@ -2,7 +2,8 @@ import json
 import uuid
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views import View
 from django.http import HttpResponse
 from django.template.loader import render_to_string
@@ -102,6 +103,28 @@ class MarkAllReadView(LoginRequiredMixin, View):
             request=request,
         )
         return HttpResponse(html)
+
+
+class AcknowledgeNotificationView(LoginRequiredMixin, View):
+    """POST /notifications/<uuid>/acknowledge/ — Acknowledge a critical/warning alert."""
+
+    def post(self, request, pk):
+        from .models import NotificationLog
+
+        with set_tenant_context(request.user.org):
+            notif = get_object_or_404(NotificationLog, pk=pk, recipient=request.user)
+            notif.acknowledged = True
+            notif.acknowledged_at = timezone.now()
+            notif.acknowledged_by = request.user
+            notif.is_read = True
+            notif.save(update_fields=["acknowledged", "acknowledged_at", "acknowledged_by", "is_read"])
+
+        response = HttpResponse()
+        response["HX-Trigger"] = json.dumps({
+            "showToast": {"message": "Alert acknowledged", "type": "success"},
+            "refreshBell": True,
+        })
+        return response
 
 
 class MarkAllReadPageView(LoginRequiredMixin, View):

@@ -45,9 +45,26 @@
         {{ notif.title }}
       </div>
       <div style="font-size:12px;color:#4a5568;line-height:1.5">{{ notif.body }}</div>
-      <div style="font-size:11px;color:#b0bac9;margin-top:5px">
+        <div style="font-size:11px;color:#b0bac9;margin-top:5px">
         {{ notif.created_at|timesince }} ago
       </div>
+      {% if not notif.acknowledged and notif.severity in 'critical,warning' %}
+      <div style="margin-top:6px">
+        <button hx-post="{% url 'notifications:acknowledge' notif.pk %}"
+                hx-swap="none"
+                style="padding:4px 10px;background:#f1f5f9;border:none;
+                       border-radius:6px;font-size:11px;font-weight:600;
+                       color:#4a5568;cursor:pointer;transition:all 0.15s"
+                onmouseover="this.style.background='#e2e8f0'"
+                onmouseout="this.style.background='#f1f5f9'">
+          Acknowledge
+        </button>
+      </div>
+      {% elif notif.acknowledged %}
+      <div style="margin-top:6px;font-size:10px;color:#8a96a8;font-weight:600">
+        ✓ Acknowledged
+      </div>
+      {% endif %}
     </div>
     <div style="width:8px;height:8px;border-radius:50%;
                 background:#3d5a99;flex-shrink:0;margin-top:5px"></div>

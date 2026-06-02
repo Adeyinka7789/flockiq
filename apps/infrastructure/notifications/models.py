@@ -1,5 +1,6 @@
 import uuid
 
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -113,6 +114,15 @@ class NotificationLog(TenantAwareModel):
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
     outbox_event_id = models.UUIDField(null=True, blank=True)
+    acknowledged = models.BooleanField(default=False)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    acknowledged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="acknowledged_notifications",
+    )
     # farm and batch FKs added in 0002_add_farm_batch_fks.py once those apps land
 
     class Meta:

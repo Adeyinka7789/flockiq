@@ -23,6 +23,7 @@ class EggProductionLog(TenantAwareModel):
     grade_b = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     grade_c = models.IntegerField(default=0, validators=[MinValueValidator(0)])
     broken = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    cracked = models.IntegerField(default=0, validators=[MinValueValidator(0)])
 
     hen_day_pct = models.DecimalField(
         max_digits=5, decimal_places=2, null=True, editable=False
@@ -78,6 +79,7 @@ class EggProductionLog(TenantAwareModel):
                 + (self.grade_b or 0)
                 + (self.grade_c or 0)
                 + (self.broken or 0)
+                + (self.cracked or 0)
             )
             if total_grades > 0 and total_grades != self.total_eggs:
                 raise ValidationError(

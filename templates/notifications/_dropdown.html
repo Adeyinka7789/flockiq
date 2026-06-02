@@ -45,6 +45,18 @@
         <div style="font-size:10px;color:#b0bac9;margin-top:3px">
           {{ notif.created_at|timesince }} ago
         </div>
+        {% if not notif.acknowledged and notif.severity == 'critical' %}
+        <div style="margin-top:4px">
+          <button hx-post="{% url 'notifications:acknowledge' notif.pk %}"
+                  hx-swap="none"
+                  style="padding:3px 8px;background:#fef2f2;border:none;
+                         border-radius:4px;font-size:10px;font-weight:600;
+                         color:#ef4444;cursor:pointer"
+                  onclick="event.stopPropagation()">
+            Acknowledge
+          </button>
+        </div>
+        {% endif %}
       </div>
     </a>
     {% endfor %}

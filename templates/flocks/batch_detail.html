@@ -53,6 +53,13 @@
             class="px-4 py-3 text-sm transition-colors whitespace-nowrap">
       Finance
     </button>
+    {% if batch.bird_type == 'broiler' %}
+    <button @click="tab = 'weight'"
+            :class="tab === 'weight' ? 'border-b-2 border-[#3d5a99] text-[#3d5a99] font-semibold' : 'text-gray-500 hover:text-gray-700'"
+            class="px-4 py-3 text-sm transition-colors whitespace-nowrap">
+      Weight
+    </button>
+    {% endif %}
     <button @click="tab = 'ai'"
             :class="tab === 'ai' ? 'border-b-2 border-[#3d5a99] text-[#3d5a99] font-semibold' : 'text-gray-500 hover:text-gray-700'"
             class="px-4 py-3 text-sm transition-colors whitespace-nowrap">
@@ -266,7 +273,97 @@
 
   </div>
 
-  <!-- TAB 5: AI Insights -->
+  <!-- TAB 5: Weight (broiler only) -->
+  {% if batch.bird_type == 'broiler' %}
+  <div x-show="tab === 'weight'" x-cloak class="mt-6">
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;margin-bottom:16px">
+      <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;
+                  display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:700;color:#1a2744">
+          Weight vs Cobb 500 Standard
+        </span>
+        {% if weight_data_json != '[]' %}
+        <span style="display:inline-flex;align-items:center;gap:5px;background:#eef2ff;
+                     color:#3d5a99;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">
+          <span style="width:6px;height:6px;border-radius:50%;background:#3d5a99;animation:pulse 2s infinite"></span>
+          On track
+        </span>
+        {% endif %}
+      </div>
+      <div style="padding:16px">
+        {% if weight_data_json == '[]' %}
+        <div style="text-align:center;padding:48px 0;color:#8a96a8">
+          <svg style="width:40px;height:40px;color:#d1d5db;margin:0 auto 12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                  d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/>
+          </svg>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">No weight records yet</div>
+          <div style="font-size:12px">Log weight records to see breed standard comparison</div>
+        </div>
+        {% else %}
+        <div style="height:220px;position:relative">
+          <canvas id="weightChart"></canvas>
+        </div>
+        <script>
+        (function() {
+          var weightData = {{ weight_data_json }};
+          var ctx = document.getElementById('weightChart').getContext('2d');
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: weightData.map(function(d) { return 'Day ' + d.day + ' (' + d.date + ')'; }),
+              datasets: [
+                {
+                  label: 'Actual weight (g)',
+                  data: weightData.map(function(d) { return d.actual; }),
+                  borderColor: '#3d5a99',
+                  backgroundColor: 'rgba(61,90,153,0.05)',
+                  fill: true, tension: 0.3,
+                  pointRadius: 4, borderWidth: 2,
+                },
+                {
+                  label: 'Cobb 500 target',
+                  data: weightData.map(function(d) { return d.standard; }),
+                  borderColor: '#f59e0b',
+                  borderDash: [5, 5],
+                  fill: false, tension: 0.3,
+                  pointRadius: 0, borderWidth: 1.5,
+                }
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: true, position: 'top',
+                  labels: { font: { size: 11 }, boxWidth: 20 }
+                }
+              },
+              scales: {
+                x: {
+                  grid: { display: false },
+                  ticks: { font: { size: 9 }, color: '#9ca3af' }
+                },
+                y: {
+                  grid: { color: '#f3f4f6' },
+                  ticks: {
+                    font: { size: 9 }, color: '#9ca3af',
+                    callback: function(v) { return v + 'g'; }
+                  },
+                  beginAtZero: true,
+                }
+              }
+            }
+          });
+        })();
+        </script>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- TAB 6: AI Insights -->
   <div x-show="tab === 'ai'" x-cloak class="mt-6">
     <div hx-get="{% url 'analytics:forecast' batch.pk %}"
          hx-trigger="intersect once">

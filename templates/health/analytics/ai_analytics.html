@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+{% block title %}AI Analytics{% endblock %}
+{% block breadcrumb %}AI Analytics{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:0 auto">
+
+  <!-- Page header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div style="font-size:20px;font-weight:700;color:#1a2744">AI Analytics</div>
+    <span style="display:inline-flex;align-items:center;gap:6px;
+                 background:#eef2ff;color:#3d5a99;
+                 padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600">
+      <span style="width:7px;height:7px;border-radius:50%;background:#3d5a99;
+                   animation:pulse 2s infinite"></span>
+      {{ active_batches|length }} active batch{{ active_batches|length|pluralize }}
+    </span>
+  </div>
+
+  {% if not active_batches %}
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
+              padding:60px 24px;text-align:center">
+    <div style="font-size:32px;margin-bottom:12px">🐔</div>
+    <div style="font-size:14px;font-weight:600;color:#1a2744;margin-bottom:6px">No active batches</div>
+    <div style="font-size:13px;color:#8a96a8">Add active batches to unlock AI analytics</div>
+  </div>
+  {% else %}
+
+  <!-- SECTION 1: Anomaly Detection -->
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
+              overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;
+                display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:#1a2744">Anomaly Detection</span>
+        {% if flags.anomaly %}
+        <span style="background:#d1fae5;color:#065f46;
+                     padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Active</span>
+        {% else %}
+        <span style="background:#f1f5f9;color:#8a96a8;
+                     padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Off</span>
+        {% endif %}
+      </div>
+      <svg style="width:18px;height:18px;color:#8a96a8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+    <div style="padding:16px">
+      {% if not flags.anomaly %}
+      <div style="text-align:center;padding:32px 0;color:#8a96a8">
+        <div style="font-size:24px;margin-bottom:8px">🔒</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Feature disabled</div>
+        <div style="font-size:12px">Enable <strong>ai_anomaly_detection</strong> flag in Admin → Waffle</div>
+      </div>
+      {% elif not anomaly_results %}
+      <div style="text-align:center;padding:32px 0;color:#8a96a8">
+        <div style="font-size:13px">Need 5+ days of mortality data to detect anomalies</div>
+      </div>
+      {% else %}
+      {% for result in anomaly_results %}
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;
+                  border-left:4px solid
+                  {% if result.severity == 'critical' %}#ef4444
+                  {% elif result.severity == 'warning' %}#f59e0b
+                  {% else %}#22c55e{% endif %};
+                  background:
+                  {% if result.severity == 'critical' %}#fef2f2
+                  {% elif result.severity == 'warning' %}#fffbeb
+                  {% else %}#f0fdf4{% endif %};
+                  border-radius:0 10px 10px 0;margin-bottom:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:#1a2744">
+            {{ result.batch.batch_name }}
+            <span style="font-weight:400;color:#8a96a8;font-size:11px">· {{ result.batch.farm.farm_name }}</span>
+          </div>
+          <div style="font-size:12px;color:#4a5568;margin-top:2px">{{ result.description }}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:16px;font-weight:700;color:
+                      {% if result.severity == 'critical' %}#ef4444
+                      {% elif result.severity == 'warning' %}#f59e0b
+                      {% else %}#22c55e{% endif %}">
+            z={{ result.z_score }}
+          </div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:
+                      {% if result.severity == 'critical' %}#ef4444
+                      {% elif result.severity == 'warning' %}#f59e0b
+                      {% else %}#22c55e{% endif %}">
+            {{ result.severity }}
+          </div>
+        </div>
+        <a href="{% url 'flocks:detail' result.batch.pk %}"
+           style="font-size:11px;font-weight:600;color:#3d5a99;
+                  white-space:nowrap;text-decoration:none">
+          View →
+        </a>
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- SECTION 2: Theft Detection -->
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
+              overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;
+                display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:#1a2744">Theft Detection</span>
+        {% if flags.theft %}
+        <span style="background:#d1fae5;color:#065f46;
+                     padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Active</span>
+        {% else %}
+        <span style="background:#f1f5f9;color:#8a96a8;
+                     padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Off</span>
+        {% endif %}
+      </div>
+    </div>
+    <div style="padding:16px">
+      {% if not flags.theft %}
+      <div style="text-align:center;padding:32px 0;color:#8a96a8">
+        <div style="font-size:24px;margin-bottom:8px">🔒</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Feature disabled</div>
+        <div style="font-size:12px">Enable <strong>ai_theft_detection</strong> flag in Admin → Waffle</div>
+      </div>
+      {% elif not theft_results %}
+      <div style="text-align:center;padding:32px 0;color:#8a96a8">
+        <div style="font-size:13px">No data available for reconciliation</div>
+      </div>
+      {% else %}
+      {% for result in theft_results %}
+      <div style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:600;color:#1a2744">
+            {{ result.batch.batch_name }}
+          </span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px;color:#8a96a8">{{ result.variance_pct }}% variance</span>
+            {% if result.flagged %}
+            <span style="background:#fef2f2;color:#ef4444;
+                         padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">⚠ Flagged</span>
+            {% else %}
+            <span style="background:#f0fdf4;color:#16a34a;
+                         padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">✓ OK</span>
+            {% endif %}
+          </div>
+        </div>
+        <div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden">
+          <div style="height:100%;border-radius:4px;
+                      background:{% if result.flagged %}#ef4444{% else %}#22c55e{% endif %};
+                      width:{% widthratio result.accounted result.initial_count 100 %}%">
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:#b0bac9">
+          <span>{{ result.accounted }} accounted of {{ result.initial_count }}</span>
+          {% if result.unaccounted > 0 %}
+          <span style="color:#ef4444">{{ result.unaccounted }} unaccounted</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- SECTION 3: Sale Timing (broiler only) -->
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
+              overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;
+                display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:#1a2744">Sale Timing</span>
+        <span style="background:#fef3c7;color:#92400e;
+                     padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Broiler only</span>
+        {% if flags.sale_timing %}
+        <span style="background:#d1fae5;color:#065f46;
+                     padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Active</span>
+        {% else %}
+        <span style="background:#f1f5f9;color:#8a96a8;
+                     padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Off</span>
+        {% endif %}
+      </div>
+    </div>
+    <div style="padding:16px">
+      {% if not flags.sale_timing %}
+      <div style="text-align:center;padding:32px 0;color:#8a96a8">
+        <div style="font-size:24px;margin-bottom:8px">🔒</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Feature disabled</div>
+        <div style="font-size:12px">Enable <strong>ai_sale_timing</strong> flag in Admin → Waffle</div>
+      </div>
+      {% elif not sale_timing_results %}
+      <div style="text-align:center;padding:32px 0;color:#8a96a8">
+        <div style="font-size:13px">No active broiler batches</div>
+      </div>
+      {% else %}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+        {% for result in sale_timing_results %}
+        <div style="border:1px solid
+                    {% if result.urgency == 'urgent' %}#fecaca
+                    {% elif result.urgency == 'now' %}#fed7aa
+                    {% else %}#bbf7d0{% endif %};
+                    border-radius:10px;padding:14px;
+                    background:
+                    {% if result.urgency == 'urgent' %}#fef2f2
+                    {% elif result.urgency == 'now' %}#fff7ed
+                    {% else %}#f0fdf4{% endif %}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:13px;font-weight:700;color:#1a2744">
+              {{ result.batch.batch_name }}
+            </span>
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;
+                         color:{% if result.urgency == 'urgent' %}#ef4444
+                         {% elif result.urgency == 'now' %}#f59e0b
+                         {% else %}#16a34a{% endif %}">
+              {% if result.urgency == 'urgent' %}Urgent
+              {% elif result.urgency == 'now' %}Sell Now
+              {% else %}Wait{% endif %}
+            </span>
+          </div>
+          <div style="font-size:12px;color:#4a5568;margin-bottom:8px">{{ result.message }}</div>
+          <div style="display:flex;gap:12px;font-size:11px;color:#8a96a8">
+            <span>Day {{ result.cycle_day }}</span>
+            {% if result.estimated_weight_kg %}
+            <span>~{{ result.estimated_weight_kg }}kg</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- SECTION 4: Egg Forecast -->
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
+              overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;
+                display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:#1a2744">Egg Forecast</span>
+        <span style="background:#ede9fe;color:#5b21b6;
+                     padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Prophet AI</span>
+        {% if flags.forecast %}
+        <span style="background:#d1fae5;color:#065f46;
+                     padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Active</span>
+        {% else %}
+        <span style="background:#f1f5f9;color:#8a96a8;
+                     padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600">Off</span>
+        {% endif %}
+      </div>
+    </div>
+    <div style="padding:16px">
+      {% if not flags.forecast %}
+      <div style="text-align:center;padding:32px 0;color:#8a96a8">
+        <div style="font-size:24px;margin-bottom:8px">🔒</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Feature disabled</div>
+        <div style="font-size:12px">Enable <strong>ai_egg_forecast</strong> flag in Admin → Waffle</div>
+      </div>
+      {% elif not forecast_result %}
+      <div style="text-align:center;padding:32px 0;color:#8a96a8">
+        <div style="font-size:13px">No active layer batches</div>
+      </div>
+      {% elif not forecast_result.available %}
+      <div style="text-align:center;padding:32px 0;color:#8a96a8">
+        <svg style="width:40px;height:40px;color:#d1d5db;margin:0 auto 12px" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">{{ forecast_result.reason }}</div>
+        <div style="font-size:12px">Log eggs for 7+ days to unlock the Prophet forecast</div>
+      </div>
+      {% else %}
+      <div style="height:200px;position:relative">
+        <canvas id="forecastChart"></canvas>
+      </div>
+      <script>
+      (function() {
+        var labels = {{ forecast_result.labels|safe }};
+        var predicted = {{ forecast_result.predicted|safe }};
+        var lower = {{ forecast_result.lower|safe }};
+        var upper = {{ forecast_result.upper|safe }};
+        var ctx = document.getElementById('forecastChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels.slice(0, 7),
+            datasets: [
+              {
+                label: 'Predicted HDP %',
+                data: predicted.slice(0, 7),
+                borderColor: '#3d5a99',
+                backgroundColor: 'rgba(61,90,153,0.08)',
+                fill: true, tension: 0.4,
+                pointRadius: 4, borderWidth: 2,
+              },
+              {
+                label: 'Upper bound',
+                data: upper.slice(0, 7),
+                borderColor: 'rgba(61,90,153,0.2)',
+                borderDash: [4, 4],
+                fill: false, tension: 0.4,
+                pointRadius: 0, borderWidth: 1,
+              },
+              {
+                label: 'Lower bound',
+                data: lower.slice(0, 7),
+                borderColor: 'rgba(61,90,153,0.2)',
+                borderDash: [4, 4],
+                fill: '-1',
+                backgroundColor: 'rgba(61,90,153,0.04)',
+                tension: 0.4, pointRadius: 0, borderWidth: 1,
+              }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#9ca3af' } },
+              y: {
+                grid: { color: '#f3f4f6' },
+                ticks: {
+                  font: { size: 10 }, color: '#9ca3af',
+                  callback: function(v) { return v + '%'; }
+                },
+                beginAtZero: false,
+              }
+            }
+          }
+        });
+      })();
+      </script>
+      {% endif %}
+    </div>
+  </div>
+
+  {% endif %}
+
+</div>
+{% endblock %}

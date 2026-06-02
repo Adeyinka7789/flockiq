@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from apps.farm.flocks.models import Batch
 from apps.infrastructure.core.rls import set_tenant_context
+from apps.infrastructure.core.views import TenantRequiredMixin
 
 from .models import AnomalyRecord
 from .serializers import (
@@ -161,6 +162,63 @@ class DiagnosisView(LoginRequiredMixin, View):
             result = DiagnosisEngine(org).diagnose(symptoms, batch=batch)
 
         return render(request, "analytics/_diagnosis_result.html", {"result": result})
+
+
+class AIAnalyticsPageView(TenantRequiredMixin, View):
+    """GET /analytics/ — Full AI analytics dashboard page."""
+
+    def get(self, request):
+        org = request.user.org
+
+        with set_tenant_context(org):
+            active_batches = list(
+                Batch.objects.filter(status="active").select_related("farm", "house")
+            )
+
+            anomaly_results = []
+            theft_results = []
+            sale_timing_results = []
+            forecast_result = None
+
+            for batch in active_batches:
+                if waffle.flag_is_active(request, "ai_anomaly_detection"):
+                    result = AnomalyDetectionService(org).check_mortality_anomaly(batch)
+                    if result.get("available") is not False:
+                        result["batch"] = batch
+                        anomaly_results.append(result)
+
+                if waffle.flag_is_active(request, "ai_theft_detection"):
+                    result = TheftDetectionService(org).reconcile_batch(batch)
+                    if result.get("available") is not False:
+                        result["batch"] = batch
+                        theft_results.append(result)
+
+                if batch.bird_type == "broiler" and waffle.flag_is_active(request, "ai_sale_timing"):
+                    result = SaleTimingService(org).get_recommendation(batch)
+                    if result.get("available") is not False:
+                        result["batch"] = batch
+                        sale_timing_results.append(result)
+
+            layer_batches = [b for b in active_batches if b.bird_type == "layer"]
+            if layer_batches and waffle.flag_is_active(request, "ai_egg_forecast"):
+                forecast_result = ProphetForecastService(org).forecast_egg_production(
+                    layer_batches[0]
+                )
+
+        context = {
+            "anomaly_results": anomaly_results,
+            "theft_results": theft_results,
+            "sale_timing_results": sale_timing_results,
+            "forecast_result": forecast_result,
+            "active_batches": active_batches,
+            "flags": {
+                "anomaly": waffle.flag_is_active(request, "ai_anomaly_detection"),
+                "theft": waffle.flag_is_active(request, "ai_theft_detection"),
+                "sale_timing": waffle.flag_is_active(request, "ai_sale_timing"),
+                "forecast": waffle.flag_is_active(request, "ai_egg_forecast"),
+            },
+        }
+        return render(request, "health/analytics/ai_analytics.html", context)
 
 
 # ── DRF API views ───────────────────────────────────────────────────────────────
