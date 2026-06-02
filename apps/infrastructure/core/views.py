@@ -1,4 +1,5 @@
 import json
+from datetime import date, timedelta
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import redirect_to_login
@@ -6,6 +7,8 @@ from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.views.generic import TemplateView
+
+from apps.infrastructure.core.rls import set_tenant_context
 
 
 class TenantRequiredMixin:
@@ -111,43 +114,103 @@ class DashboardView(TemplateView):
         ctx = super().get_context_data(**kwargs)
         org = getattr(self.request.user, "org", None)
 
+        today = date.today()
         farms_count = 0
-        active_batches_count = 0
+        total_active_batches = 0
         total_live_birds = 0
-        pending_alerts_count = 0
+        unread_alerts = 0
         active_batches = []
+        todays_eggs = 0
+        mortality_trend = []
+        egg_trend = []
+        upcoming_vaccinations = []
+        task_summary = {}
 
         if org:
-            try:
-                from apps.farm.farms.models import Farm
-                from apps.farm.flocks.models import Batch
-                from apps.infrastructure.notifications.models import NotificationLog
+            with set_tenant_context(org):
+                try:
+                    from apps.farm.farms.models import Farm
+                    from apps.farm.flocks.models import Batch
+                    from apps.infrastructure.notifications.models import NotificationLog
 
-                farms_count = Farm.objects.filter(org=org, is_active=True).count()
+                    farms_count = Farm.objects.filter(is_active=True).count()
+                    batch_qs = Batch.objects.filter(status=Batch.Status.ACTIVE)
+                    total_active_batches = batch_qs.count()
+                    total_live_birds = (
+                        batch_qs.aggregate(t=Sum("current_count"))["t"] or 0
+                    )
+                    active_batches = list(
+                        batch_qs.select_related("farm", "house")
+                        .order_by("-placement_date")[:5]
+                    )
+                    unread_alerts = NotificationLog.objects.filter(
+                        recipient=self.request.user,
+                        is_read=False,
+                    ).count()
+                except Exception:
+                    pass
 
-                batch_qs = Batch.objects.filter(org=org, status=Batch.Status.ACTIVE)
-                active_batches_count = batch_qs.count()
-                total_live_birds = (
-                    batch_qs.aggregate(t=Sum("current_count"))["t"] or 0
-                )
-                active_batches = list(
-                    batch_qs.select_related("farm", "house").order_by("-placement_date")[:5]
-                )
-                pending_alerts_count = NotificationLog.objects.filter(
-                    org=org,
-                    recipient=self.request.user,
-                    is_read=False,
-                ).count()
-            except Exception:
-                pass
+                try:
+                    from apps.production.production.models import EggProductionLog
+                    todays_eggs = (
+                        EggProductionLog.objects.filter(record_date=today)
+                        .aggregate(total=Sum("total_eggs"))["total"] or 0
+                    )
+                    for i in range(29, -1, -1):
+                        day = today - timedelta(days=i)
+                        total = (
+                            EggProductionLog.objects.filter(record_date=day)
+                            .aggregate(total=Sum("total_eggs"))["total"] or 0
+                        )
+                        egg_trend.append({"date": day.strftime("%d %b"), "total": total})
+                except Exception:
+                    egg_trend = [{"date": "", "total": 0}] * 30
+
+                try:
+                    from apps.farm.flocks.models import MortalityLog
+                    for i in range(29, -1, -1):
+                        day = today - timedelta(days=i)
+                        count = (
+                            MortalityLog.objects.filter(date=day)
+                            .aggregate(total=Sum("count"))["total"] or 0
+                        )
+                        mortality_trend.append({"date": day.strftime("%d %b"), "count": count})
+                except Exception:
+                    mortality_trend = [{"date": "", "count": 0}] * 30
+
+                try:
+                    from apps.health.health.models import VaccinationSchedule
+                    upcoming_vaccinations = list(
+                        VaccinationSchedule.objects.filter(
+                            status="scheduled",
+                            due_date__gte=today,
+                            due_date__lte=today + timedelta(days=7),
+                        )
+                        .select_related("batch__farm")
+                        .order_by("due_date")[:5]
+                    )
+                except Exception:
+                    pass
+
+                try:
+                    from apps.farm.tasks.services import TaskService
+                    task_summary = TaskService(org).get_task_summary()
+                except Exception:
+                    pass
 
         ctx.update(
             {
                 "farms_count": farms_count,
-                "active_batches_count": active_batches_count,
+                "total_active_batches": total_active_batches,
                 "total_live_birds": total_live_birds,
-                "pending_alerts_count": pending_alerts_count,
+                "unread_alerts": unread_alerts,
                 "active_batches": active_batches,
+                "today": today,
+                "todays_eggs": todays_eggs,
+                "mortality_trend": mortality_trend,
+                "egg_trend": egg_trend,
+                "upcoming_vaccinations": upcoming_vaccinations,
+                "task_summary": task_summary,
             }
         )
         return ctx

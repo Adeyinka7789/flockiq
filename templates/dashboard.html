@@ -56,7 +56,7 @@
             </svg>
           </div>
         </div>
-        <div class="text-3xl font-bold tabular-nums text-earth-900">{{ active_batches_count }}</div>
+        <div class="text-3xl font-bold tabular-nums text-earth-900">{{ total_active_batches }}</div>
         <p class="text-xs text-earth-400 mt-1">{{ farms_count }} farm{{ farms_count|pluralize }} active</p>
       </div>
     </a>
@@ -67,22 +67,22 @@
          hx-get="{% url 'notifications:bell' %}"
          hx-trigger="load, every 60s"
          hx-swap="none"
-         style="border-top: 3px solid {% if pending_alerts_count > 0 %}#dc2626{% else %}#6aaa57{% endif %}">
+         style="border-top: 3px solid {% if unread_alerts > 0 %}#dc2626{% else %}#6aaa57{% endif %}">
       <div class="p-5">
         <div class="flex items-start justify-between mb-3">
           <p class="text-xs font-semibold text-earth-500 uppercase tracking-wide">Today's Alerts</p>
           <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-               style="background:{% if pending_alerts_count > 0 %}#fee2e2{% else %}#edfae8{% endif %}">
+               style="background:{% if unread_alerts > 0 %}#fee2e2{% else %}#edfae8{% endif %}">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                 stroke="{% if pending_alerts_count > 0 %}#dc2626{% else %}#6aaa57{% endif %}" stroke-width="1.8">
+                 stroke="{% if unread_alerts > 0 %}#dc2626{% else %}#6aaa57{% endif %}" stroke-width="1.8">
               <path stroke-linecap="round" stroke-linejoin="round"
                     d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
             </svg>
           </div>
         </div>
         <div class="text-3xl font-bold tabular-nums
-                    {% if pending_alerts_count > 0 %}text-flock-red-600{% else %}text-earth-900{% endif %}">
-          <span id="dash-alert-count">{{ pending_alerts_count }}</span>
+                    {% if unread_alerts > 0 %}text-flock-red-600{% else %}text-earth-900{% endif %}">
+          <span id="dash-alert-count">{{ unread_alerts }}</span>
         </div>
         <p class="text-xs text-earth-400 mt-1">Unread notifications</p>
       </div>
@@ -232,5 +232,105 @@
     </div>
   </div>
 
+  <!-- 30-day trend charts -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:700;color:#1a2744">Mortality — last 30 days</span>
+        <span style="font-size:11px;color:#8a96a8">Daily deaths</span>
+      </div>
+      <div style="padding:16px;height:200px;position:relative">
+        <canvas id="mortalityChart"></canvas>
+      </div>
+    </div>
+
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:700;color:#1a2744">Egg Production — last 30 days</span>
+        <span style="font-size:11px;color:#8a96a8">Total eggs/day</span>
+      </div>
+      <div style="padding:16px;height:200px;position:relative">
+        <canvas id="eggChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  {% if upcoming_vaccinations %}
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;margin-top:16px;overflow:hidden">
+    <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9">
+      <span style="font-size:13px;font-weight:700;color:#1a2744">Upcoming Vaccinations (next 7 days)</span>
+    </div>
+    {% for vacc in upcoming_vaccinations %}
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 18px;border-bottom:1px solid #f8faff;font-size:13px">
+      <div>
+        <span style="font-weight:600;color:#1a2744">{{ vacc.vaccine_name }}</span>
+        <span style="color:#8a96a8;font-size:11px;margin-left:8px">{{ vacc.batch.batch_name }} · {{ vacc.batch.farm.name }}</span>
+      </div>
+      <span style="color:#3d5a99;font-weight:600;font-size:12px">{{ vacc.due_date|date:"M d" }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ mortality_trend|json_script:"mort-data" }}
+{{ egg_trend|json_script:"egg-data" }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var mortData = JSON.parse(document.getElementById('mort-data').textContent);
+  var eggData = JSON.parse(document.getElementById('egg-data').textContent);
+
+  var chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 9 }, color: '#9ca3af', maxTicksLimit: 8 }
+      },
+      y: {
+        grid: { color: '#f3f4f6' },
+        ticks: { font: { size: 9 }, color: '#9ca3af' },
+        beginAtZero: true,
+      }
+    }
+  };
+
+  new Chart(document.getElementById('mortalityChart'), {
+    type: 'bar',
+    data: {
+      labels: mortData.map(function(d) { return d.date; }),
+      datasets: [{
+        data: mortData.map(function(d) { return d.count; }),
+        backgroundColor: 'rgba(239,68,68,0.15)',
+        borderColor: '#ef4444',
+        borderWidth: 1.5,
+        borderRadius: 3,
+      }]
+    },
+    options: chartDefaults
+  });
+
+  new Chart(document.getElementById('eggChart'), {
+    type: 'line',
+    data: {
+      labels: eggData.map(function(d) { return d.date; }),
+      datasets: [{
+        data: eggData.map(function(d) { return d.total; }),
+        borderColor: '#8bc87a',
+        backgroundColor: 'rgba(139,200,122,0.08)',
+        fill: true, tension: 0.3,
+        pointRadius: 2, borderWidth: 2,
+      }]
+    },
+    options: chartDefaults
+  });
+});
+</script>
 {% endblock %}
