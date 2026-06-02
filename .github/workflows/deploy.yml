@@ -73,16 +73,23 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: |
-      github.ref == 'refs/heads/main' &&
-      secrets.VPS_HOST != '' &&
-      secrets.VPS_USER != '' &&
-      secrets.VPS_SSH_KEY != ''
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check VPS secrets configured
+        id: check_secrets
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "VPS secrets not configured — skipping deploy"
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy to VPS
+        if: steps.check_secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
