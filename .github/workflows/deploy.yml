@@ -1,0 +1,98 @@
+name: FlockIQ Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # ── Test ──────────────────────────────────────────────────────────────────
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements/development.txt
+
+      - name: Run tests
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.development
+          DATABASE_URL: sqlite:///test_db.sqlite3
+          SECRET_KEY: test-secret-key-for-ci
+          REDIS_URL: redis://localhost:6379/1
+        run: |
+          pytest --tb=short -q --co -q 2>/dev/null
+          pytest --tb=short -q 2>&1 | tail -5
+
+      - name: Check coverage
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.development
+          DATABASE_URL: sqlite:///test_db.sqlite3
+          SECRET_KEY: test-secret-key-for-ci
+          REDIS_URL: redis://localhost:6379/1
+        run: pytest --cov=apps --cov-fail-under=75 --tb=no -q
+
+  # ── Security Audit ────────────────────────────────────────────────────────
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install pip-audit bandit
+      - run: pip-audit -r requirements/production.txt
+      - run: bandit -r apps/ -ll --exclude apps/*/tests/
+
+  # ── Deploy (main branch push only) ───────────────────────────────────────
+  deploy:
+    name: Deploy to Production
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /www/wwwroot/flockiq
+            git pull origin main
+            source venv/bin/activate
+            pip install -r requirements/production.txt --quiet
+            python manage.py migrate --check || python manage.py migrate --noinput
+            python manage.py collectstatic --noinput --quiet
+            python manage.py verify_rls_policies
+            supervisorctl restart flockiq-gunicorn flockiq-celery flockiq-beat
+            echo "Deploy complete: $(date)"
+
+      - name: Health check
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            sleep 5
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8002/api/health/)
+            [ "$HTTP_STATUS" = "200" ] && echo "Health check passed" || (echo "Health check failed: HTTP $HTTP_STATUS" && exit 1)
