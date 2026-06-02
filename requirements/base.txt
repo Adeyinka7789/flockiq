@@ -28,7 +28,7 @@ django-import-export==4.*
 django-axes==6.5.*
 django-csp==3.8.*
 django-ratelimit==4.1.*
-cryptography==46.0.6
+cryptography==46.0.7
 
 # Audit & Logging
 django-auditlog==3.0.*
