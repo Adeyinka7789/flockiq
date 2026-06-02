@@ -63,6 +63,7 @@ openpyxl==3.1.*
 
 # Utilities
 python-decouple==3.8.*
+dj-database-url==2.2.*
 Faker==25.*
 factory-boy==3.3.*
 freezegun==1.5.*
