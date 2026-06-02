@@ -1,0 +1,62 @@
+{% if query and results %}
+<div class="search-results">
+  {% for result in results %}
+  <a href="{{ result.url }}" class="search-result-item"
+     onclick="document.getElementById('search-dropdown').style.display='none'">
+    <div class="search-result-icon"
+         style="background:{{ result.color }}20;color:{{ result.color }}">
+      {% if result.icon == 'farm' %}
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+        </svg>
+      {% elif result.icon == 'batch' %}
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <circle cx="8" cy="9" r="3"/>
+          <circle cx="16" cy="9" r="3"/>
+          <circle cx="12" cy="15" r="3"/>
+        </svg>
+      {% elif result.icon == 'health' %}
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      {% elif result.icon == 'task' %}
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/>
+        </svg>
+      {% else %}
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+        </svg>
+      {% endif %}
+    </div>
+    <div class="search-result-body">
+      <div class="search-result-title">{{ result.title }}</div>
+      <div class="search-result-sub">
+        <span class="search-result-type"
+              style="color:{{ result.color }}">
+          {{ result.type }}
+        </span>
+        · {{ result.subtitle }}
+      </div>
+    </div>
+    <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+         stroke="#c0c8d8" stroke-width="2" style="flex-shrink:0">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9 5l7 7-7 7"/>
+    </svg>
+  </a>
+  {% endfor %}
+</div>
+{% elif query and query|length >= 2 %}
+<div style="padding:20px;text-align:center;font-size:13px;color:#8a96a8">
+  No results for "{{ query }}"
+</div>
+{% endif %}

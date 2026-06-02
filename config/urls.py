@@ -11,10 +11,12 @@ from rest_framework_simplejwt.views import (
 
 from apps.infrastructure.accounts.views import WebLoginView, WebLogoutView, SignupView
 from apps.infrastructure.core.views import DashboardView
+from apps.infrastructure.core.search import GlobalSearchView
 
 urlpatterns = [
     # ── Web app shell (must be first) ────────────────────────────────────────
     path("", DashboardView.as_view(), name="dashboard"),
+    path("search/", GlobalSearchView.as_view(), name="global_search"),
     path("login/", WebLoginView.as_view(), name="login"),
     path("logout/", WebLogoutView.as_view(), name="logout"),
     path("signup/", SignupView.as_view(), name="signup"),
