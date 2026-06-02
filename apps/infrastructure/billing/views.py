@@ -4,7 +4,7 @@ import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import HttpResponse, HttpResponseBadRequest
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
@@ -150,11 +150,77 @@ class PaystackWebhookView(View):
         logger.warning("webhook.invoice_payment_failed", org=str(org.id))
 
 
-class BillingPageView(TenantRequiredMixin, View):
+class BillingPageView(LoginRequiredMixin, View):
     def get(self, request):
-        svc = BillingService(request.user.org)
-        summary = svc.get_billing_summary()
-        return render(request, "billing/billing_page.html", {"summary": summary})
+        if not request.user.org:
+            return render(request, "billing/billing_page.html", {"is_super_admin": True})
+
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(request.user.org):
+            service = BillingService(request.user.org)
+            summary = service.get_billing_summary()
+
+        return render(request, "billing/billing_page.html", {
+            **summary,
+            "expired": request.GET.get("expired"),
+        })
+
+
+class UpgradeRequestView(LoginRequiredMixin, View):
+    def post(self, request):
+        if not request.user.org:
+            return HttpResponse(status=403)
+        if request.user.role not in ["owner"]:
+            return HttpResponse(status=403)
+
+        plan_tier = request.POST.get("plan_tier")
+        if plan_tier not in ["monthly", "cycle", "yearly"]:
+            return HttpResponse("Invalid plan", status=400)
+
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(request.user.org):
+            service = BillingService(request.user.org)
+            result = service.request_upgrade(
+                plan_tier=plan_tier,
+                user_email=request.user.email,
+            )
+
+        if result["method"] == "paystack":
+            response = HttpResponse()
+            response["HX-Redirect"] = result["authorization_url"]
+            return response
+        elif result["method"] == "email":
+            response = HttpResponse()
+            response["HX-Trigger"] = json.dumps({
+                "showToast": {"message": result["message"], "type": "success"}
+            })
+            response["HX-Refresh"] = "true"
+            return response
+        else:
+            response = HttpResponse()
+            response["HX-Trigger"] = json.dumps({
+                "showToast": {"message": result.get("message", "Error"), "type": "error"}
+            })
+            return response
+
+
+class PaystackCallbackView(View):
+    def get(self, request):
+        reference = request.GET.get("reference")
+        if not reference:
+            return redirect("/billing/?error=missing_reference")
+
+        if not request.user.is_authenticated or not request.user.org:
+            return redirect("/login/")
+
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(request.user.org):
+            service = BillingService(request.user.org)
+            success = service.verify_and_activate(reference)
+
+        if success:
+            return redirect("/billing/?upgraded=1")
+        return redirect("/billing/?error=payment_failed")
 
 
 class BillingAPIView(APIView):

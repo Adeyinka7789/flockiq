@@ -1,114 +1,381 @@
 {% extends "base.html" %}
-
-{% block title %}Billing — FlockIQ{% endblock %}
-{% block breadcrumb %}Billing{% endblock %}
+{% block title %}Billing{% endblock %}
+{% block breadcrumb %}Billing & Subscription{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 py-8">
-  {% if request.GET.expired %}
-  <div style="background:#fee2e2;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;margin-bottom:20px">
-    <div style="font-weight:700;color:#dc2626;margin-bottom:4px">Your trial has expired</div>
+<style>
+  .billing-wrap { max-width: 900px; margin: 0 auto; }
+
+  .billing-hero {
+    background: linear-gradient(135deg, #3d5a99, #5b8dd9);
+    border-radius: 16px; padding: 24px 28px;
+    color: white; margin-bottom: 20px;
+    display: flex; align-items: center;
+    justify-content: space-between;
+    position: relative; overflow: hidden;
+  }
+  .billing-hero::after {
+    content: '';
+    position: absolute;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    right: -40px; top: -60px;
+  }
+  .billing-plan-name {
+    font-size: 13px; font-weight: 600;
+    opacity: 0.7; text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 6px;
+  }
+  .billing-plan-tier {
+    font-size: 28px; font-weight: 800;
+    letter-spacing: -0.3px; margin-bottom: 4px;
+  }
+  .billing-plan-sub {
+    font-size: 13px; opacity: 0.7;
+  }
+  .billing-trial-badge {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px; padding: 14px 20px;
+    text-align: center; z-index: 1;
+    min-width: 120px;
+  }
+  .billing-trial-num {
+    font-size: 36px; font-weight: 800;
+    display: block; line-height: 1;
+  }
+  .billing-trial-lbl {
+    font-size: 11px; opacity: 0.7;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+
+  .billing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px; margin-bottom: 16px;
+  }
+
+  .billing-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+  }
+  .billing-card-hd {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px; font-weight: 700; color: #1a2744;
+  }
+  .billing-card-body { padding: 18px; }
+
+  .usage-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f8faff;
+    font-size: 13px;
+  }
+  .usage-row:last-child { border-bottom: none; }
+  .usage-label { color: #4a5568; }
+  .usage-val { font-weight: 700; color: #1a2744; }
+
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .plan-option {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px; padding: 16px;
+    cursor: pointer; transition: all 0.15s;
+    text-align: center;
+    position: relative;
+  }
+  .plan-option:hover {
+    border-color: #3d5a99;
+    background: #f4f7fe;
+  }
+  .plan-option.current {
+    border-color: #8bc87a;
+    background: #edfae8;
+  }
+  .plan-option-name {
+    font-size: 14px; font-weight: 700;
+    color: #1a2744; margin-bottom: 4px;
+  }
+  .plan-option-price {
+    font-size: 20px; font-weight: 800;
+    color: #3d5a99; margin-bottom: 8px;
+  }
+  .plan-option-desc {
+    font-size: 11px; color: #8a96a8;
+    line-height: 1.5;
+  }
+  .plan-upgrade-btn {
+    width: 100%; margin-top: 12px;
+    padding: 9px; border-radius: 8px;
+    font-size: 12px; font-weight: 700;
+    border: none; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .plan-upgrade-btn.primary {
+    background: #3d5a99; color: white;
+  }
+  .plan-upgrade-btn.primary:hover { background: #2d4578; }
+  .plan-upgrade-btn.current-plan {
+    background: #edfae8; color: #166534;
+    border: 1px solid #8bc87a; cursor: default;
+  }
+
+  .payment-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 11px 18px;
+    border-bottom: 1px solid #f8faff;
+    font-size: 13px;
+  }
+  .payment-row:last-child { border-bottom: none; }
+</style>
+
+<div class="billing-wrap">
+
+  {% if is_super_admin %}
+  <div style="text-align:center;padding:60px">
+    <h3 style="color:#1a2744;margin-bottom:8px">Super Admin Account</h3>
+    <p style="color:#8a96a8;font-size:13px">
+      Manage tenant billing via
+      <a href="/admin/tenants/organization/" style="color:#3d5a99">Django Admin</a>
+    </p>
+  </div>
+
+  {% else %}
+
+  {% if expired %}
+  <div style="background:#fee2e2;border:1px solid #fecaca;
+              border-radius:12px;padding:16px 20px;margin-bottom:16px">
+    <div style="font-weight:700;color:#dc2626;margin-bottom:4px">
+      Your trial has expired
+    </div>
     <div style="font-size:13px;color:#dc2626">
-      Upgrade to a paid plan to continue using FlockIQ.
-      Your data is safe and will be available when you upgrade.
+      Upgrade to continue using FlockIQ. Your data is safe.
     </div>
   </div>
   {% endif %}
-  <h1 class="text-2xl font-bold text-gray-900 mb-6">Billing &amp; Subscription</h1>
 
-  <!-- Current Plan -->
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Current Plan</h2>
-    {% if summary.plan %}
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xl font-bold text-green-600">{{ summary.plan.name }}</p>
-          <p class="text-sm text-gray-500 mt-1">
-            ₦{{ summary.plan.amount_naira|floatformat:0 }} / {{ summary.plan.billing_interval }}
-          </p>
-        </div>
-        <span class="px-3 py-1 rounded-full text-sm font-medium
-          {% if summary.org.subscription_status == 'active' %}bg-green-100 text-green-700
-          {% elif summary.org.subscription_status == 'trial' %}bg-blue-100 text-blue-700
-          {% else %}bg-gray-100 text-gray-600{% endif %}">
-          {{ summary.org.subscription_status|title }}
-        </span>
-      </div>
-      {% if summary.plan.features %}
-        <ul class="mt-4 space-y-1">
-          {% for feature in summary.plan.features %}
-            <li class="flex items-center gap-2 text-sm text-gray-600">
-              <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-              {{ feature }}
-            </li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% else %}
-      <p class="text-gray-500">No active plan found. Please contact support.</p>
-    {% endif %}
-  </div>
-
-  <!-- Active Cycle Subscriptions -->
-  {% if summary.active_cycle_subscriptions %}
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Active Batch Subscriptions</h2>
-    <ul class="divide-y divide-gray-50">
-      {% for sub in summary.active_cycle_subscriptions %}
-        <li class="py-3 flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium text-gray-800">Batch {{ sub.batch_id }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">Activated {{ sub.activated_at|date:"d M Y" }}</p>
-          </div>
-          <span class="px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-            {{ sub.status|title }}
-          </span>
-        </li>
-      {% endfor %}
-    </ul>
+  {% if request.GET.upgraded %}
+  <div style="background:#edfae8;border:1px solid #8bc87a;
+              border-radius:12px;padding:16px 20px;margin-bottom:16px">
+    <div style="font-weight:700;color:#166534;margin-bottom:4px">
+      Plan upgraded successfully!
+    </div>
+    <div style="font-size:13px;color:#166534">
+      Your new plan is now active.
+    </div>
   </div>
   {% endif %}
 
-  <!-- Payment History -->
-  <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-    <h2 class="text-lg font-semibold text-gray-800 mb-4">Payment History</h2>
-    {% if summary.payment_history %}
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-left text-xs text-gray-500 uppercase border-b border-gray-100">
-              <th class="pb-2 pr-4">Reference</th>
-              <th class="pb-2 pr-4">Amount</th>
-              <th class="pb-2 pr-4">Channel</th>
-              <th class="pb-2 pr-4">Status</th>
-              <th class="pb-2">Date</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-50">
-            {% for payment in summary.payment_history %}
-              <tr class="hover:bg-gray-50">
-                <td class="py-3 pr-4 font-mono text-xs text-gray-600">{{ payment.reference }}</td>
-                <td class="py-3 pr-4">₦{{ payment.amount_kobo|floatformat:0 }}</td>
-                <td class="py-3 pr-4 capitalize">{{ payment.channel|default:"—" }}</td>
-                <td class="py-3 pr-4">
-                  <span class="px-2 py-0.5 rounded text-xs font-medium
-                    {% if payment.status == 'success' %}bg-green-100 text-green-700
-                    {% elif payment.status == 'failed' %}bg-red-100 text-red-700
-                    {% else %}bg-gray-100 text-gray-600{% endif %}">
-                    {{ payment.status|title }}
-                  </span>
-                </td>
-                <td class="py-3 text-gray-500">{{ payment.paid_at|date:"d M Y"|default:"—" }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  <!-- Current plan hero -->
+  <div class="billing-hero">
+    <div style="z-index:1">
+      <div class="billing-plan-name">Current Plan</div>
+      <div class="billing-plan-tier">
+        {{ org.plan_tier|title }}
+        {% if is_active %}
+        <span style="font-size:13px;font-weight:600;
+                     background:rgba(139,200,122,0.2);
+                     padding:3px 10px;border-radius:20px;
+                     margin-left:8px">
+          ● Active
+        </span>
+        {% endif %}
       </div>
-    {% else %}
-      <p class="text-gray-400 text-sm">No payment records yet.</p>
+      <div class="billing-plan-sub">
+        {% if plan %}
+          ₦{{ plan.amount_naira|floatformat:0 }} / {{ plan.billing_interval }}
+        {% elif is_trial %}
+          Free trial — no card required
+        {% endif %}
+      </div>
+    </div>
+    {% if is_trial and days_remaining is not None %}
+    <div class="billing-trial-badge" style="z-index:1">
+      <span class="billing-trial-num">{{ days_remaining }}</span>
+      <span class="billing-trial-lbl">days left</span>
+    </div>
     {% endif %}
   </div>
+
+  <!-- Usage + Quick actions -->
+  <div class="billing-grid">
+
+    <div class="billing-card">
+      <div class="billing-card-hd">Current Usage</div>
+      <div class="billing-card-body">
+        <div class="usage-row">
+          <span class="usage-label">Farms</span>
+          <span class="usage-val">{{ farm_count }}</span>
+        </div>
+        <div class="usage-row">
+          <span class="usage-label">Active Batches</span>
+          <span class="usage-val">{{ active_batches }}</span>
+        </div>
+        <div class="usage-row">
+          <span class="usage-label">Plan</span>
+          <span class="usage-val">{{ org.plan_tier|title }}</span>
+        </div>
+        <div class="usage-row">
+          <span class="usage-label">Status</span>
+          <span class="usage-val"
+                style="color:{% if is_active %}#166534{% else %}#dc2626{% endif %}">
+            {{ org.subscription_status|title }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="billing-card">
+      <div class="billing-card-hd">Quick Actions</div>
+      <div class="billing-card-body"
+           style="display:flex;flex-direction:column;gap:10px">
+        <a href="mailto:{{ settings.ADMIN_EMAIL }}"
+           style="display:block;padding:11px 14px;
+                  background:#f4f7fe;border:1px solid #e2e8f0;
+                  border-radius:10px;font-size:13px;font-weight:600;
+                  color:#3d5a99;text-decoration:none;text-align:center">
+          Contact Support
+        </a>
+        <a href="https://wa.me/2348000000000"
+           style="display:block;padding:11px 14px;
+                  background:#edfae8;border:1px solid #8bc87a;
+                  border-radius:10px;font-size:13px;font-weight:600;
+                  color:#166534;text-decoration:none;text-align:center">
+          WhatsApp Support
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Upgrade plans -->
+  {% if request.user.role == 'owner' %}
+  <div class="billing-card" style="margin-bottom:16px">
+    <div class="billing-card-hd">
+      {% if is_trial %}Upgrade Your Plan{% else %}Change Plan{% endif %}
+    </div>
+    <div class="billing-card-body">
+      <div class="plans-grid">
+
+        <!-- Monthly -->
+        <div class="plan-option {% if org.plan_tier == 'monthly' %}current{% endif %}">
+          <div class="plan-option-name">Monthly</div>
+          <div class="plan-option-price">₦30,000</div>
+          <div class="plan-option-desc">
+            Up to 3 farms · All features · SMS alerts
+          </div>
+          {% if org.plan_tier == 'monthly' %}
+          <button class="plan-upgrade-btn current-plan">✓ Current Plan</button>
+          {% else %}
+          <button class="plan-upgrade-btn primary"
+                  hx-post="{% url 'billing:upgrade_request' %}"
+                  hx-vals='{"plan_tier": "monthly"}'
+                  hx-target="body"
+                  hx-swap="none"
+                  hx-confirm="Upgrade to Monthly plan for ₦30,000/month?">
+            Upgrade →
+          </button>
+          {% endif %}
+        </div>
+
+        <!-- Cycle -->
+        <div class="plan-option {% if org.plan_tier == 'cycle' %}current{% endif %}">
+          <div class="plan-option-name">Cycle</div>
+          <div class="plan-option-price">₦15,000</div>
+          <div class="plan-option-desc">
+            Per broiler batch · Pay as you go
+          </div>
+          {% if org.plan_tier == 'cycle' %}
+          <button class="plan-upgrade-btn current-plan">✓ Current Plan</button>
+          {% else %}
+          <button class="plan-upgrade-btn primary"
+                  hx-post="{% url 'billing:upgrade_request' %}"
+                  hx-vals='{"plan_tier": "cycle"}'
+                  hx-target="body"
+                  hx-swap="none"
+                  hx-confirm="Switch to Cycle plan?">
+            Select →
+          </button>
+          {% endif %}
+        </div>
+
+        <!-- Yearly -->
+        <div class="plan-option {% if org.plan_tier == 'yearly' %}current{% endif %}">
+          <div class="plan-option-name">Yearly</div>
+          <div class="plan-option-price">₦300,000</div>
+          <div class="plan-option-desc">
+            Unlimited farms · 2 months free · White-label
+          </div>
+          {% if org.plan_tier == 'yearly' %}
+          <button class="plan-upgrade-btn current-plan">✓ Current Plan</button>
+          {% else %}
+          <button class="plan-upgrade-btn primary"
+                  hx-post="{% url 'billing:upgrade_request' %}"
+                  hx-vals='{"plan_tier": "yearly"}'
+                  hx-target="body"
+                  hx-swap="none"
+                  hx-confirm="Upgrade to Yearly plan for ₦300,000/year?">
+            Upgrade →
+          </button>
+          {% endif %}
+        </div>
+
+      </div>
+
+      {% if not settings.PAYSTACK_SECRET_KEY %}
+      <div style="margin-top:16px;padding:12px 16px;
+                  background:#f4f7fe;border-radius:10px;
+                  font-size:12px;color:#4a5568;text-align:center">
+        Clicking upgrade will send a request to our team.
+        We will activate your plan within 24 hours.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Payment history -->
+  <div class="billing-card">
+    <div class="billing-card-hd">Payment History</div>
+    {% if payments %}
+      {% for payment in payments %}
+      <div class="payment-row">
+        <div>
+          <div style="font-weight:600;color:#1a2744;font-size:13px">
+            {{ payment.reference }}
+          </div>
+          <div style="font-size:11px;color:#8a96a8;margin-top:1px">
+            {{ payment.created_at|date:"M d, Y" }}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:700;color:#1a2744;font-size:13px">
+            ₦{{ payment.amount_kobo|floatformat:0 }}
+          </div>
+          <span style="font-size:11px;font-weight:600;padding:2px 8px;
+                       border-radius:20px;
+                       {% if payment.status == 'success' %}
+                       background:#dcfce7;color:#166534
+                       {% else %}background:#fee2e2;color:#dc2626{% endif %}">
+            {{ payment.status|title }}
+          </span>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div style="padding:32px;text-align:center;
+                  color:#8a96a8;font-size:13px">
+        No payment records yet
+      </div>
+    {% endif %}
+  </div>
+
+  {% endif %}
 </div>
 {% endblock %}

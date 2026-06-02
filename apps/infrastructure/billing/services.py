@@ -65,7 +65,12 @@ class PaystackService:
     ) -> dict:
         log = logger.bind(action="paystack.initialize_transaction", reference=reference)
         try:
-            body = {"email": email, "amount": amount_kobo, "reference": reference}
+            body = {
+                "email": email,
+                "amount": amount_kobo,
+                "reference": reference,
+                "callback_url": f"{settings.SITE_URL}/billing/verify/",
+            }
             if metadata:
                 body["metadata"] = metadata
             resp = requests.post(
@@ -265,18 +270,153 @@ class BillingService(BaseService):
         return record
 
     def get_billing_summary(self) -> dict:
+        from django.utils import timezone as tz
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.farm.farms.models import Farm
+        from apps.farm.flocks.models import Batch
+
+        org = self.org
+        days_remaining = None
+        if org.trial_ends_at:
+            delta = org.trial_ends_at - tz.now()
+            days_remaining = max(0, delta.days)
+
         plan = self.get_active_plan()
         payments = list(
-            PaymentRecord.objects.filter(org=self.org)
-            .order_by("-created_at")[:10]
+            PaymentRecord.objects.filter(org=org).order_by("-created_at")[:10]
         )
-        active_subs = list(
-            CycleSubscription.objects.filter(org=self.org, status="active")
-        )
+
+        with set_tenant_context(org):
+            farm_count = Farm.objects.count()
+            active_batches = Batch.objects.filter(status="active").count()
+
         return {
+            "org": org,
             "plan": plan,
-            "org": self.org,
+            "days_remaining": days_remaining,
+            "payments": payments,
+            "farm_count": farm_count,
+            "active_batches": active_batches,
+            "is_trial": org.plan_tier == "trial",
+            "is_active": org.subscription_status == "active",
+            # legacy keys kept for BillingAPIView
             "payment_history": payments,
-            "active_cycle_subscriptions": active_subs,
-            "next_billing_date": None,
+            "active_cycle_subscriptions": list(
+                CycleSubscription.objects.filter(org=org, status="active")
+            ),
         }
+
+    def request_upgrade(self, plan_tier: str, user_email: str) -> dict:
+        import secrets
+
+        plan = BillingPlan.objects.filter(
+            plan_tier=plan_tier, is_active=True
+        ).first()
+        if not plan:
+            return {"method": "error", "message": "Plan not found"}
+
+        if settings.PAYSTACK_SECRET_KEY:
+            reference = f"FIQ-{secrets.token_hex(8).upper()}"
+            result = PaystackService().initialize_transaction(
+                email=user_email,
+                amount_kobo=plan.amount_kobo,
+                reference=reference,
+                metadata={
+                    "org_id": str(self.org.id),
+                    "plan_tier": plan_tier,
+                    "org_name": self.org.name,
+                },
+            )
+            if result.get("status"):
+                return {
+                    "method": "paystack",
+                    "authorization_url": result["data"]["authorization_url"],
+                    "reference": reference,
+                }
+            return {"method": "error", "message": "Payment initialization failed"}
+
+        self._send_upgrade_request_email(plan_tier, plan, user_email)
+        return {
+            "method": "email",
+            "message": (
+                f"Upgrade request sent. Our team will activate your "
+                f"{plan_tier} plan within 24 hours."
+            ),
+        }
+
+    def _send_upgrade_request_email(self, plan_tier: str, plan, user_email: str) -> None:
+        from django.core.mail import send_mail
+
+        admin_subject = f"[FlockIQ] Upgrade Request — {self.org.name}"
+        admin_body = (
+            f"New upgrade request from FlockIQ:\n\n"
+            f"Organisation: {self.org.name}\n"
+            f"Subdomain: {self.org.subdomain}.flockiq.com\n"
+            f"Owner Email: {user_email}\n"
+            f"Requested Plan: {plan_tier.title()}\n"
+            f"Plan Price: ₦{plan.amount_kobo // 100:,}\n\n"
+            f"To upgrade this tenant:\n"
+            f"1. Go to Django Admin: /admin/tenants/organization/\n"
+            f"2. Find {self.org.name}\n"
+            f"3. Set plan_tier = {plan_tier}\n"
+            f"4. Set subscription_status = active\n"
+            f"5. Save\n\n"
+            f"FlockIQ Admin System"
+        )
+        send_mail(
+            subject=admin_subject,
+            message=admin_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[settings.ADMIN_EMAIL],
+            fail_silently=True,
+        )
+
+        tenant_body = (
+            f"Hi {self.org.owner_name or 'there'},\n\n"
+            f"We have received your request to upgrade to the {plan_tier.title()} plan.\n\n"
+            f"Our team will activate your account within 24 hours.\n"
+            f"You will receive a confirmation email when your plan is active.\n\n"
+            f"If you have any questions, reply to this email or contact us on WhatsApp.\n\n"
+            f"— The FlockIQ Team"
+        )
+        send_mail(
+            subject="Your FlockIQ upgrade request has been received",
+            message=tenant_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user_email],
+            fail_silently=True,
+        )
+        self.logger.info("billing.upgrade_email_sent", org=str(self.org.id), plan_tier=plan_tier)
+
+    @transaction.atomic
+    def verify_and_activate(self, reference: str) -> bool:
+        result = PaystackService().verify_transaction(reference)
+        if not result.get("status"):
+            return False
+
+        data = result.get("data", {})
+        if data.get("status") != "success":
+            return False
+
+        metadata = data.get("metadata", {})
+        plan_tier = metadata.get("plan_tier")
+        if not plan_tier:
+            return False
+
+        self.org.plan_tier = plan_tier
+        self.org.subscription_status = "active"
+        self.org.save(update_fields=["plan_tier", "subscription_status"])
+
+        PaymentRecord.objects.get_or_create(
+            org=self.org,
+            reference=reference,
+            defaults={
+                "amount_kobo": data.get("amount", 0),
+                "status": "success",
+                "channel": data.get("channel", ""),
+                "paystack_transaction_id": str(data.get("id", "")),
+                "paid_at": timezone.now(),
+            },
+        )
+        self.logger.info("billing.plan_activated", org=str(self.org.id), plan_tier=plan_tier)
+        return True
