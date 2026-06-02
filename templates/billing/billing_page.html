@@ -5,6 +5,15 @@
 
 {% block content %}
 <div class="max-w-4xl mx-auto px-4 py-8">
+  {% if request.GET.expired %}
+  <div style="background:#fee2e2;border:1px solid #fecaca;border-radius:12px;padding:16px 20px;margin-bottom:20px">
+    <div style="font-weight:700;color:#dc2626;margin-bottom:4px">Your trial has expired</div>
+    <div style="font-size:13px;color:#dc2626">
+      Upgrade to a paid plan to continue using FlockIQ.
+      Your data is safe and will be available when you upgrade.
+    </div>
+  </div>
+  {% endif %}
   <h1 class="text-2xl font-bold text-gray-900 mb-6">Billing &amp; Subscription</h1>
 
   <!-- Current Plan -->

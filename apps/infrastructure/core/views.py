@@ -66,6 +66,22 @@ class DashboardView(TemplateView):
             return self.super_admin_view(request)
         if not request.user.org:
             return self.render_landing(request)
+
+        # Handle "Skip onboarding" — mark complete and reload cleanly
+        if request.GET.get('skip') == '1':
+            org = request.user.org
+            org.onboarding_complete = True
+            org.save(update_fields=['onboarding_complete', 'updated_at'])
+            return redirect('/')
+
+        # Redirect new tenants to the onboarding wizard when no farms exist
+        if not request.user.org.onboarding_complete:
+            from apps.farm.farms.models import Farm
+            from apps.infrastructure.core.rls import set_tenant_context
+            with set_tenant_context(request.user.org):
+                if not Farm.objects.exists():
+                    return redirect('/onboarding/')
+
         return super().dispatch(request, *args, **kwargs)
 
     def render_landing(self, request):

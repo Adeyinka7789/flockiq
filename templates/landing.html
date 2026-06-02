@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -80,7 +81,16 @@
       justify-content: center;
       position: relative;
       overflow: hidden;
-      padding: 100px 5% 80px;
+      padding: 100px 5% 120px;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 120px;
+      background: linear-gradient(to bottom, transparent, #f4f7fe);
+      pointer-events: none;
+      z-index: 2;
     }
     .hero-grid {
       position: absolute;
@@ -575,6 +585,179 @@
       font-size: 12px; color: rgba(255,255,255,0.3);
     }
 
+    /* SCREENSHOT */
+    .screenshot-section {
+      background: var(--white);
+      padding: 80px 5% 60px;
+      overflow: hidden;
+    }
+    .screenshot-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .screenshot-label {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .browser-frame {
+      background: white;
+      border-radius: 12px;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,0.06),
+        0 20px 60px rgba(61,90,153,0.12),
+        0 4px 12px rgba(0,0,0,0.06);
+      overflow: hidden;
+      margin-bottom: 40px;
+      transform: perspective(1200px) rotateX(2deg);
+      transition: transform 0.4s ease;
+    }
+    .browser-frame:hover {
+      transform: perspective(1200px) rotateX(0deg);
+    }
+    .browser-bar {
+      background: #f1f3f4;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .browser-dots { display: flex; gap: 6px; }
+    .browser-dots span {
+      width: 11px; height: 11px;
+      border-radius: 50%;
+    }
+    .browser-url {
+      flex: 1;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: #8a96a8;
+      text-align: center;
+    }
+    .browser-screen {
+      background: #f4f7fe;
+      min-height: 200px;
+    }
+    .screenshot-callouts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .callout {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 20px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      transition: all 0.2s;
+    }
+    .callout:hover {
+      border-color: var(--navy);
+      background: white;
+    }
+    .callout-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .callout-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+    .callout-desc {
+      font-size: 13px;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+    @media (max-width: 768px) {
+      .screenshot-callouts { grid-template-columns: 1fr; }
+      .browser-frame { transform: none; }
+    }
+
+    /* ABOUT */
+    .about {
+      background: var(--bg);
+      padding: 80px 5%;
+    }
+    .about-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: start;
+    }
+    .about-badges {
+      display: flex;
+      gap: 20px;
+    }
+    .about-badge {
+      text-align: center;
+      padding: 14px 20px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      min-width: 80px;
+    }
+    .about-badge-val {
+      display: block;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--navy);
+      margin-bottom: 3px;
+    }
+    .about-badge-lbl {
+      font-size: 11px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+    .about-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      transition: all 0.2s;
+    }
+    .about-card:hover {
+      border-color: var(--navy);
+      transform: translateX(4px);
+    }
+    .about-card-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .about-card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+    .about-card-desc {
+      font-size: 13px;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+    @media (max-width: 768px) {
+      .about-inner { grid-template-columns: 1fr; gap: 32px; }
+      .about-badges { flex-wrap: wrap; }
+    }
+
     /* MOBILE */
     @media (max-width: 640px) {
       .nav-links { display: none; }
@@ -595,6 +778,7 @@
       <li><a href="#features">Features</a></li>
       <li><a href="#how">How it works</a></li>
       <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#about">About</a></li>
     </ul>
     <div class="nav-cta">
       <a href="/login/" class="btn-outline">Sign in</a>
@@ -679,6 +863,92 @@
           Trusted by farms across Lagos, Ibadan, Kano &amp; Abuja
         </span>
       </div>
+    </div>
+  </section>
+
+  <!-- SCREENSHOT -->
+  <section class="screenshot-section">
+    <div class="screenshot-inner">
+
+      <div class="screenshot-label reveal-scroll">
+        <div class="section-label">THE PLATFORM</div>
+        <h2 class="section-title">
+          Everything in one intelligent dashboard
+        </h2>
+        <p class="section-sub">
+          Real farm data. Real-time alerts. Built for the field.
+        </p>
+      </div>
+
+      <div class="browser-frame reveal-scroll">
+        <div class="browser-bar">
+          <div class="browser-dots">
+            <span style="background:#ff5f57"></span>
+            <span style="background:#febc2e"></span>
+            <span style="background:#28c840"></span>
+          </div>
+          <div class="browser-url">app.flockiq.com/dashboard</div>
+        </div>
+        <div class="browser-screen">
+          <img src="{% static 'images/screenshot.png' %}"
+               alt="FlockIQ Dashboard"
+               style="width:100%;height:auto;display:block;
+                      border-radius:0 0 10px 10px"
+               onerror="this.style.display='none'">
+        </div>
+      </div>
+
+      <div class="screenshot-callouts reveal-scroll">
+        <div class="callout">
+          <div class="callout-icon" style="background:#e8eef8">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+                 stroke="#3d5a99" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="callout-title">Live metrics</div>
+            <div class="callout-desc">
+              Bird count, mortality rate, and production
+              update in real time as your team logs data.
+            </div>
+          </div>
+        </div>
+        <div class="callout">
+          <div class="callout-icon" style="background:#edfae8">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+                 stroke="#6aaa57" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+          </div>
+          <div>
+            <div class="callout-title">Instant alerts</div>
+            <div class="callout-desc">
+              AI detects anomalies and sends SMS alerts
+              before small problems become outbreaks.
+            </div>
+          </div>
+        </div>
+        <div class="callout">
+          <div class="callout-icon" style="background:#fef3c7">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+                 stroke="#d97706" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 18h.01M8 21h8a2 2 0 002-2v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2a2 2 0 002 2zM12 3v4m0 0l-2-2m2 2l2-2"/>
+            </svg>
+          </div>
+          <div>
+            <div class="callout-title">Works offline</div>
+            <div class="callout-desc">
+              Log mortality, eggs, and feed from the field
+              with no internet. Syncs when you reconnect.
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -969,6 +1239,102 @@
     </a>
   </section>
 
+  <!-- ABOUT -->
+  <section class="about" id="about">
+    <div class="about-inner">
+      <div class="about-left">
+        <div class="section-label">About FlockIQ</div>
+        <h2 class="section-title" style="text-align:left">
+          Built by farmers' tech — for farmers
+        </h2>
+        <p style="font-size:15px;color:var(--text2);line-height:1.8;
+                  margin-bottom:16px">
+          FlockIQ is built by
+          <strong style="color:var(--text)">ADM Tech Hub</strong>,
+          a Lagos-based software engineering agency. We built FlockIQ
+          after seeing Nigerian poultry farmers lose millions every year
+          to problems that technology could prevent.
+        </p>
+        <p style="font-size:15px;color:var(--text2);line-height:1.8;
+                  margin-bottom:24px">
+          We are not a foreign company adapting a generic product.
+          FlockIQ is designed from scratch for Nigerian farming realities —
+          intermittent power, mobile-first farmers, Naira pricing,
+          local disease patterns, and local markets.
+        </p>
+        <div class="about-badges">
+          <div class="about-badge">
+            <span class="about-badge-val">2026</span>
+            <span class="about-badge-lbl">Founded</span>
+          </div>
+          <div class="about-badge">
+            <span class="about-badge-val">Lagos</span>
+            <span class="about-badge-lbl">Headquarters</span>
+          </div>
+          <div class="about-badge">
+            <span class="about-badge-val">W. Africa</span>
+            <span class="about-badge-lbl">Market</span>
+          </div>
+        </div>
+      </div>
+      <div class="about-right">
+        <div class="about-card">
+          <div class="about-card-icon" style="background:#e8eef8">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"
+                 stroke="#3d5a99" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="about-card-title">Our Mission</div>
+            <div class="about-card-desc">
+              To give every Nigerian poultry farmer — from smallholder
+              to enterprise — the intelligence tools that only large
+              agribusinesses could previously afford.
+            </div>
+          </div>
+        </div>
+        <div class="about-card">
+          <div class="about-card-icon" style="background:#edfae8">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"
+                 stroke="#6aaa57" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="about-card-title">Who We Serve</div>
+            <div class="about-card-desc">
+              Layer and broiler farmers across Nigeria and West Africa.
+              From 200-bird backyard farms to 100,000-bird commercial
+              operations and multi-farm enterprises.
+            </div>
+          </div>
+        </div>
+        <div class="about-card">
+          <div class="about-card-icon" style="background:#fef3c7">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24"
+                 stroke="#d97706" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="about-card-title">Get in Touch</div>
+            <div class="about-card-desc">
+              Questions about FlockIQ? Want a demo for your farm?<br>
+              <a href="https://wa.me/2348000000000"
+                 style="color:var(--navy);font-weight:600;text-decoration:none">
+                Chat us on WhatsApp &rarr;
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- FOOTER -->
   <footer class="footer">
     <div class="footer-top">
@@ -1028,7 +1394,7 @@ const revealObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.12 });
 
 document.querySelectorAll(
-  '.pain-card, .feature-card, .step, .plan-card'
+  '.pain-card, .feature-card, .step, .plan-card, .about-card, .about-badge, .reveal-scroll'
 ).forEach(el => {
   el.style.opacity = '0';
   el.style.transform = 'translateY(40px)';

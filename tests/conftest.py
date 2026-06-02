@@ -15,6 +15,7 @@ def test_org(db):
         subdomain=f"testfarm-{uuid.uuid4().hex[:8]}",
         plan_tier="monthly",
         subscription_status="active",
+        onboarding_complete=True,
         is_active=True,
     )
 
