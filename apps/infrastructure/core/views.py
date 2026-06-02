@@ -61,12 +61,19 @@ class DashboardView(TemplateView):
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
-            return render(request, "landing.html")
+            return self.render_landing(request)
         if request.user.role == "super_admin" or request.user.is_superuser:
             return self.super_admin_view(request)
         if not request.user.org:
-            return render(request, "landing.html")
+            return self.render_landing(request)
         return super().dispatch(request, *args, **kwargs)
+
+    def render_landing(self, request):
+        from apps.infrastructure.billing.models import BillingPlan
+        plans = BillingPlan.objects.filter(is_active=True).order_by("amount_kobo")
+        return render(request, "landing.html", {
+            "billing_plans": plans if plans.exists() else None,
+        })
 
     def super_admin_view(self, request):
         from apps.infrastructure.accounts.models import CustomUser
