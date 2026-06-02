@@ -1,0 +1,62 @@
+<div class="member-row" id="member-{{ member.pk }}">
+
+  <div class="member-avatar {% if not member.is_active %}inactive{% endif %}">
+    {{ member.first_name|first|upper }}{{ member.last_name|first|upper }}
+  </div>
+
+  <div class="member-info">
+    <div class="member-name">
+      {{ member.get_full_name|default:member.email }}
+      {% if member == request.user %}
+      <span class="you-badge">You</span>
+      {% endif %}
+    </div>
+    <div class="member-email">{{ member.email }}</div>
+  </div>
+
+  {% if request.user.role == 'owner' and member != request.user and member.role != 'owner' %}
+  <form hx-post="{% url 'accounts:team_role' member.pk %}"
+        hx-target="#member-{{ member.pk }}"
+        hx-swap="outerHTML"
+        style="display:inline">
+    {% csrf_token %}
+    <select name="role" class="role-select"
+            onchange="this.form.requestSubmit()">
+      <option value="manager"     {% if member.role == 'manager' %}selected{% endif %}>Manager</option>
+      <option value="supervisor"  {% if member.role == 'supervisor' %}selected{% endif %}>Supervisor</option>
+      <option value="data_entry"  {% if member.role == 'data_entry' %}selected{% endif %}>Data Entry</option>
+      <option value="vet_advisor" {% if member.role == 'vet_advisor' %}selected{% endif %}>Vet Advisor</option>
+    </select>
+  </form>
+  {% else %}
+  <span class="role-select" style="cursor:default;opacity:0.7">
+    {{ member.get_role_display }}
+  </span>
+  {% endif %}
+
+  <span class="status-badge {% if member.is_active %}status-active{% else %}status-inactive{% endif %}">
+    {% if member.is_active %}● Active{% else %}○ Inactive{% endif %}
+  </span>
+
+  {% if request.user.role == 'owner' and member != request.user %}
+  <div class="member-actions">
+    {% if member.is_active %}
+    <button hx-post="{% url 'accounts:team_deactivate' member.pk %}"
+            hx-target="#member-{{ member.pk }}"
+            hx-swap="outerHTML"
+            hx-confirm="Deactivate {{ member.get_full_name|default:member.email }}? They will lose access immediately."
+            class="action-btn danger">
+      Deactivate
+    </button>
+    {% else %}
+    <button hx-post="{% url 'accounts:team_reactivate' member.pk %}"
+            hx-target="#member-{{ member.pk }}"
+            hx-swap="outerHTML"
+            class="action-btn">
+      Reactivate
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>

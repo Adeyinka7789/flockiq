@@ -2,12 +2,17 @@ from django.urls import path
 
 from .views import (
     ChangePasswordView,
+    DeactivateUserView,
     EditProfileView,
+    EditUserRoleView,
     ForgotPasswordView,
+    InviteUserView,
     LoginView,
     LogoutView,
     ProfilePageView,
+    ReactivateUserView,
     ResetPasswordView,
+    TeamListView,
     TokenRefreshView,
     UserCreateView,
     UserListView,
@@ -30,4 +35,10 @@ urlpatterns = [
     path("profile/change-password/", WebChangePasswordView.as_view(), name="change_password"),
     path("forgot-password/", ForgotPasswordView.as_view(), name="forgot_password"),
     path("reset-password/", ResetPasswordView.as_view(), name="reset_password"),
+    # Team management
+    path("team/", TeamListView.as_view(), name="team"),
+    path("team/invite/", InviteUserView.as_view(), name="team_invite"),
+    path("team/<uuid:pk>/role/", EditUserRoleView.as_view(), name="team_role"),
+    path("team/<uuid:pk>/deactivate/", DeactivateUserView.as_view(), name="team_deactivate"),
+    path("team/<uuid:pk>/reactivate/", ReactivateUserView.as_view(), name="team_reactivate"),
 ]

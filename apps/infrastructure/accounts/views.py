@@ -3,11 +3,13 @@ import secrets
 
 import structlog
 from axes.decorators import axes_dispatch
+from django.conf import settings as django_settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 from django.core.mail import send_mail
-from django.shortcuts import redirect, render
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
 from django.views import View
 from rest_framework import status
@@ -394,3 +396,163 @@ class WebChangePasswordView(LoginRequiredMixin, View):
         update_session_auth_hash(request, request.user)
         logger.info("password_changed", user_id=str(request.user.id))
         return render(request, "accounts/_pw_result.html", {"success": True})
+
+
+# ── Team management views ──────────────────────────────────────────────────────
+
+_INVITABLE_ROLES = ("manager", "supervisor", "data_entry", "vet_advisor")
+
+
+class TeamListView(LoginRequiredMixin, View):
+    """GET /team/ — lists all org members."""
+
+    def get(self, request):
+        if request.user.role not in ("owner", "manager"):
+            return redirect("dashboard")
+        users = CustomUser.objects.filter(org=request.user.org).order_by("role", "email")
+        active_count = users.filter(is_active=True).count()
+        unique_roles = users.values_list("role", flat=True).distinct().count()
+        role_choices = [c for c in CustomUser.ROLE_CHOICES if c[0] in _INVITABLE_ROLES]
+        return render(request, "accounts/team.html", {
+            "users": users,
+            "active_count": active_count,
+            "unique_roles": unique_roles,
+            "role_choices": role_choices,
+            "pending_invites": [],
+        })
+
+
+class InviteUserView(LoginRequiredMixin, View):
+    """GET /team/invite/ — modal form; POST creates user + sends welcome email."""
+
+    def get(self, request):
+        if request.user.role != "owner":
+            return HttpResponse(status=403)
+        return render(request, "accounts/_invite_form.html")
+
+    def post(self, request):
+        if request.user.role != "owner":
+            return HttpResponse(status=403)
+
+        email = request.POST.get("email", "").strip()
+        first_name = request.POST.get("first_name", "").strip()
+        last_name = request.POST.get("last_name", "").strip()
+        role = request.POST.get("role", "data_entry")
+
+        def _error(msg):
+            return render(request, "accounts/_invite_form.html", {
+                "error": msg,
+                "post": request.POST,
+            })
+
+        if not email:
+            return _error("Email is required.")
+        if not first_name:
+            return _error("First name is required.")
+        if role not in _INVITABLE_ROLES:
+            return _error("Invalid role selected.")
+        if CustomUser.objects.filter(email=email).exists():
+            return _error("A user with this email already exists.")
+
+        temp_password = secrets.token_urlsafe(10)
+        user = CustomUser.objects.create_user(
+            email=email,
+            username=email,
+            password=temp_password,
+            first_name=first_name,
+            last_name=last_name,
+            role=role,
+            org=request.user.org,
+            is_active=True,
+        )
+
+        send_mail(
+            subject=f"You've been invited to {request.user.org.name} on FlockIQ",
+            message=(
+                f"Hi {first_name},\n\n"
+                f"You've been added to {request.user.org.name} on FlockIQ.\n\n"
+                f"Login:              {email}\n"
+                f"Temporary password: {temp_password}\n\n"
+                f"Please change your password after first login.\n\n"
+                f"— The FlockIQ Team"
+            ),
+            from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@flockiq.com"),
+            recipient_list=[email],
+            fail_silently=True,
+        )
+
+        logger.info("team_member_invited", invited_by=str(request.user.id), new_user=str(user.id))
+
+        response = HttpResponse("")
+        response["HX-Trigger"] = json.dumps({
+            "close-modal": {},
+            "showToast": {"message": f"Invitation sent to {email}", "type": "success"},
+        })
+        response["HX-Refresh"] = "true"
+        return response
+
+
+class EditUserRoleView(LoginRequiredMixin, View):
+    """POST /team/<uuid>/role/ — updates member role, returns updated row."""
+
+    def post(self, request, pk):
+        if request.user.role != "owner":
+            return HttpResponse(status=403)
+
+        member = get_object_or_404(CustomUser, pk=pk, org=request.user.org)
+
+        if member == request.user:
+            return _member_row_response(request, member, toast="You cannot change your own role.")
+        if member.role == "owner":
+            return _member_row_response(request, member, toast="Cannot change another owner's role.", toast_type="error")
+
+        role = request.POST.get("role", "")
+        if role not in _INVITABLE_ROLES:
+            return _member_row_response(request, member, toast="Invalid role.", toast_type="error")
+
+        member.role = role
+        member.save(update_fields=["role"])
+        logger.info("team_role_changed", changed_by=str(request.user.id), member=str(member.id), new_role=role)
+        return _member_row_response(request, member, toast=f"Role updated to {member.get_role_display()}.")
+
+
+class DeactivateUserView(LoginRequiredMixin, View):
+    """POST /team/<uuid>/deactivate/ — sets is_active=False."""
+
+    def post(self, request, pk):
+        if request.user.role != "owner":
+            return HttpResponse(status=403)
+
+        member = get_object_or_404(CustomUser, pk=pk, org=request.user.org)
+
+        if member == request.user:
+            return _member_row_response(request, member, toast="You cannot deactivate yourself.", toast_type="error")
+
+        member.is_active = False
+        member.save(update_fields=["is_active"])
+        logger.info("team_member_deactivated", by=str(request.user.id), member=str(member.id))
+        return _member_row_response(request, member, toast="User deactivated.")
+
+
+class ReactivateUserView(LoginRequiredMixin, View):
+    """POST /team/<uuid>/reactivate/ — sets is_active=True."""
+
+    def post(self, request, pk):
+        if request.user.role != "owner":
+            return HttpResponse(status=403)
+
+        member = get_object_or_404(CustomUser, pk=pk, org=request.user.org)
+        member.is_active = True
+        member.save(update_fields=["is_active"])
+        logger.info("team_member_reactivated", by=str(request.user.id), member=str(member.id))
+        return _member_row_response(request, member, toast="User reactivated.")
+
+
+def _member_row_response(request, member, toast=None, toast_type="success"):
+    """Render the member row partial with an optional toast trigger."""
+    response = render(request, "accounts/_member_row.html", {"member": member})
+    if toast:
+        response["HX-Trigger"] = json.dumps({
+            "showToast": {"message": toast, "type": toast_type},
+        })
+    return response

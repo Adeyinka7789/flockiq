@@ -1,0 +1,100 @@
+<div style="padding:24px">
+  <div style="display:flex;align-items:center;
+              justify-content:space-between;margin-bottom:20px">
+    <div>
+      <h3 style="font-size:15px;font-weight:700;color:#1a2744">
+        Invite Team Member
+      </h3>
+      <p style="font-size:12px;color:#8a96a8;margin-top:3px">
+        They will receive login credentials by email
+      </p>
+    </div>
+    <button @click="$dispatch('close-modal')"
+            style="background:none;border:none;cursor:pointer;
+                   color:#8a96a8;font-size:18px">✕</button>
+  </div>
+
+  {% if error %}
+  <div style="background:#fee2e2;border:1px solid #fecaca;
+              border-radius:8px;padding:10px 14px;
+              font-size:13px;color:#dc2626;margin-bottom:16px">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <form hx-post="{% url 'accounts:team_invite' %}"
+        hx-target="#modal-body"
+        style="display:flex;flex-direction:column;gap:14px">
+    {% csrf_token %}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;
+                      color:#4a5568;margin-bottom:6px;
+                      text-transform:uppercase">
+          First Name
+        </label>
+        <input type="text" name="first_name" required
+               value="{{ post.first_name }}"
+               style="width:100%;padding:10px 14px;
+                      border:1.5px solid #e2e8f0;border-radius:10px;
+                      font-size:13px;box-sizing:border-box">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;
+                      color:#4a5568;margin-bottom:6px;
+                      text-transform:uppercase">
+          Last Name
+        </label>
+        <input type="text" name="last_name"
+               value="{{ post.last_name }}"
+               style="width:100%;padding:10px 14px;
+                      border:1.5px solid #e2e8f0;border-radius:10px;
+                      font-size:13px;box-sizing:border-box">
+      </div>
+    </div>
+
+    <div>
+      <label style="display:block;font-size:11px;font-weight:700;
+                    color:#4a5568;margin-bottom:6px;
+                    text-transform:uppercase">
+        Email Address
+      </label>
+      <input type="email" name="email" required
+             value="{{ post.email }}"
+             style="width:100%;padding:10px 14px;
+                    border:1.5px solid #e2e8f0;border-radius:10px;
+                    font-size:13px;box-sizing:border-box">
+    </div>
+
+    <div>
+      <label style="display:block;font-size:11px;font-weight:700;
+                    color:#4a5568;margin-bottom:6px;
+                    text-transform:uppercase">
+        Role
+      </label>
+      <select name="role"
+              style="width:100%;padding:10px 14px;
+                     border:1.5px solid #e2e8f0;border-radius:10px;
+                     font-size:13px;background:white">
+        <option value="manager"     {% if post.role == 'manager' %}selected{% endif %}>Manager — Full farm access</option>
+        <option value="supervisor"  {% if post.role == 'supervisor' %}selected{% endif %}>Supervisor — House-level oversight</option>
+        <option value="data_entry"  {% if post.role == 'data_entry' or not post %}selected{% endif %}>Data Entry — Log only</option>
+        <option value="vet_advisor" {% if post.role == 'vet_advisor' %}selected{% endif %}>Vet Advisor — Health read-only</option>
+      </select>
+    </div>
+
+    <div style="background:#f4f7fe;border-radius:10px;
+                padding:12px 14px;font-size:12px;color:#4a5568">
+      A temporary password will be generated and sent to their email.
+      They can change it after first login.
+    </div>
+
+    <button type="submit"
+            style="width:100%;padding:12px;background:#3d5a99;
+                   color:white;border:none;border-radius:10px;
+                   font-size:13px;font-weight:700;cursor:pointer">
+      Send Invitation
+    </button>
+  </form>
+</div>
