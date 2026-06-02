@@ -229,6 +229,7 @@ EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@flockiq.com")
+PASSWORD_RESET_TIMEOUT = 3600
 
 # --- Third-party API keys ---
 TERMII_API_KEY = config("TERMII_API_KEY", default="")

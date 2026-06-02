@@ -212,7 +212,14 @@ class MortalityLogView(LoginRequiredMixin, View):
                     status=422,
                 )
 
-            response = HttpResponse("")
+            with set_tenant_context(org):
+                batch = get_object_or_404(Batch, id=pk)
+                logs = list(MortalityLog.objects.filter(batch_id=pk).order_by("-date")[:30])
+            response = render(
+                request,
+                "flocks/_mortality_table.html",
+                {"logs": logs, "batch": batch, "batch_pk": pk},
+            )
             response["HX-Trigger"] = json.dumps({
                 "showToast": {"message": f"{cd['count']} mortality logged.", "type": "success"},
                 "mortalityLogged": True,

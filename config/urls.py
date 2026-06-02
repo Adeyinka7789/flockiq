@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
-from apps.infrastructure.accounts.views import WebLoginView, WebLogoutView
+from apps.infrastructure.accounts.views import WebLoginView, WebLogoutView, SignupView
 from apps.infrastructure.core.views import DashboardView
 
 urlpatterns = [
@@ -17,6 +17,7 @@ urlpatterns = [
     path("", DashboardView.as_view(), name="dashboard"),
     path("login/", WebLoginView.as_view(), name="login"),
     path("logout/", WebLogoutView.as_view(), name="logout"),
+    path("signup/", SignupView.as_view(), name="signup"),
 
     # ── App URLs ──────────────────────────────────────────────────────────────
     path("", include("apps.infrastructure.tenants.urls")),

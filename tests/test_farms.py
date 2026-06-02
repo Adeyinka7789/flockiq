@@ -1,3 +1,4 @@
+import uuid
 import pytest
 from decimal import Decimal
 from django.core.exceptions import ValidationError
@@ -7,13 +8,17 @@ pytestmark = pytest.mark.django_db
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _make_org(subdomain="testfarm"):
+def _make_org(subdomain=None):
     from apps.infrastructure.tenants.models import Organization
+    if subdomain is None:
+        subdomain = f"testfarm-{uuid.uuid4().hex[:8]}"
     return Organization.objects.create(name="Test Org", subdomain=subdomain)
 
 
-def _make_org2(subdomain="otherfarm"):
+def _make_org2(subdomain=None):
     from apps.infrastructure.tenants.models import Organization
+    if subdomain is None:
+        subdomain = f"otherfarm-{uuid.uuid4().hex[:8]}"
     return Organization.objects.create(name="Other Org", subdomain=subdomain)
 
 

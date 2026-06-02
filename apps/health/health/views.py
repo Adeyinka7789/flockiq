@@ -315,7 +315,7 @@ class VaccinationAPIView(APIView):
 class VaccinationCompleteAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, pk):
+    def post(self, request, pk):
         org = getattr(request.user, "org", None)
         if not org:
             return Response({"error": "No organisation."}, status=403)

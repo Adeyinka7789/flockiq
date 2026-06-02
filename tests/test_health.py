@@ -506,7 +506,8 @@ class TestHealthRLSIsolation:
 
         return org, batch
 
-    def test_vaccination_rls_isolation(self, db):
+    @pytest.mark.django_db(transaction=True)
+    def test_vaccination_rls_isolation(self):
         from apps.health.health.models import VaccinationSchedule
         from apps.infrastructure.core.rls import set_tenant_context
 
@@ -523,10 +524,15 @@ class TestHealthRLSIsolation:
         assert count_a == 7
         assert count_b == 7
 
-        # Confirm cross-tenant isolation: total in db is 14
+        # Confirm cross-tenant isolation: both orgs together have exactly 14 records.
+        # SQLite stores UUIDs as hex (no hyphens), so use .hex for raw SQL.
         from django.db import connection
         with connection.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM health_vaccinationschedule")
+            cursor.execute(
+                "SELECT COUNT(*) FROM health_vaccinationschedule"
+                " WHERE org_id IN (%s, %s)",
+                [org_a.id.hex, org_b.id.hex],
+            )
             total = cursor.fetchone()[0]
         assert total == 14
 

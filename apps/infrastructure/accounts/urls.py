@@ -3,9 +3,11 @@ from django.urls import path
 from .views import (
     ChangePasswordView,
     EditProfileView,
+    ForgotPasswordView,
     LoginView,
     LogoutView,
     ProfilePageView,
+    ResetPasswordView,
     TokenRefreshView,
     UserCreateView,
     UserListView,
@@ -26,4 +28,6 @@ urlpatterns = [
     path("profile/", ProfilePageView.as_view(), name="profile"),
     path("profile/edit/", EditProfileView.as_view(), name="edit_profile"),
     path("profile/change-password/", WebChangePasswordView.as_view(), name="change_password"),
+    path("forgot-password/", ForgotPasswordView.as_view(), name="forgot_password"),
+    path("reset-password/", ResetPasswordView.as_view(), name="reset_password"),
 ]
