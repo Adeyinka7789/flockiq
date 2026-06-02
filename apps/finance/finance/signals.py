@@ -12,7 +12,7 @@ def _recalculate_for_batch(instance):
 
     try:
         with set_tenant_context(instance.org_id):
-            batch = Batch.objects.get(id=instance.batch_id)
+            batch = Batch.objects.get(id=instance.batch_id, org_id=instance.org_id)
             FinanceService(instance.org).recalculate_summary(batch)
     except Exception as exc:
         logger.error("signal.finance_summary_update_failed", error=str(exc))

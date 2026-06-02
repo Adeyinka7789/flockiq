@@ -106,13 +106,15 @@ class House(TenantAwareModel):
 
     def save(self, *args, **kwargs):
         if self.farm_id and self.org_id:
-            farm_org_id = str(self.farm.org_id) if hasattr(self, "_farm_cache") or self.farm_id else None
-            if farm_org_id is None:
-                from apps.farm.farms.models import Farm as _Farm
-                farm_org_id = str(_Farm.objects.unscoped().filter(id=self.farm_id).values_list("org_id", flat=True).first())
-            if farm_org_id and farm_org_id != str(self.org_id):
+            farm_org_id = (
+                Farm.objects.unscoped()
+                .filter(id=self.farm_id)
+                .values_list("org_id", flat=True)
+                .first()
+            )
+            if farm_org_id != self.org_id:
                 raise ValueError(
-                    "House org must match Farm org. Cross-tenant house assignment is not allowed."
+                    "Cross-tenant assignment: house farm must belong to the same organisation."
                 )
         super().save(*args, **kwargs)
 

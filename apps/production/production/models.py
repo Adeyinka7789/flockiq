@@ -59,17 +59,18 @@ class EggProductionLog(TenantAwareModel):
             from apps.farm.flocks.models import Batch
 
             batch = (
-                Batch.objects.unscoped().filter(id=self.batch_id).first()
+                Batch.objects.unscoped().filter(id=self.batch_id, org_id=self.org_id).first()
             )
-            if batch:
-                if batch.bird_type != "layer":
-                    raise ValidationError(
-                        "Egg production can only be logged for layer batches."
-                    )
-                if batch.status != "active":
-                    raise ValidationError(
-                        "Cannot log production on an inactive batch."
-                    )
+            if batch is None:
+                raise ValidationError("EggProductionLog batch must belong to the same organisation.")
+            if batch.bird_type != "layer":
+                raise ValidationError(
+                    "Egg production can only be logged for layer batches."
+                )
+            if batch.status != "active":
+                raise ValidationError(
+                    "Cannot log production on an inactive batch."
+                )
 
         if self.total_eggs is not None:
             total_grades = (

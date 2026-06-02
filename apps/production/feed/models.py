@@ -70,8 +70,10 @@ class FeedLog(TenantAwareModel):
         if self.batch_id:
             from apps.farm.flocks.models import Batch
 
-            batch = Batch.objects.unscoped().filter(id=self.batch_id).first()
-            if batch and batch.status != "active":
+            batch = Batch.objects.unscoped().filter(id=self.batch_id, org_id=self.org_id).first()
+            if batch is None:
+                raise ValidationError("FeedLog batch must belong to the same organisation.")
+            if batch.status != "active":
                 raise ValidationError("Cannot log feed for an inactive batch.")
 
         if self.quantity_kg is not None and self.quantity_kg <= 0:

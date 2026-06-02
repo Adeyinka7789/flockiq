@@ -23,7 +23,10 @@ def _calculate_and_update(instance):
     from .models import FeedLog
 
     try:
-        batch = Batch.objects.unscoped().filter(id=instance.batch_id).first()
+        batch = Batch.objects.unscoped().filter(
+            id=instance.batch_id,
+            org_id=instance.org_id,
+        ).first()
     except Exception:
         logger.exception("feed.signal.batch_fetch_failed", log_id=str(instance.pk))
         return
@@ -46,7 +49,15 @@ def _calculate_and_update(instance):
         updates["total_cost"] = instance.quantity_kg * instance.cost_per_kg
 
     if updates:
-        FeedLog.objects.filter(pk=instance.pk).update(**updates)
+        updated = FeedLog.objects.unscoped().filter(pk=instance.pk, org_id=instance.org_id).update(**updates)
+        if updated != 1:
+            logger.error(
+                "feed.signal_cross_tenant_log_update_blocked",
+                log_id=str(instance.pk),
+                org_id=str(instance.org_id),
+                updated=updated,
+            )
+            return
         for k, v in updates.items():
             setattr(instance, k, v)
 
@@ -55,16 +66,25 @@ def _deduct_feed_stock(instance):
     from .models import FeedStock
 
     try:
-        stock, _ = FeedStock.objects.get_or_create(
-            org=instance.org,
-            farm=instance.farm,
+        stock, _ = FeedStock.objects.unscoped().get_or_create(
+            org_id=instance.org_id,
+            farm_id=instance.farm_id,
             feed_type=instance.feed_type,
             defaults={"quantity_kg": Decimal("0")},
         )
-        FeedStock.objects.filter(pk=stock.pk).update(
+        updated = FeedStock.objects.unscoped().filter(pk=stock.pk, org_id=instance.org_id).update(
             quantity_kg=F("quantity_kg") - instance.quantity_kg
         )
-        stock.refresh_from_db()
+        if updated != 1:
+            logger.error(
+                "feed.signal_cross_tenant_stock_update_blocked",
+                stock_id=str(stock.pk),
+                log_id=str(instance.pk),
+                org_id=str(instance.org_id),
+                updated=updated,
+            )
+            return
+        stock = FeedStock.objects.unscoped().get(pk=stock.pk)
         if stock.is_low_stock:
             logger.warning(
                 "feed.stock.low",

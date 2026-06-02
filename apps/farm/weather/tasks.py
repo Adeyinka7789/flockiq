@@ -7,13 +7,28 @@ logger = structlog.get_logger(__name__)
 @shared_task(name="weather.refresh_weather_cache_all_farms")
 def refresh_weather_cache_all_farms():
     from apps.infrastructure.core.rls import no_tenant_context
-    from apps.farm.farms.models import Farm
+    from apps.infrastructure.tenants.models import Organization
 
     with no_tenant_context():
-        # Farm has RLS enabled — use unscoped() to read all active farms cross-tenant
+        org_ids = list(
+            Organization.objects.filter(
+                is_active=True,
+                subscription_status__in=["active", "trial"],
+            ).values_list("id", flat=True)
+        )
+
+    for org_id in org_ids:
+        refresh_weather_cache_for_org.delay(str(org_id))
+
+
+@shared_task(name="weather.refresh_weather_cache_for_org")
+def refresh_weather_cache_for_org(org_id: str):
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.farm.farms.models import Farm
+
+    with set_tenant_context(org_id):
         farms = list(
-            Farm.objects.unscoped()
-            .filter(is_active=True)
+            Farm.objects.filter(org_id=org_id, is_active=True)
             .values("id", "org_id", "latitude", "longitude")
         )
 
@@ -44,7 +59,7 @@ def refresh_weather_for_farm(farm_id: str, lat, lng, org_id: str):
 
     with set_tenant_context(org_id) as org:
         try:
-            farm = Farm.objects.get(id=farm_id)
+            farm = Farm.objects.get(id=farm_id, org_id=org_id)
             service.evaluate_alerts(org, farm, weather_data)
         except Farm.DoesNotExist:
             logger.warning("weather.farm_not_found", farm_id=farm_id)

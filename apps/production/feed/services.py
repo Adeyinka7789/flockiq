@@ -57,7 +57,7 @@ class FeedService(BaseService):
     def get_feed_summary(self, batch_id: str) -> dict:
         from .models import FeedLog
 
-        logs = FeedLog.objects.filter(batch_id=batch_id)
+        logs = FeedLog.objects.filter(org_id=self.org.id, batch_id=batch_id)
         totals = logs.aggregate(
             total_feed_consumed_kg=Sum("quantity_kg"),
             total_feed_cost=Sum("total_cost"),
@@ -101,7 +101,7 @@ class FeedService(BaseService):
             return None
 
         total_feed = (
-            FeedLog.objects.filter(batch_id=batch_id)
+            FeedLog.objects.filter(org_id=self.org.id, batch_id=batch_id)
             .aggregate(total=Sum("quantity_kg"))["total"]
         )
         if not total_feed:
@@ -122,7 +122,7 @@ class FeedService(BaseService):
         except Batch.DoesNotExist:
             raise ValueError(f"Batch {batch_id} not found.")
 
-        logs = FeedLog.objects.filter(batch_id=batch_id)
+        logs = FeedLog.objects.filter(org_id=self.org.id, batch_id=batch_id)
         totals = logs.aggregate(
             total_cost=Sum("total_cost"),
             total_days=Sum("quantity_kg"),
@@ -150,7 +150,7 @@ class FeedService(BaseService):
         cutoff = datetime.date.today() - datetime.timedelta(days=days)
         logs = list(
             FeedLog.objects
-            .filter(batch_id=batch_id, record_date__gte=cutoff)
+            .filter(org_id=self.org.id, batch_id=batch_id, record_date__gte=cutoff)
             .order_by("record_date")
             .values("record_date", "quantity_kg", "requirement_kg")
         )
@@ -171,4 +171,4 @@ class FeedService(BaseService):
     def get_stock_levels(self, farm_id: str) -> list:
         from .models import FeedStock
 
-        return list(FeedStock.objects.filter(farm_id=farm_id))
+        return list(FeedStock.objects.filter(org_id=self.org.id, farm_id=farm_id))

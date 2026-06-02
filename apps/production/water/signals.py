@@ -21,7 +21,10 @@ def _calculate_and_update(instance):
     from .models import WaterLog
 
     try:
-        batch = Batch.objects.unscoped().filter(id=instance.batch_id).first()
+        batch = Batch.objects.unscoped().filter(
+            id=instance.batch_id,
+            org_id=instance.org_id,
+        ).first()
     except Exception:
         logger.exception("water.signal.batch_fetch_failed", log_id=str(instance.pk))
         return
@@ -46,7 +49,15 @@ def _calculate_and_update(instance):
             )
 
     if updates:
-        WaterLog.objects.filter(pk=instance.pk).update(**updates)
+        updated = WaterLog.objects.unscoped().filter(pk=instance.pk, org_id=instance.org_id).update(**updates)
+        if updated != 1:
+            logger.error(
+                "water.signal_cross_tenant_log_update_blocked",
+                log_id=str(instance.pk),
+                org_id=str(instance.org_id),
+                updated=updated,
+            )
+            return
         for k, v in updates.items():
             setattr(instance, k, v)
 

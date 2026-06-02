@@ -23,9 +23,7 @@ def _calculate_and_update(instance):
     from apps.infrastructure.core.calculator import BreedCalculator
     from .models import EggProductionLog
 
-    batch_count = (
-        _get_batch_count(instance.batch_id)
-    )
+    batch_count = _get_batch_count(instance.batch_id, instance.org_id)
 
     hdp = None
     if batch_count and batch_count > 0:
@@ -33,20 +31,28 @@ def _calculate_and_update(instance):
 
     crates = BreedCalculator.crates(instance.total_eggs)
 
-    EggProductionLog.objects.filter(pk=instance.pk).update(
+    updated = EggProductionLog.objects.unscoped().filter(pk=instance.pk, org_id=instance.org_id).update(
         hen_day_pct=Decimal(str(hdp)) if hdp is not None else None,
         crates=Decimal(str(crates)),
     )
+    if updated != 1:
+        logger.error(
+            "production.signal_cross_tenant_log_update_blocked",
+            log_id=str(instance.pk),
+            org_id=str(instance.org_id),
+            updated=updated,
+        )
+        return
     instance.hen_day_pct = Decimal(str(hdp)) if hdp is not None else None
     instance.crates = Decimal(str(crates))
 
 
-def _get_batch_count(batch_id):
+def _get_batch_count(batch_id, org_id):
     from apps.farm.flocks.models import Batch
 
     return (
         Batch.objects.unscoped()
-        .filter(id=batch_id)
+        .filter(id=batch_id, org_id=org_id)
         .values_list("current_count", flat=True)
         .first()
     )
@@ -56,18 +62,27 @@ def _update_crate_inventory(instance):
     from .models import CrateInventory
 
     try:
-        inventory, _ = CrateInventory.objects.get_or_create(
-            org=instance.org,
-            farm=instance.farm,
+        inventory, _ = CrateInventory.objects.unscoped().get_or_create(
+            org_id=instance.org_id,
+            farm_id=instance.farm_id,
             date=instance.record_date,
             defaults={"crates_produced": Decimal("0.0")},
         )
         crates = instance.crates or Decimal("0.0")
         new_produced = inventory.crates_produced + crates
-        CrateInventory.objects.filter(pk=inventory.pk).update(
+        updated = CrateInventory.objects.unscoped().filter(pk=inventory.pk, org_id=instance.org_id).update(
             crates_produced=new_produced,
             crates_balance=new_produced - inventory.crates_sold,
         )
+        if updated != 1:
+            logger.error(
+                "production.signal_cross_tenant_inventory_update_blocked",
+                inventory_id=str(inventory.pk),
+                log_id=str(instance.pk),
+                org_id=str(instance.org_id),
+                updated=updated,
+            )
+            return
     except Exception:
         logger.exception(
             "production.signal.crate_inventory_update_failed log_id=%s",
@@ -81,8 +96,8 @@ def _check_production_drop(instance):
 
     yesterday = instance.record_date - datetime.timedelta(days=1)
     yesterday_hdp = (
-        EggProductionLog.objects
-        .filter(batch=instance.batch, record_date=yesterday)
+        EggProductionLog.objects.unscoped()
+        .filter(batch_id=instance.batch_id, org_id=instance.org_id, record_date=yesterday)
         .values_list("hen_day_pct", flat=True)
         .first()
     )
@@ -118,7 +133,10 @@ def _check_production_drop(instance):
 def _maybe_trigger_forecast(instance):
     from .models import EggProductionLog
 
-    record_count = EggProductionLog.objects.filter(batch=instance.batch).count()
+    record_count = EggProductionLog.objects.unscoped().filter(
+        batch_id=instance.batch_id,
+        org_id=instance.org_id,
+    ).count()
     if record_count >= 7:
         try:
             from .tasks import run_egg_forecast

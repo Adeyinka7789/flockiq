@@ -15,7 +15,7 @@ def check_mortality_anomaly(org_id: str, batch_id: str):
     with set_tenant_context(org_id):
         try:
             org = Organization.objects.get(id=org_id)
-            batch = Batch.objects.get(id=batch_id)
+            batch = Batch.objects.get(id=batch_id, org_id=org_id)
             AnomalyDetectionService(org).check_mortality_anomaly(batch)
         except Exception as exc:
             logger.error(
@@ -31,14 +31,30 @@ def check_mortality_anomaly(org_id: str, batch_id: str):
 def run_egg_forecast_all_active_batches():
     """Beat: 06:15 daily. Fan-out to all orgs with active layer batches."""
     from apps.infrastructure.core.rls import no_tenant_context
-    from apps.farm.flocks.models import Batch
 
     with no_tenant_context():
-        from apps.farm.flocks.models import Batch as _Batch
+        from apps.infrastructure.tenants.models import Organization
 
+        org_ids = list(
+            Organization.objects.filter(
+                is_active=True,
+                subscription_status__in=["active", "trial"],
+            ).values_list("id", flat=True)
+        )
+
+    for org_id in org_ids:
+        run_egg_forecast_for_org.delay(str(org_id))
+
+
+@shared_task(name="analytics.run_egg_forecast_for_org")
+def run_egg_forecast_for_org(org_id: str):
+    """Sets tenant context and fans out forecasts for one org's active layer batches."""
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.farm.flocks.models import Batch
+
+    with set_tenant_context(org_id):
         rows = list(
-            _Batch.objects.unscoped()
-            .filter(status="active", bird_type="layer")
+            Batch.objects.filter(org_id=org_id, status="active", bird_type="layer")
             .values("id", "org_id")
         )
 
@@ -57,7 +73,7 @@ def run_egg_forecast_for_batch(org_id: str, batch_id: str):
     with set_tenant_context(org_id):
         try:
             org = Organization.objects.get(id=org_id)
-            batch = Batch.objects.get(id=batch_id)
+            batch = Batch.objects.get(id=batch_id, org_id=org_id)
             ProphetForecastService(org).forecast_egg_production(batch)
         except Exception as exc:
             logger.error(
@@ -78,7 +94,10 @@ def run_theft_detection_all_orgs():
         from apps.infrastructure.tenants.models import Organization
 
         org_ids = list(
-            Organization.objects.filter(is_active=True).values_list("id", flat=True)
+            Organization.objects.filter(
+                is_active=True,
+                subscription_status__in=["active", "trial"],
+            ).values_list("id", flat=True)
         )
 
     for org_id in org_ids:
@@ -96,7 +115,7 @@ def run_theft_detection_for_org(org_id: str):
     with set_tenant_context(org_id):
         try:
             org = Organization.objects.get(id=org_id)
-            batches = Batch.objects.filter(org=org, status="active")
+            batches = Batch.objects.filter(org=org, org_id=org_id, status="active")
             svc = TheftDetectionService(org)
             for batch in batches:
                 svc.reconcile_batch(batch)

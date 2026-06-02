@@ -1,5 +1,6 @@
 import datetime
 
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
@@ -67,8 +68,8 @@ class Batch(TenantAwareModel):
                 .values_list("org_id", flat=True)
                 .first()
             )
-            if house_org_id and str(house_org_id) != str(self.org_id):
-                raise ValueError("Batch org must match House org.")
+            if house_org_id != self.org_id:
+                raise ValidationError("Batch house must belong to the same organisation.")
 
         if self.farm_id and self.org_id:
             from apps.farm.farms.models import Farm as _Farm
@@ -78,8 +79,8 @@ class Batch(TenantAwareModel):
                 .values_list("org_id", flat=True)
                 .first()
             )
-            if farm_org_id and str(farm_org_id) != str(self.org_id):
-                raise ValueError("Batch org must match Farm org.")
+            if farm_org_id != self.org_id:
+                raise ValidationError("Batch farm must belong to the same organisation.")
 
         if self.current_count is not None and self.initial_count is not None:
             if self.current_count > self.initial_count:
@@ -157,15 +158,15 @@ class MortalityLog(TenantAwareModel):
         from apps.farm.flocks.exceptions import BatchClosedError
 
         if self.batch_id:
-            from apps.farm.farms.models import Farm as _Farm
-            batch = Batch.objects.unscoped().filter(id=self.batch_id).first() if not hasattr(self, '_batch_cache') else None
             batch_status = (
                 Batch.objects.unscoped()
-                .filter(id=self.batch_id)
+                .filter(id=self.batch_id, org_id=self.org_id)
                 .values_list("status", flat=True)
                 .first()
             )
-            if batch_status and batch_status != "active":
+            if batch_status is None:
+                raise ValidationError("MortalityLog batch must belong to the same organisation.")
+            if batch_status != "active":
                 raise BatchClosedError(
                     f"Cannot log mortality on a {batch_status} batch."
                 )
@@ -178,8 +179,8 @@ class MortalityLog(TenantAwareModel):
                 .values_list("org_id", flat=True)
                 .first()
             )
-            if farm_org_id and str(farm_org_id) != str(self.org_id):
-                raise ValueError("MortalityLog farm org must match log org.")
+            if farm_org_id != self.org_id:
+                raise ValidationError("MortalityLog farm must belong to the same organisation.")
 
         super().save(*args, **kwargs)
 

@@ -53,7 +53,7 @@ class WaterService(BaseService):
     def get_water_summary(self, batch_id: str) -> dict:
         from .models import WaterLog
 
-        logs = WaterLog.objects.filter(batch_id=batch_id)
+        logs = WaterLog.objects.filter(org_id=self.org.id, batch_id=batch_id)
         cutoff_7 = datetime.date.today() - datetime.timedelta(days=7)
 
         aggregates = logs.aggregate(avg_daily=Avg("litres_consumed"))
@@ -75,7 +75,7 @@ class WaterService(BaseService):
         cutoff = datetime.date.today() - datetime.timedelta(days=days)
         logs = list(
             WaterLog.objects
-            .filter(batch_id=batch_id, record_date__gte=cutoff)
+            .filter(org_id=self.org.id, batch_id=batch_id, record_date__gte=cutoff)
             .order_by("record_date")
             .values("record_date", "litres_consumed", "requirement_litres", "anomaly_flagged")
         )

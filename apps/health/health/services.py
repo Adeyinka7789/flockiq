@@ -37,7 +37,9 @@ class HealthService(BaseService):
         except VaccinationSchedule.DoesNotExist:
             raise ValueError(f"VaccinationSchedule {vaccination_id} not found.")
 
-        batch = Batch.objects.unscoped().filter(id=vacc.batch_id).first()
+        batch = Batch.objects.filter(id=vacc.batch_id, org_id=self.org.id).first()
+        if batch is None:
+            raise ValueError("VaccinationSchedule batch does not belong to this organisation.")
         if batch and batch.status != "active":
             raise ValueError("Cannot record vaccination for an inactive batch.")
 

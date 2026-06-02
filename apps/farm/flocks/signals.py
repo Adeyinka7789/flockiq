@@ -13,13 +13,22 @@ def on_mortality_log_saved(sender, instance, created, **kwargs):
 
     from apps.farm.flocks.models import Batch
 
-    # Atomically decrement current_count
-    Batch.objects.unscoped().filter(pk=instance.batch_id).update(
+    # Atomically decrement current_count only when the batch belongs to this org.
+    updated = Batch.objects.unscoped().filter(pk=instance.batch_id, org_id=instance.org_id).update(
         current_count=F("current_count") - instance.count
     )
+    if updated != 1:
+        logger.error(
+            "flocks.mortality_cross_tenant_batch_blocked",
+            mortality_log_id=str(instance.pk),
+            batch_id=str(instance.batch_id),
+            org_id=str(instance.org_id),
+            updated=updated,
+        )
+        return
 
     # Reload batch to check threshold
-    batch = Batch.objects.unscoped().get(pk=instance.batch_id)
+    batch = Batch.objects.unscoped().get(pk=instance.batch_id, org_id=instance.org_id)
     threshold = batch.initial_count * 0.10
 
     if batch.current_count < threshold:

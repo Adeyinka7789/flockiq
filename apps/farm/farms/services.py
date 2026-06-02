@@ -33,15 +33,16 @@ class FarmService(BaseService):
             self.logger.info("farm.created", farm_id=str(farm.id), name=name)
             # Queue weather cache refresh after the transaction commits
             farm_id_str = str(farm.id)
+            org_id_str = str(farm.org_id)
             transaction.on_commit(
-                lambda: _queue_weather_refresh(farm_id_str)
+                lambda: _queue_weather_refresh(farm_id_str, org_id_str)
             )
 
         return farm
 
     def update_farm(self, farm_id: str, **kwargs) -> Farm:
         """Updates allowed fields only. Validates GPS if coordinates are changed."""
-        farm = Farm.objects.get(id=farm_id)
+        farm = Farm.objects.get(id=farm_id, org_id=self.org.id)
         allowed = {"name", "location", "latitude", "longitude", "farm_type", "is_active", "notes"}
         for field, value in kwargs.items():
             if field in allowed:
@@ -53,16 +54,16 @@ class FarmService(BaseService):
 
     def list_farms(self, active_only: bool = True):
         """Returns farms for the current org, ordered by name."""
-        qs = Farm.objects.all()
+        qs = Farm.objects.filter(org_id=self.org.id)
         if active_only:
             qs = qs.filter(is_active=True)
         return qs.order_by("name")
 
     def get_farm_detail(self, farm_id: str) -> dict:
         """Returns farm + all houses + active batch summaries."""
-        farm = Farm.objects.get(id=farm_id)
+        farm = Farm.objects.get(id=farm_id, org_id=self.org.id)
         houses = list(
-            House.objects.filter(farm=farm, is_active=True).order_by("name")
+            House.objects.filter(org_id=self.org.id, farm_id=farm.id, is_active=True).order_by("name")
         )
         return {
             "farm": farm,
@@ -76,7 +77,7 @@ class FarmService(BaseService):
         if capacity <= 0:
             raise ValueError("House capacity must be greater than 0.")
 
-        farm = Farm.objects.get(id=farm_id)
+        farm = Farm.objects.get(id=farm_id, org_id=self.org.id)
 
         house = House(
             org=self.org,
@@ -98,9 +99,9 @@ class FarmService(BaseService):
         Returns aggregated summary for one farm.
         In Phase 2A (no Batch model yet): live_birds=0, active_batches=0.
         """
-        farm = Farm.objects.get(id=farm_id)
+        farm = Farm.objects.get(id=farm_id, org_id=self.org.id)
         houses = list(
-            House.objects.filter(farm=farm, is_active=True).order_by("name")
+            House.objects.filter(org_id=self.org.id, farm_id=farm.id, is_active=True).order_by("name")
         )
         total_capacity = sum(h.capacity for h in houses)
         total_live = sum(h.current_occupancy for h in houses)
@@ -128,7 +129,7 @@ class FarmService(BaseService):
         Aggregates across ALL farms for the org.
         In Phase 2A (no Batch model yet): live_birds=0, active_batches=0.
         """
-        farms = list(Farm.objects.filter(is_active=True).order_by("name"))
+        farms = list(Farm.objects.filter(org_id=self.org.id, is_active=True).order_by("name"))
         total_farms = len(farms)
         total_live_birds = 0
         total_active_batches = 0
@@ -155,10 +156,16 @@ class FarmService(BaseService):
         }
 
 
-def _queue_weather_refresh(farm_id: str) -> None:
+def _queue_weather_refresh(farm_id: str, org_id: str) -> None:
     """Safely enqueue weather cache refresh — no-op if task isn't registered yet."""
     try:
-        from apps.farm.weather.tasks import refresh_weather_cache_for_farm
-        refresh_weather_cache_for_farm.delay(farm_id)
+        from apps.farm.weather.tasks import refresh_weather_for_farm
+        farm = Farm.objects.get(id=farm_id, org_id=org_id)
+        refresh_weather_for_farm.delay(
+            str(farm.id),
+            float(farm.latitude) if farm.latitude else None,
+            float(farm.longitude) if farm.longitude else None,
+            str(farm.org_id),
+        )
     except Exception:
         logger.debug("weather.refresh_skipped", farm_id=farm_id)

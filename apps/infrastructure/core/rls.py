@@ -14,23 +14,24 @@ ARCHITECTURE NOTE — why transaction.atomic() is required here:
     even if PgBouncer reuses the same backend connection.
 """
 
-import threading
 import uuid as _uuid_module
+from contextvars import ContextVar
 from contextlib import contextmanager
 
 import structlog
-from django.db import connection, transaction
+from django.db import DatabaseError, connection, transaction
 
 logger = structlog.get_logger(__name__)
 
-_thread_local = threading.local()
+NO_TENANT_UUID = "00000000-0000-0000-0000-000000000000"
+_current_org = ContextVar("current_org", default=None)
 
 
 # ── Public accessors ────────────────────────────────────────────────────────
 
 def get_current_org():
     """Returns the Organization instance bound to the current thread, or None."""
-    return getattr(_thread_local, "current_org", None)
+    return _current_org.get()
 
 
 def get_current_org_id():
@@ -67,17 +68,15 @@ def set_tenant_context(org):
         # Organization has RLS disabled — safe to query without an active context.
         org = Organization.objects.get(id=str(org))
 
-    previous = getattr(_thread_local, "current_org", None)
-    _thread_local.current_org = org
+    token = _current_org.set(org)
 
     try:
         with transaction.atomic():
             _set_pg_org_id(str(org.id))
             yield org
     finally:
-        # Restore previous context (supports nested set_tenant_context calls,
-        # though nesting is strongly discouraged in production code).
-        _thread_local.current_org = previous
+        # Restore previous context (supports nested set_tenant_context calls).
+        _current_org.reset(token)
         # The DB session variable is cleared automatically when transaction.atomic()
         # commits or rolls back (is_local=TRUE). No explicit clear needed here.
 
@@ -95,15 +94,14 @@ def no_tenant_context():
     The Organization table has RLS DISABLED — it is the only table safe to query
     inside this block. Never query a TenantAwareModel here; you will get all rows.
     """
-    previous = getattr(_thread_local, "current_org", None)
-    _thread_local.current_org = None
+    token = _current_org.set(None)
 
     try:
         with transaction.atomic():
-            _set_pg_org_id("")
+            _set_pg_org_id(NO_TENANT_UUID)
             yield
     finally:
-        _thread_local.current_org = previous
+        _current_org.reset(token)
 
 
 # ── Assertion helper ────────────────────────────────────────────────────────
@@ -141,8 +139,12 @@ def _set_pg_org_id(org_id_str: str) -> None:
     """Execute SET LOCAL for app.current_org_id. No-op on SQLite."""
     if "sqlite" in connection.vendor:
         return
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT set_config('app.current_org_id', %s, TRUE)",
-            [org_id_str],
-        )
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_org_id', %s, TRUE)",
+                [org_id_str],
+            )
+    except DatabaseError:
+        logger.exception("tenant_context.pg_set_failed", org_id=org_id_str)
+        raise

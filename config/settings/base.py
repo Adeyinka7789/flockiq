@@ -73,10 +73,10 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
-    "apps.infrastructure.core.middleware.TenantMiddleware",  # Phase 1C — RLS live
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.infrastructure.core.middleware.TenantMiddleware",  # Phase 1C — RLS live
     "apps.infrastructure.tenants.middleware.TrialEnforcementMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",

@@ -53,9 +53,9 @@ class BatchService(BaseService):
                 f"initial_count {initial_count} exceeds house capacity {house.capacity}."
             )
 
-        occupied = Batch.objects.filter(house=house, status="active").exists()
+        occupied = Batch.objects.filter(org_id=self.org.id, house_id=house.id, status="active").exists()
         if occupied:
-            existing = Batch.objects.filter(house=house, status="active").first()
+            existing = Batch.objects.filter(org_id=self.org.id, house_id=house.id, status="active").first()
             raise HouseOccupiedError(
                 f"House already has active batch: {existing.batch_name}."
             )
@@ -247,7 +247,7 @@ class BatchService(BaseService):
     def get_active_batches(self, farm_id: str = None):
         from apps.farm.flocks.models import Batch
 
-        qs = Batch.objects.filter(status="active")
+        qs = Batch.objects.filter(org_id=self.org.id, status="active")
         if farm_id:
             qs = qs.filter(farm_id=farm_id)
         return qs.select_related("farm", "house").order_by("-placement_date")
