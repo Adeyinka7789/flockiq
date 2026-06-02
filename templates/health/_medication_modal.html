@@ -1,8 +1,8 @@
 <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
      x-data
      @keydown.escape.window="document.getElementById('modal-container').innerHTML = ''">
-  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4"
-       style="max-height:90vh;overflow-y:auto">
+  <div class="bg-white rounded-2xl shadow-xl w-full mx-4"
+       style="max-width:480px;max-height:90vh;overflow-y:auto">
     <div class="flex items-center justify-between p-5 border-b border-gray-100">
       <h2 class="text-base font-semibold" style="color:#1a2744">Log Medication</h2>
       <button @click="document.getElementById('modal-container').innerHTML = ''"

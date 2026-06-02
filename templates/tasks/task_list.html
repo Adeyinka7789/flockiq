@@ -224,11 +224,52 @@
   <div class="tasks-header">
     <div>
       <div class="tasks-title">Today's Tasks</div>
-      <div class="tasks-subtitle">
-        {{ today|date:"l, F j, Y" }}
-      </div>
+      <div class="tasks-subtitle">{{ today|date:"l, F j, Y" }}</div>
     </div>
   </div>
+
+  <!-- Filter bar -->
+  <form id="task-filter-form"
+        style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+
+    <!-- Farm filter -->
+    {% if farms %}
+    <select name="farm"
+            hx-get="{% url 'tasks:list' %}"
+            hx-include="#task-filter-form"
+            hx-target="#task-sections"
+            hx-push-url="true"
+            hx-trigger="change"
+            style="padding:7px 12px;border:1.5px solid #e2e8f0;border-radius:8px;
+                   font-size:12px;color:#1a2744;background:white;cursor:pointer">
+      <option value="">All Farms</option>
+      {% for farm in farms %}
+      <option value="{{ farm.pk }}"
+              {% if active_farm == farm.pk|stringformat:'s' %}selected{% endif %}>
+        {{ farm.name }}
+      </option>
+      {% endfor %}
+    </select>
+    {% endif %}
+
+    <!-- Status tabs -->
+    <div style="display:flex;gap:4px">
+      {% for val, label, col in status_tabs %}
+      <button type="button"
+              hx-get="{% url 'tasks:list' %}"
+              hx-vals='{"status": "{{ val }}", "farm": "{{ active_farm }}"}'
+              hx-target="#task-sections"
+              hx-push-url="true"
+              style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;
+                     cursor:pointer;border:1.5px solid;transition:all 0.15s;
+                     {% if active_status == val %}background:{{ col }};color:white;border-color:{{ col }};
+                     {% else %}background:white;color:#4a5568;border-color:#e2e8f0;{% endif %}">
+        {{ label }}
+      </button>
+      {% endfor %}
+    </div>
+
+  </form>
 
   <!-- Stat cards -->
   <div class="tasks-stat-row">
@@ -254,122 +295,10 @@
     </div>
   </div>
 
-  <!-- Overdue tasks -->
-  {% if overdue_tasks %}
-  <div class="tasks-section">
-    <div class="tasks-section-header">
-      <div class="tasks-section-title">
-        <span>Overdue</span>
-        <span class="section-badge red">{{ overdue_tasks|length }}</span>
-      </div>
-    </div>
-    {% for task in overdue_tasks %}
-    <div class="task-row" id="task-{{ task.pk }}">
-      <button hx-post="{% url 'tasks:complete' task.pk %}"
-              hx-target="#task-{{ task.pk }}"
-              hx-swap="outerHTML"
-              class="task-check">
-        <svg width="10" height="10" fill="none" viewBox="0 0 24 24"
-             stroke="white" stroke-width="3">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-        </svg>
-      </button>
-      <div class="task-info">
-        <div class="task-title">{{ task.title }}</div>
-        <div class="task-meta">
-          <div class="priority-dot {{ task.priority }}"></div>
-          {{ task.farm.name }}
-          {% if task.batch %} · {{ task.batch.batch_name }}{% endif %}
-          · Due {{ task.due_date }}
-        </div>
-      </div>
-      <span class="task-badge overdue">Overdue</span>
-    </div>
-    {% endfor %}
+  <!-- Task sections (HTMX swap target) -->
+  <div id="task-sections">
+    {% include "tasks/_task_sections.html" %}
   </div>
-  {% endif %}
-
-  <!-- Pending tasks -->
-  <div class="tasks-section">
-    <div class="tasks-section-header">
-      <div class="tasks-section-title">
-        <span>Pending</span>
-        <span class="section-badge blue">{{ pending_tasks|length }}</span>
-      </div>
-    </div>
-    {% if pending_tasks %}
-      {% for task in pending_tasks %}
-      <div class="task-row" id="task-{{ task.pk }}">
-        <button hx-post="{% url 'tasks:complete' task.pk %}"
-                hx-target="#task-{{ task.pk }}"
-                hx-swap="outerHTML"
-                class="task-check">
-          <svg width="10" height="10" fill="none" viewBox="0 0 24 24"
-               stroke="white" stroke-width="3">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-          </svg>
-        </button>
-        <div class="task-info">
-          <div class="task-title">{{ task.title }}</div>
-          <div class="task-meta">
-            <div class="priority-dot {{ task.priority }}"></div>
-            {{ task.farm.name }}
-            {% if task.batch %} · {{ task.batch.batch_name }}{% endif %}
-          </div>
-        </div>
-        <span class="task-badge pending">Pending</span>
-      </div>
-      {% endfor %}
-    {% else %}
-      <div class="empty-tasks">
-        <div class="empty-icon">
-          <svg width="20" height="20" fill="none" viewBox="0 0 24 24"
-               stroke="#3d5a99" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0
-                     002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2
-                     0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-          </svg>
-        </div>
-        <div class="empty-label">No tasks for today</div>
-        <div class="empty-sub">
-          Tasks are auto-generated daily from your active batches
-        </div>
-      </div>
-    {% endif %}
-  </div>
-
-  <!-- Completed tasks -->
-  {% if completed_tasks %}
-  <div class="tasks-section">
-    <div class="tasks-section-header">
-      <div class="tasks-section-title">
-        <span>Completed Today</span>
-        <span class="section-badge green">{{ completed_tasks|length }}</span>
-      </div>
-    </div>
-    {% for task in completed_tasks %}
-    <div class="task-row" id="task-{{ task.pk }}">
-      <div class="task-check done">
-        <svg width="10" height="10" fill="none" viewBox="0 0 24 24"
-             stroke="white" stroke-width="3">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-        </svg>
-      </div>
-      <div class="task-info">
-        <div class="task-title done">{{ task.title }}</div>
-        <div class="task-meta">
-          {{ task.farm.name }}
-          {% if task.completed_by %}
-            · Done by {{ task.completed_by.get_full_name }}
-          {% endif %}
-        </div>
-      </div>
-      <span class="task-badge complete">Done</span>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
 
 </div>
 {% endblock %}

@@ -20,11 +20,11 @@
   {% endif %}
 
   <!-- KPI cards -->
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px">
 
     <!-- Total Live Birds — navy accent -->
     <div class="bg-white rounded-xl border border-earth-200 shadow-sm overflow-hidden"
-         style="border-top: 3px solid #3d5a99">
+         style="border-top: 0px solid #3d5a99">
       <div class="p-5">
         <div class="flex items-start justify-between mb-3">
           <p class="text-xs font-semibold text-earth-500 uppercase tracking-wide">Total Live Birds</p>
@@ -44,7 +44,7 @@
     <!-- Active Batches — blue accent -->
     <a href="{% url 'flocks:list' %}"
        class="bg-white rounded-xl border border-earth-200 shadow-sm overflow-hidden block hover:shadow-md transition-shadow"
-       style="border-top: 3px solid #5b8dd9">
+       style="border-top: 0px solid #5b8dd9">
       <div class="p-5">
         <div class="flex items-start justify-between mb-3">
           <p class="text-xs font-semibold text-earth-500 uppercase tracking-wide">Active Batches</p>
@@ -67,7 +67,7 @@
          hx-get="{% url 'notifications:bell' %}"
          hx-trigger="load, every 60s"
          hx-swap="none"
-         style="border-top: 3px solid {% if unread_alerts > 0 %}#dc2626{% else %}#6aaa57{% endif %}">
+         style="border-top: 0px solid {% if unread_alerts > 0 %}#dc2626{% else %}#6aaa57{% endif %}">
       <div class="p-5">
         <div class="flex items-start justify-between mb-3">
           <p class="text-xs font-semibold text-earth-500 uppercase tracking-wide">Today's Alerts</p>
@@ -90,7 +90,7 @@
 
     <!-- Tasks Due — amber accent -->
     <div class="bg-white rounded-xl border border-earth-200 shadow-sm overflow-hidden"
-         style="border-top: 3px solid #d97706">
+         style="border-top: 0px solid #d97706">
       <div class="p-5">
         <div class="flex items-start justify-between mb-3">
           <p class="text-xs font-semibold text-earth-500 uppercase tracking-wide">Tasks Due</p>
@@ -113,127 +113,96 @@
 
   </div>
 
-  <!-- Two-column layout -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-    <!-- Active batches table (2/3 width) -->
-    <div class="lg:col-span-2 space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-earth-900">Active Batches</h2>
-        <a href="{% url 'flocks:list' %}"
-           class="text-sm text-flock-green-600 hover:text-flock-green-700 font-medium">
-          View all →
-        </a>
-      </div>
-
-      {% if active_batches %}
-      <div class="bg-white rounded-xl border border-earth-200 overflow-hidden shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-earth-100 bg-earth-50">
-                <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Farm</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Batch</th>
-                <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Type</th>
-                <th class="px-4 py-3 text-right text-xs font-semibold text-earth-500 uppercase tracking-wide">Live Birds</th>
-                <th class="px-4 py-3 text-right text-xs font-semibold text-earth-500 uppercase tracking-wide">Status</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-earth-50">
-              {% for batch in active_batches %}
-              <tr class="hover:bg-earth-50 transition-colors cursor-pointer"
-                  hx-get="{% url 'flocks:detail' batch.pk %}"
-                  hx-target="#main-content"
-                  hx-push-url="{% url 'flocks:detail' batch.pk %}">
-                <td class="px-4 py-3 text-earth-600">{{ batch.farm.name|truncatechars:20 }}</td>
-                <td class="px-4 py-3 font-medium text-earth-900">{{ batch.batch_name }}</td>
-                <td class="px-4 py-3 text-earth-600 capitalize">{{ batch.bird_type }}</td>
-                <td class="px-4 py-3 text-right font-bold tabular-nums text-flock-green-600">
-                  {{ batch.current_count|intcomma }}
-                </td>
-                <td class="px-4 py-3 text-right">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                               bg-flock-green-100 text-flock-green-800 capitalize">
-                    {{ batch.status }}
-                  </span>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {% else %}
-      <div class="bg-white rounded-xl border border-earth-200 p-12 text-center shadow-sm">
-        <div class="text-4xl mb-3">🐔</div>
-        <h3 class="text-base font-semibold text-earth-900 mb-1">No active batches</h3>
-        <p class="text-sm text-earth-500 mb-5">Place a batch to start tracking production.</p>
-        <a href="{% url 'farms:list' %}"
-           class="inline-flex items-center gap-2 px-4 py-2.5 bg-flock-green-600
-                  text-white text-sm font-medium rounded-lg hover:bg-flock-green-700
-                  transition-colors min-h-[44px]">
-          Go to Farms
-        </a>
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- Right column (1/3 width) -->
-    <div class="space-y-4">
-
-      <!-- Notifications feed -->
-      <div>
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-lg font-semibold text-earth-900">Recent Alerts</h2>
-        </div>
-        <div id="recent-alerts"
-             hx-get="{% url 'notifications:dropdown' %}"
-             hx-trigger="load"
-             hx-swap="innerHTML">
-          <div class="bg-white rounded-xl border border-earth-200 p-4 space-y-2 shadow-sm">
-            {% for _ in "123" %}
-            <div class="animate-pulse h-12 bg-earth-100 rounded-lg"></div>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-
-      <!-- Quick links -->
-      <div class="bg-white rounded-xl border border-earth-200 p-5 shadow-sm">
-        <h3 class="text-sm font-semibold text-earth-700 mb-3">Quick Links</h3>
-        <div class="space-y-1">
-          <a href="{% url 'farms:list' %}"
-             class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-earth-600
-                    hover:bg-earth-50 hover:text-earth-900 transition-colors min-h-[44px]">
-            <svg class="w-4 h-4 text-earth-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-            </svg>
-            Manage Farms
-          </a>
-          <a href="{% url 'health:calendar' %}"
-             class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-earth-600
-                    hover:bg-earth-50 hover:text-earth-900 transition-colors min-h-[44px]">
-            <svg class="w-4 h-4 text-earth-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-            </svg>
-            Vaccinations
-          </a>
-          <a href="{% url 'market:prices' %}"
-             class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-earth-600
-                    hover:bg-earth-50 hover:text-earth-900 transition-colors min-h-[44px]">
-            <svg class="w-4 h-4 text-earth-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-            </svg>
-            Market Prices
-          </a>
-        </div>
-      </div>
-
-    </div>
+  <!-- Quick action buttons -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+    <a href="{% url 'farms:list' %}"
+       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
+              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
+              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
+              transition:all 0.15s"
+       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
+       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+      </svg>
+      Manage Farms
+    </a>
+    <a href="{% url 'flocks:list' %}"
+       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
+              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
+              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
+              transition:all 0.15s"
+       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
+       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/>
+        <circle cx="12" cy="15" r="3"/>
+      </svg>
+      Active Batches
+    </a>
+    <a href="{% url 'tasks:list' %}"
+       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
+              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
+              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
+              transition:all 0.15s"
+       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
+       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/>
+      </svg>
+      Today's Tasks
+    </a>
+    <a href="{% url 'health:calendar' %}"
+       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
+              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
+              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
+              transition:all 0.15s"
+       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
+       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      Vaccinations
+    </a>
+    <a href="{% url 'market:prices' %}"
+       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
+              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
+              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
+              transition:all 0.15s"
+       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
+       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+      </svg>
+      Market Prices
+    </a>
+    <a href="{% url 'billing:billing_page' %}"
+       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
+              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
+              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
+              transition:all 0.15s"
+       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
+       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <rect x="2" y="5" width="20" height="14" rx="2"/>
+        <path stroke-linecap="round" d="M2 10h20"/>
+      </svg>
+      Billing
+    </a>
   </div>
 
   <!-- 30-day trend charts -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
 
     <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden">
       <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">
@@ -255,6 +224,66 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- Active batches table — full width -->
+  <div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span style="font-size:16px;font-weight:700;color:#1a2744">Active Batches</span>
+      <a href="{% url 'flocks:list' %}"
+         style="font-size:13px;color:#3d5a99;font-weight:600;text-decoration:none">
+        View all →
+      </a>
+    </div>
+
+    {% if active_batches %}
+    <div class="bg-white rounded-xl border border-earth-200 overflow-hidden shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-earth-100 bg-earth-50">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Farm</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Batch</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-earth-500 uppercase tracking-wide">Type</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-earth-500 uppercase tracking-wide">Live Birds</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-earth-500 uppercase tracking-wide">Status</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-earth-50">
+            {% for batch in active_batches %}
+            <tr class="hover:bg-earth-50 transition-colors cursor-pointer"
+                onclick="window.location='/batches/{{ batch.pk }}/'">
+              <td class="px-4 py-3 text-earth-600">{{ batch.farm.name|truncatechars:20 }}</td>
+              <td class="px-4 py-3 font-medium text-earth-900">{{ batch.batch_name }}</td>
+              <td class="px-4 py-3 text-earth-600 capitalize">{{ batch.bird_type }}</td>
+              <td class="px-4 py-3 text-right font-bold tabular-nums text-flock-green-600">
+                {{ batch.current_count|intcomma }}
+              </td>
+              <td class="px-4 py-3 text-right">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                             bg-flock-green-100 text-flock-green-800 capitalize">
+                  {{ batch.status }}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-xl border border-earth-200 p-12 text-center shadow-sm">
+      <div class="text-4xl mb-3">🐔</div>
+      <h3 class="text-base font-semibold text-earth-900 mb-1">No active batches</h3>
+      <p class="text-sm text-earth-500 mb-5">Place a batch to start tracking production.</p>
+      <a href="{% url 'farms:list' %}"
+         class="inline-flex items-center gap-2 px-4 py-2.5 bg-flock-green-600
+                text-white text-sm font-medium rounded-lg hover:bg-flock-green-700
+                transition-colors min-h-[44px]">
+        Go to Farms
+      </a>
+    </div>
+    {% endif %}
   </div>
 
   {% if upcoming_vaccinations %}

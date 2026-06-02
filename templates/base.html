@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 {% load static %}
+{% load rbac %}
 <html lang="en" class="h-full">
 <head>
   <meta charset="UTF-8">
@@ -23,40 +24,47 @@
     }
 
     /* ── Sidebar ─────────────────────────────────────────────────── */
+    .app-shell { position: relative; min-height: 100vh; }
+
     .sidebar {
       background: var(--navy);
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
       width: 60px;
-      flex-direction: column;
-      flex-shrink: 0;
+      z-index: 300;
       overflow: hidden;
-      position: relative;
-      display: none;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.25s ease;
     }
 
-    @media (min-width: 768px) {
-      .sidebar {
-        display: flex;
-        transition: width 0.25s ease;
-      }
-      .sidebar:hover { width: 240px; }
-      .sidebar.pinned { width: 240px; }
-      .sidebar.pinned:hover { width: 240px; }
+    .sidebar:hover,
+    .sidebar.pinned { width: 240px; }
+
+    /* Main content — always offset by collapsed sidebar width */
+    .main {
+      margin-left: 60px;
+      width: calc(100% - 60px);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Only shift content when sidebar is explicitly pinned open */
+    body.sidebar-pinned .main {
+      margin-left: 240px;
+      width: calc(100% - 240px);
+      transition: margin-left 0.25s ease, width 0.25s ease;
     }
 
     @media (max-width: 767px) {
-      .sidebar {
-        display: flex;
-        position: fixed;
-        top: 0; left: 0; bottom: 0;
-        z-index: 40;
-        width: 240px;
-        transform: translateX(-100%);
-        transition: transform 0.25s ease;
-        overflow-y: auto;
-      }
-      .sidebar.sidebar-mobile-open {
-        transform: translateX(0);
-      }
+      .sidebar { width: 0; }
+      .sidebar.sidebar-mobile-open { width: 240px; }
+      .main { margin-left: 0; width: 100%; }
+      body.sidebar-pinned .main { margin-left: 0; width: 100%; }
     }
 
     /* Text that fades in when sidebar expands */
@@ -67,13 +75,9 @@
       transition: opacity 0.15s ease;
       flex-shrink: 0;
     }
-    @media (min-width: 768px) {
-      .sidebar:hover .sb-text,
-      .sidebar.pinned .sb-text { opacity: 1; }
-    }
-    @media (max-width: 767px) {
-      .sb-text { opacity: 1; }
-    }
+    .sidebar:hover .sb-text,
+    .sidebar.pinned .sb-text,
+    .sidebar.sidebar-mobile-open .sb-text { opacity: 1; }
 
     /* Nav group label */
     .sb-group {
@@ -131,10 +135,8 @@
       transition: opacity 0.15s ease;
       padding: 0;
     }
-    @media (min-width: 768px) {
-      .sidebar:hover .sb-pin,
-      .sidebar.pinned .sb-pin { opacity: 1; }
-    }
+    .sidebar:hover .sb-pin,
+    .sidebar.pinned .sb-pin { opacity: 1; }
 
     /* Sign-out link in user row */
     .sb-signout {
@@ -250,7 +252,7 @@
   </div>
 
   <!-- Mobile backdrop -->
-  <div class="fixed inset-0 z-30 bg-black/50 md:hidden"
+  <div class="fixed inset-0 bg-black/50 md:hidden" style="z-index:299"
        x-show="mobileMenuOpen"
        x-transition:enter="transition-opacity ease-linear duration-300"
        x-transition:enter-start="opacity-0"
@@ -261,7 +263,7 @@
        @click="mobileMenuOpen = false">
   </div>
 
-  <div class="flex h-full">
+  <div class="app-shell">
 
     <!-- ── SIDEBAR ────────────────────────────────────────────────── -->
     <aside id="sidebar"
@@ -279,7 +281,7 @@
           <span style="font-size:11px; color:rgba(255,255,255,0.5); line-height:1.3;">Farm Management</span>
         </div>
         <button class="sb-pin"
-                @click="pinned = !pinned"
+                @click="pinned = !pinned; pinned ? document.body.classList.add('sidebar-pinned') : document.body.classList.remove('sidebar-pinned')"
                 :title="pinned ? 'Unpin sidebar' : 'Pin sidebar open'">
           <svg class="transition-transform" :class="pinned ? '' : 'rotate-180'"
                style="width:10px;height:10px;"
@@ -426,6 +428,23 @@
           <span class="sb-text">Team</span>
         </a>
         {% endif %}
+        {% with unread_count=request.user|unread_notification_count %}
+        <a href="{% url 'notifications:notifications_page' %}"
+           class="sb-item {% if app_name == 'notifications' and url_name == 'notifications_page' %}active{% endif %}">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+          <span class="sb-text">Notifications</span>
+          {% if unread_count > 0 %}
+          <span style="background:#ef4444;color:white;border-radius:20px;
+                       padding:1px 6px;font-size:10px;font-weight:700;
+                       margin-left:auto;flex-shrink:0">
+            {{ unread_count }}
+          </span>
+          {% endif %}
+        </a>
+        {% endwith %}
         <a href="{% url 'billing:billing_page' %}"
            class="sb-item {% if app_name == 'billing' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -478,7 +497,7 @@
     </aside>
 
     <!-- ── MAIN AREA ─────────────────────────────────────────────── -->
-    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+    <div class="main">
 
       <!-- TOPBAR -->
       <header class="bg-white border-b border-earth-200 px-4 h-16 flex items-center
@@ -543,7 +562,7 @@
               </svg>
               <span id="bell-count"
                     hx-get="{% url 'notifications:bell' %}"
-                    hx-trigger="load, every 60s"
+                    hx-trigger="load, every 60s, refreshBell from:body"
                     hx-swap="innerHTML">
               </span>
             </button>

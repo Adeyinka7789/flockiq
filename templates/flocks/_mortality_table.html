@@ -1,5 +1,51 @@
+<!-- Mortality filter strip -->
+<form id="mortality-filter-form"
+      style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;margin-top:16px">
+
+  <input type="date" name="date_from" value="{{ date_from }}"
+         hx-get="{% url 'flocks:mortality_recent' batch_pk %}"
+         hx-include="#mortality-filter-form"
+         hx-target="#mortality-table"
+         hx-swap="innerHTML"
+         hx-trigger="change"
+         style="padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:8px;
+                font-size:12px;color:#1a2744">
+  <span style="font-size:12px;color:#8a96a8">to</span>
+  <input type="date" name="date_to" value="{{ date_to }}"
+         hx-get="{% url 'flocks:mortality_recent' batch_pk %}"
+         hx-include="#mortality-filter-form"
+         hx-target="#mortality-table"
+         hx-swap="innerHTML"
+         hx-trigger="change"
+         style="padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:8px;
+                font-size:12px;color:#1a2744">
+
+  <select name="cause"
+          hx-get="{% url 'flocks:mortality_recent' batch_pk %}"
+          hx-include="#mortality-filter-form"
+          hx-target="#mortality-table"
+          hx-swap="innerHTML"
+          hx-trigger="change"
+          style="padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:8px;
+                 font-size:12px;color:#1a2744;background:white;cursor:pointer">
+    <option value="">All Causes</option>
+    <option value="disease" {% if active_cause == 'disease' %}selected{% endif %}>Disease</option>
+    <option value="accident" {% if active_cause == 'accident' %}selected{% endif %}>Accident</option>
+    <option value="culling" {% if active_cause == 'culling' %}selected{% endif %}>Culling</option>
+    <option value="theft" {% if active_cause == 'theft' %}selected{% endif %}>Theft</option>
+    <option value="unknown" {% if active_cause == 'unknown' %}selected{% endif %}>Unknown</option>
+  </select>
+
+  {% if logs %}
+  <span style="margin-left:auto;font-size:12px;color:#8a96a8;font-weight:600">
+    {{ logs|length }} record{{ logs|length|pluralize }}
+  </span>
+  {% endif %}
+
+</form>
+
 {% if logs %}
-<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-4">
+<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
   <table class="min-w-full divide-y divide-gray-100" id="mortality-log-table">
     <thead class="bg-gray-50">
       <tr>
@@ -27,5 +73,5 @@
   {% endif %}
 </div>
 {% else %}
-<p class="text-sm text-gray-400 mt-4">No mortality logged yet.</p>
+<p class="text-sm text-gray-400 mt-2">No mortality records match this filter.</p>
 {% endif %}

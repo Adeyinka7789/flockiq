@@ -192,9 +192,9 @@ class UpgradeRequestView(LoginRequiredMixin, View):
         elif result["method"] == "email":
             response = HttpResponse()
             response["HX-Trigger"] = json.dumps({
-                "showToast": {"message": result["message"], "type": "success"}
+                "showToast": {"message": result["message"], "type": "success"},
+                "refreshBell": True,
             })
-            response["HX-Refresh"] = "true"
             return response
         else:
             response = HttpResponse()

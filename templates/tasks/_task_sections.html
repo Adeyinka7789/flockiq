@@ -1,0 +1,134 @@
+{% load i18n %}
+
+<!-- Overdue tasks -->
+{% if overdue_tasks %}
+<div class="tasks-section">
+  <div class="tasks-section-header">
+    <div class="tasks-section-title">
+      <span>Overdue</span>
+      <span class="section-badge red">{{ overdue_tasks|length }}</span>
+    </div>
+  </div>
+  {% for task in overdue_tasks %}
+  <div class="task-row" id="task-{{ task.pk }}">
+    <button hx-post="{% url 'tasks:complete' task.pk %}"
+            hx-target="#task-{{ task.pk }}"
+            hx-swap="outerHTML"
+            class="task-check">
+      <svg width="10" height="10" fill="none" viewBox="0 0 24 24"
+           stroke="white" stroke-width="3">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+    </button>
+    <div class="task-info">
+      <div class="task-title">{{ task.title }}</div>
+      <div class="task-meta">
+        <div class="priority-dot {{ task.priority }}"></div>
+        {{ task.farm.name }}
+        {% if task.batch %} · {{ task.batch.batch_name }}{% endif %}
+        · Due {{ task.due_date }}
+      </div>
+    </div>
+    <span class="task-badge overdue">Overdue</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Pending tasks -->
+{% if active_status != 'overdue' and active_status != 'complete' %}
+<div class="tasks-section">
+  <div class="tasks-section-header">
+    <div class="tasks-section-title">
+      <span>Pending</span>
+      <span class="section-badge blue">{{ pending_tasks|length }}</span>
+    </div>
+  </div>
+  {% if pending_tasks %}
+    {% for task in pending_tasks %}
+    <div class="task-row" id="task-{{ task.pk }}">
+      <button hx-post="{% url 'tasks:complete' task.pk %}"
+              hx-target="#task-{{ task.pk }}"
+              hx-swap="outerHTML"
+              class="task-check">
+        <svg width="10" height="10" fill="none" viewBox="0 0 24 24"
+             stroke="white" stroke-width="3">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+        </svg>
+      </button>
+      <div class="task-info">
+        <div class="task-title">{{ task.title }}</div>
+        <div class="task-meta">
+          <div class="priority-dot {{ task.priority }}"></div>
+          {{ task.farm.name }}
+          {% if task.batch %} · {{ task.batch.batch_name }}{% endif %}
+        </div>
+      </div>
+      <span class="task-badge pending">Pending</span>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-tasks">
+      <div class="empty-icon">
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24"
+             stroke="#3d5a99" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0
+                   002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2
+                   0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+        </svg>
+      </div>
+      <div class="empty-label">No tasks for today</div>
+      <div class="empty-sub">Tasks are auto-generated daily from your active batches</div>
+    </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Completed tasks -->
+{% if completed_tasks %}
+<div class="tasks-section">
+  <div class="tasks-section-header">
+    <div class="tasks-section-title">
+      <span>Completed Today</span>
+      <span class="section-badge green">{{ completed_tasks|length }}</span>
+    </div>
+  </div>
+  {% for task in completed_tasks %}
+  <div class="task-row" id="task-{{ task.pk }}">
+    <div class="task-check done">
+      <svg width="10" height="10" fill="none" viewBox="0 0 24 24"
+           stroke="white" stroke-width="3">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+    </div>
+    <div class="task-info">
+      <div class="task-title done">{{ task.title }}</div>
+      <div class="task-meta">
+        {{ task.farm.name }}
+        {% if task.completed_by %} · Done by {{ task.completed_by.get_full_name }}{% endif %}
+      </div>
+    </div>
+    <span class="task-badge complete">Done</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not overdue_tasks and not pending_tasks and not completed_tasks %}
+<div class="tasks-section">
+  <div class="empty-tasks">
+    <div class="empty-icon">
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24"
+           stroke="#3d5a99" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0
+                 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2
+                 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+      </svg>
+    </div>
+    <div class="empty-label">No tasks match this filter</div>
+    <div class="empty-sub">Try clearing the farm or status filter</div>
+  </div>
+</div>
+{% endif %}

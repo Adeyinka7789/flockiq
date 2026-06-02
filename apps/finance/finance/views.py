@@ -37,31 +37,49 @@ class PLSummaryView(LoginRequiredMixin, View):
 
 
 class SaleLogView(LoginRequiredMixin, View):
-    """POST /finance/sales/<uuid:batch_pk>/log/"""
+    """GET+POST /finance/sales/<uuid:batch_pk>/log/"""
+
+    def get(self, request, batch_pk):
+        import datetime
+        from apps.farm.flocks.models import Batch
+        from django.shortcuts import get_object_or_404
+        from .models import SalesRecord
+
+        org = _get_org(request)
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch, pk=batch_pk, org=org)
+        return render(request, "finance/_sale_log_form.html", {
+            "batch": batch,
+            "batch_pk": batch_pk,
+            "today": datetime.date.today(),
+            "product_types": SalesRecord.PRODUCT_TYPE_CHOICES,
+            "units": SalesRecord.UNIT_CHOICES,
+        })
 
     def post(self, request, batch_pk):
+        from .models import SalesRecord
+
         org = _get_org(request)
         data = request.POST
 
+        def _error(msg, status=422):
+            return render(request, "finance/_sale_log_form.html", {
+                "error": msg,
+                "batch_pk": batch_pk,
+                "today": datetime.date.today(),
+                "product_types": SalesRecord.PRODUCT_TYPE_CHOICES,
+                "units": SalesRecord.UNIT_CHOICES,
+            }, status=status)
+
         for field in ["product_type", "quantity", "unit", "unit_price"]:
             if not data.get(field):
-                return render(
-                    request,
-                    "finance/_sale_log_form.html",
-                    {"error": f"{field} is required.", "batch_pk": batch_pk},
-                    status=422,
-                )
+                return _error(f"{field} is required.")
 
         try:
             quantity = float(data["quantity"])
             unit_price_kobo = int(float(data["unit_price"]) * 100)
         except (ValueError, TypeError):
-            return render(
-                request,
-                "finance/_sale_log_form.html",
-                {"error": "Invalid quantity or price.", "batch_pk": batch_pk},
-                status=422,
-            )
+            return _error("Invalid quantity or price.")
 
         sale_date_str = data.get("sale_date")
         sale_date = datetime.date.today()
@@ -85,12 +103,7 @@ class SaleLogView(LoginRequiredMixin, View):
                     recorded_by=request.user,
                 )
             except ValueError as exc:
-                return render(
-                    request,
-                    "finance/_sale_log_form.html",
-                    {"error": str(exc), "batch_pk": batch_pk},
-                    status=422,
-                )
+                return _error(str(exc))
 
         response = render(
             request,

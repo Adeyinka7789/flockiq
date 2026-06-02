@@ -18,6 +18,58 @@
     </a>
   </div>
 
+  <!-- Filter bar -->
+  <form id="batch-filter-form"
+        style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+
+    <!-- Farm filter -->
+    <select name="farm"
+            hx-get="{% url 'flocks:list' %}"
+            hx-include="#batch-filter-form"
+            hx-target="#batch-list"
+            hx-push-url="true"
+            hx-trigger="change"
+            style="padding:7px 12px;border:1.5px solid #e2e8f0;border-radius:8px;
+                   font-size:12px;color:#1a2744;background:white;cursor:pointer">
+      <option value="">All Farms</option>
+      {% for farm in farms %}
+      <option value="{{ farm.pk }}"
+              {% if active_farm == farm.pk|stringformat:'s' %}selected{% endif %}>
+        {{ farm.name }}
+      </option>
+      {% endfor %}
+    </select>
+
+    <!-- Bird type filter -->
+    <select name="bird_type"
+            hx-get="{% url 'flocks:list' %}"
+            hx-include="#batch-filter-form"
+            hx-target="#batch-list"
+            hx-push-url="true"
+            hx-trigger="change"
+            style="padding:7px 12px;border:1.5px solid #e2e8f0;border-radius:8px;
+                   font-size:12px;color:#1a2744;background:white;cursor:pointer">
+      <option value="">All Types</option>
+      <option value="layer" {% if active_bird_type == 'layer' %}selected{% endif %}>Layers</option>
+      <option value="broiler" {% if active_bird_type == 'broiler' %}selected{% endif %}>Broilers</option>
+    </select>
+
+    <!-- Status filter -->
+    <select name="status"
+            hx-get="{% url 'flocks:list' %}"
+            hx-include="#batch-filter-form"
+            hx-target="#batch-list"
+            hx-push-url="true"
+            hx-trigger="change"
+            style="padding:7px 12px;border:1.5px solid #e2e8f0;border-radius:8px;
+                   font-size:12px;color:#1a2744;background:white;cursor:pointer">
+      <option value="active" {% if active_status == 'active' %}selected{% endif %}>Active</option>
+      <option value="closed" {% if active_status == 'closed' %}selected{% endif %}>Closed</option>
+      <option value="all" {% if active_status == 'all' %}selected{% endif %}>All</option>
+    </select>
+
+  </form>
+
   <div id="batch-list" class="bg-white rounded-xl border border-earth-200 shadow-sm overflow-hidden">
     {% include "flocks/_batch_list_partial.html" %}
   </div>

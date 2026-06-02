@@ -1,48 +1,63 @@
 {% with profit=summary.gross_profit_naira %}
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:4px">
 
-  <div class="bg-blue-50 rounded-lg p-4 border border-blue-100">
-    <p class="text-xs text-blue-600 font-medium uppercase">Revenue</p>
-    <p class="text-2xl font-bold text-blue-800 mt-1">₦{{ summary.total_revenue_naira|floatformat:0 }}</p>
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;
+              padding:14px;border-top:3px solid #8bc87a">
+    <div style="font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;
+                letter-spacing:0.06em;margin-bottom:6px">Revenue</div>
+    <div style="font-size:22px;font-weight:800;color:#166534;font-variant-numeric:tabular-nums">
+      ₦{{ summary.total_revenue_naira|floatformat:0 }}
+    </div>
   </div>
 
-  <div class="bg-orange-50 rounded-lg p-4 border border-orange-100">
-    <p class="text-xs text-orange-600 font-medium uppercase">Expenses</p>
-    <p class="text-2xl font-bold text-orange-800 mt-1">₦{{ summary.total_expenses_naira|floatformat:0 }}</p>
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;
+              padding:14px;border-top:3px solid #ef4444">
+    <div style="font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;
+                letter-spacing:0.06em;margin-bottom:6px">Expenses</div>
+    <div style="font-size:22px;font-weight:800;color:#dc2626;font-variant-numeric:tabular-nums">
+      ₦{{ summary.total_expenses_naira|floatformat:0 }}
+    </div>
   </div>
 
-  <div class="{% if profit >= 0 %}bg-green-50 border-green-100{% else %}bg-red-50 border-red-100{% endif %} rounded-lg p-4 border">
-    <p class="text-xs {% if profit >= 0 %}text-green-600{% else %}text-red-600{% endif %} font-medium uppercase">
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;
+              padding:14px;border-top:3px solid {% if profit >= 0 %}#8bc87a{% else %}#ef4444{% endif %}">
+    <div style="font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;
+                letter-spacing:0.06em;margin-bottom:6px">
       {% if profit >= 0 %}Profit{% else %}Loss{% endif %}
-    </p>
-    <p class="text-2xl font-bold {% if profit >= 0 %}text-green-800{% else %}text-red-800{% endif %} mt-1">
+    </div>
+    <div style="font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;
+                color:{% if profit >= 0 %}#166534{% else %}#dc2626{% endif %}">
       ₦{{ profit|floatformat:0 }}
-    </p>
+    </div>
   </div>
 
-  <div class="bg-purple-50 rounded-lg p-4 border border-purple-100">
-    <p class="text-xs text-purple-600 font-medium uppercase">Margin</p>
-    <p class="text-2xl font-bold text-purple-800 mt-1">{{ summary.profit_margin_pct|floatformat:1 }}%</p>
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;
+              padding:14px;border-top:3px solid #3d5a99">
+    <div style="font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;
+                letter-spacing:0.06em;margin-bottom:6px">Margin</div>
+    <div style="font-size:22px;font-weight:800;color:#3d5a99;font-variant-numeric:tabular-nums">
+      {{ summary.profit_margin_pct|floatformat:1 }}%
+    </div>
   </div>
 
 </div>
 
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 px-4 pb-4">
-  <div class="text-center">
-    <p class="text-xs text-gray-500">ROI</p>
-    <p class="font-semibold text-gray-800">{{ summary.roi_pct|floatformat:1 }}%</p>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:4px 0 8px">
+  <div style="text-align:center">
+    <div style="font-size:10px;color:#8a96a8">ROI</div>
+    <div style="font-size:13px;font-weight:600;color:#1a2744">{{ summary.roi_pct|floatformat:1 }}%</div>
   </div>
-  <div class="text-center">
-    <p class="text-xs text-gray-500">Cost/Bird</p>
-    <p class="font-semibold text-gray-800">₦{{ summary.cost_per_bird_naira|floatformat:2 }}</p>
+  <div style="text-align:center">
+    <div style="font-size:10px;color:#8a96a8">Cost/Bird</div>
+    <div style="font-size:13px;font-weight:600;color:#1a2744">₦{{ summary.cost_per_bird_naira|floatformat:2 }}</div>
   </div>
-  <div class="text-center">
-    <p class="text-xs text-gray-500">Revenue/Bird</p>
-    <p class="font-semibold text-gray-800">₦{{ summary.revenue_per_bird_naira|floatformat:2 }}</p>
+  <div style="text-align:center">
+    <div style="font-size:10px;color:#8a96a8">Revenue/Bird</div>
+    <div style="font-size:13px;font-weight:600;color:#1a2744">₦{{ summary.revenue_per_bird_naira|floatformat:2 }}</div>
   </div>
-  <div class="text-center">
-    <p class="text-xs text-gray-500">Break-Even Units</p>
-    <p class="font-semibold text-gray-800">{{ summary.break_even_quantity }}</p>
+  <div style="text-align:center">
+    <div style="font-size:10px;color:#8a96a8">Break-Even</div>
+    <div style="font-size:13px;font-weight:600;color:#1a2744">{{ summary.break_even_quantity }} units</div>
   </div>
 </div>
 {% endwith %}

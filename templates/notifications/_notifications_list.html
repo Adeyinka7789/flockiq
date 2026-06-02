@@ -1,0 +1,100 @@
+<!-- sub-header: counts + mark-all button -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <div style="font-size:13px;color:#8a96a8">
+    {{ unread|length }} unread · {{ read|length }} read
+  </div>
+  {% if unread %}
+  <form hx-post="{% url 'notifications:mark_all_read_page' %}"
+        hx-target="#notifications-list"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+    <button type="submit"
+            style="padding:8px 16px;background:#3d5a99;color:white;border:none;
+                   border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
+      Mark all read
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- Unread section -->
+{% if unread %}
+<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
+            overflow:hidden;margin-bottom:16px">
+  <div style="padding:12px 18px;border-bottom:1px solid #f1f5f9;
+              font-size:11px;font-weight:700;color:#8a96a8;
+              text-transform:uppercase;letter-spacing:0.06em">
+    Unread — {{ unread|length }}
+  </div>
+  {% for notif in unread %}
+  <a href="{% url 'notifications:notifications_page' %}"
+     hx-post="{% url 'notifications:mark_read' notif.pk %}"
+     hx-swap="none"
+     style="display:flex;gap:12px;padding:14px 18px;text-decoration:none;
+            background:#f4f7fe;border-bottom:1px solid #f1f5f9;
+            transition:background 0.1s"
+     onmouseover="this.style.background='#e8eef8'"
+     onmouseout="this.style.background='#f4f7fe'">
+    <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;
+                background:{% if notif.severity == 'critical' %}#ef4444
+                {% elif notif.severity == 'warning' %}#f59e0b
+                {% else %}#5b8dd9{% endif %}">
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:3px">
+        {{ notif.title }}
+      </div>
+      <div style="font-size:12px;color:#4a5568;line-height:1.5">{{ notif.body }}</div>
+      <div style="font-size:11px;color:#b0bac9;margin-top:5px">
+        {{ notif.created_at|timesince }} ago
+      </div>
+    </div>
+    <div style="width:8px;height:8px;border-radius:50%;
+                background:#3d5a99;flex-shrink:0;margin-top:5px"></div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Read section -->
+{% if read %}
+<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden">
+  <div style="padding:12px 18px;border-bottom:1px solid #f1f5f9;
+              font-size:11px;font-weight:700;color:#8a96a8;
+              text-transform:uppercase;letter-spacing:0.06em">
+    Read — {{ read|length }}
+  </div>
+  {% for notif in read %}
+  <div style="display:flex;gap:12px;padding:14px 18px;
+              border-bottom:1px solid #f8faff">
+    <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;
+                background:{% if notif.severity == 'critical' %}#fca5a5
+                {% elif notif.severity == 'warning' %}#fcd34d
+                {% else %}#93c5fd{% endif %}">
+    </div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:500;color:#4a5568;margin-bottom:3px">
+        {{ notif.title }}
+      </div>
+      <div style="font-size:12px;color:#8a96a8;line-height:1.5">{{ notif.body }}</div>
+      <div style="font-size:11px;color:#b0bac9;margin-top:5px">
+        {{ notif.created_at|timesince }} ago
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not unread and not read %}
+<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
+            padding:60px 18px;text-align:center">
+  <div style="font-size:32px;margin-bottom:12px">🔔</div>
+  <div style="font-size:14px;font-weight:600;color:#1a2744;margin-bottom:6px">
+    No notifications yet
+  </div>
+  <div style="font-size:13px;color:#8a96a8">
+    Alerts and system messages will appear here
+  </div>
+</div>
+{% endif %}

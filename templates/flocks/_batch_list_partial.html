@@ -1,3 +1,10 @@
+{% if total is not None %}
+<div style="padding:8px 16px;border-bottom:1px solid #f1f5f9;
+            font-size:12px;color:#8a96a8;font-weight:600">
+  {{ total }} batch{{ total|pluralize:"es" }}
+</div>
+{% endif %}
+
 {% if batches %}
 <div class="overflow-x-auto">
   <table class="min-w-full divide-y divide-earth-100">

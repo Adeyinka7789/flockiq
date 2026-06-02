@@ -34,9 +34,11 @@ function flockApp() {
     },
 
     addToast(message, type = 'success') {
+      console.log('addToast called:', message, type);
       const id = Date.now() + Math.random();
+      const duration = type === 'error' ? 8000 : 6000;
       this.toasts.push({ id, message: message || 'Done', type, visible: true });
-      setTimeout(() => this.removeToast(id), 4000);
+      setTimeout(() => this.removeToast(id), duration);
     },
 
     removeToast(id) {
@@ -59,6 +61,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // HTMX showToast event relay (for HX-Trigger header responses)
 document.addEventListener('showToast', (e) => {
+  console.log('showToast event caught:', e.detail);
+  window.dispatchEvent(new CustomEvent('show-toast', { detail: e.detail }));
+});
+
+document.body.addEventListener('showToast', (e) => {
+  console.log('showToast body event caught:', e.detail);
   window.dispatchEvent(new CustomEvent('show-toast', { detail: e.detail }));
 });
 

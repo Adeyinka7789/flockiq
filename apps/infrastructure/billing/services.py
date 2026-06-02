@@ -388,6 +388,25 @@ class BillingService(BaseService):
         )
         self.logger.info("billing.upgrade_email_sent", org=str(self.org.id), plan_tier=plan_tier)
 
+        owner = self.org.users.filter(role="owner").first()
+        if owner:
+            from apps.infrastructure.core.rls import set_tenant_context
+            from apps.infrastructure.notifications.models import NotificationLog
+            with set_tenant_context(self.org):
+                NotificationLog.objects.create(
+                    org=self.org,
+                    recipient=owner,
+                    event_type="billing_upgrade_request",
+                    title="Upgrade Request Received",
+                    body=(
+                        f"Your request to upgrade to the {plan_tier.title()} plan has been received. "
+                        f"Our team will activate your account within 24 hours."
+                    ),
+                    severity="info",
+                    channel="in_app",
+                    is_read=False,
+                )
+
     @transaction.atomic
     def verify_and_activate(self, reference: str) -> bool:
         result = PaystackService().verify_transaction(reference)

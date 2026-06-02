@@ -1,3 +1,64 @@
+<!-- Expense filter bar -->
+<form id="expense-filter-form"
+      style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+
+  <!-- Preset buttons -->
+  <div style="display:flex;gap:4px">
+    {% for preset, label in presets %}
+    <button type="button"
+            hx-get="{% url 'expenses:table' batch_pk %}"
+            hx-vals='{"preset": "{{ preset }}", "category": "{{ active_category }}"}'
+            hx-target="#expense-table-wrap"
+            hx-swap="innerHTML"
+            style="padding:5px 10px;border-radius:8px;font-size:11px;font-weight:600;
+                   cursor:pointer;border:1.5px solid;transition:all 0.15s;
+                   {% if active_preset == preset %}background:#3d5a99;color:white;border-color:#3d5a99;
+                   {% else %}background:white;color:#4a5568;border-color:#e2e8f0;{% endif %}">
+      {{ label }}
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- Custom date range -->
+  <input type="date" name="date_from" value="{{ date_from }}"
+         hx-get="{% url 'expenses:table' batch_pk %}"
+         hx-include="#expense-filter-form"
+         hx-target="#expense-table-wrap"
+         hx-swap="innerHTML"
+         hx-trigger="change"
+         style="padding:5px 9px;border:1.5px solid #e2e8f0;border-radius:8px;
+                font-size:11px;color:#1a2744">
+  <span style="font-size:11px;color:#8a96a8">to</span>
+  <input type="date" name="date_to" value="{{ date_to }}"
+         hx-get="{% url 'expenses:table' batch_pk %}"
+         hx-include="#expense-filter-form"
+         hx-target="#expense-table-wrap"
+         hx-swap="innerHTML"
+         hx-trigger="change"
+         style="padding:5px 9px;border:1.5px solid #e2e8f0;border-radius:8px;
+                font-size:11px;color:#1a2744">
+
+  <!-- Category filter -->
+  <select name="category"
+          hx-get="{% url 'expenses:table' batch_pk %}"
+          hx-include="#expense-filter-form"
+          hx-target="#expense-table-wrap"
+          hx-swap="innerHTML"
+          hx-trigger="change"
+          style="padding:5px 9px;border:1.5px solid #e2e8f0;border-radius:8px;
+                 font-size:11px;color:#1a2744;background:white;cursor:pointer">
+    <option value="">All Categories</option>
+    {% for val, label in category_choices %}
+    <option value="{{ val }}" {% if active_category == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+
+  <span style="margin-left:auto;font-size:11px;color:#8a96a8;font-weight:600">
+    {{ expenses|length }} record{{ expenses|length|pluralize }}
+  </span>
+
+</form>
+
 <div class="overflow-x-auto">
   <table class="min-w-full divide-y divide-gray-200 text-sm">
     <thead class="bg-gray-50">

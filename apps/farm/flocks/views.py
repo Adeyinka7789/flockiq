@@ -43,18 +43,38 @@ def _get_org(request):
 # ── HTMX views ─────────────────────────────────────────────────────────────────
 
 class BatchListView(TenantRequiredMixin, View):
-    """GET /batches/ → Full batch list page."""
+    """GET /batches/ → Full batch list page with farm/type/status filtering."""
 
     def get(self, request):
         org = _get_org(request)
         is_htmx = request.headers.get("HX-Request") == "true"
 
-        with set_tenant_context(org):
-            batches = list(
-                BatchService(org).get_active_batches()
-            )
+        farm_id = request.GET.get("farm", "")
+        bird_type = request.GET.get("bird_type", "")
+        status = request.GET.get("status", "active")
 
-        context = {"batches": batches, "form": BatchCreateForm()}
+        with set_tenant_context(org):
+            from apps.farm.farms.models import Farm
+
+            qs = Batch.objects.select_related("farm", "house")
+            if status != "all":
+                qs = qs.filter(status=status)
+            if farm_id:
+                qs = qs.filter(farm_id=farm_id)
+            if bird_type:
+                qs = qs.filter(bird_type=bird_type)
+            batches = list(qs.order_by("-placement_date"))
+            farms = list(Farm.objects.filter(is_active=True))
+
+        context = {
+            "batches": batches,
+            "form": BatchCreateForm(),
+            "farms": farms,
+            "active_farm": farm_id,
+            "active_bird_type": bird_type,
+            "active_status": status,
+            "total": len(batches),
+        }
 
         if is_htmx:
             return render(request, "flocks/_batch_list_partial.html", context)
@@ -159,20 +179,52 @@ class BatchDetailView(TenantRequiredMixin, View):
 
 
 class MortalityRecentView(LoginRequiredMixin, View):
-    """GET /batches/<uuid:pk>/mortality/recent/ → HTMX mortality table fragment."""
+    """GET /batches/<uuid:pk>/mortality/recent/ → HTMX mortality table fragment with filters."""
 
     def get(self, request, pk):
+        from datetime import datetime as dt
+
         org = _get_org(request)
+        date_from_str = request.GET.get("date_from", "")
+        date_to_str = request.GET.get("date_to", "")
+        cause = request.GET.get("cause", "")
+
         with set_tenant_context(org):
             try:
                 batch = Batch.objects.get(id=pk)
             except Batch.DoesNotExist:
                 raise Http404("Batch not found.")
-            logs = list(MortalityLog.objects.filter(batch_id=pk).order_by("-date")[:30])
+
+            logs = MortalityLog.objects.filter(batch_id=pk).order_by("-date")
+
+            if date_from_str:
+                try:
+                    logs = logs.filter(date__gte=dt.strptime(date_from_str, "%Y-%m-%d").date())
+                except ValueError:
+                    date_from_str = ""
+
+            if date_to_str:
+                try:
+                    logs = logs.filter(date__lte=dt.strptime(date_to_str, "%Y-%m-%d").date())
+                except ValueError:
+                    date_to_str = ""
+
+            if cause:
+                logs = logs.filter(cause=cause)
+
+            logs = list(logs[:50])
+
         return render(
             request,
             "flocks/_mortality_table.html",
-            {"logs": logs, "batch": batch, "batch_pk": pk},
+            {
+                "logs": logs,
+                "batch": batch,
+                "batch_pk": pk,
+                "active_cause": cause,
+                "date_from": date_from_str,
+                "date_to": date_to_str,
+            },
         )
 
 

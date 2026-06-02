@@ -24,31 +24,46 @@ def _get_org(request):
 
 
 class ExpenseLogView(LoginRequiredMixin, View):
-    """POST /finance/expenses/<uuid:batch_pk>/log/"""
+    """GET+POST /finance/expenses/<uuid:batch_pk>/log/"""
+
+    def get(self, request, batch_pk):
+        from apps.farm.flocks.models import Batch
+        from django.shortcuts import get_object_or_404
+        from .models import ExpenseRecord
+
+        org = _get_org(request)
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch, pk=batch_pk, org=org)
+        return render(request, "expenses/_expense_log_form.html", {
+            "batch": batch,
+            "batch_pk": batch_pk,
+            "today": datetime.date.today(),
+            "categories": ExpenseRecord.CATEGORY_CHOICES,
+        })
 
     def post(self, request, batch_pk):
+        from .models import ExpenseRecord
+
         org = _get_org(request)
         data = request.POST
 
+        def _error(msg, status=422):
+            return render(request, "expenses/_expense_log_form.html", {
+                "error": msg,
+                "batch_pk": batch_pk,
+                "today": datetime.date.today(),
+                "categories": ExpenseRecord.CATEGORY_CHOICES,
+            }, status=status)
+
         for field in ["category", "amount", "description"]:
             if not data.get(field):
-                return render(
-                    request,
-                    "expenses/_expense_log_form.html",
-                    {"error": f"{field} is required.", "batch_pk": batch_pk},
-                    status=422,
-                )
+                return _error(f"{field} is required.")
 
         try:
             amount_naira = float(data["amount"])
             amount_kobo = int(amount_naira * 100)
         except (ValueError, TypeError):
-            return render(
-                request,
-                "expenses/_expense_log_form.html",
-                {"error": "Invalid amount.", "batch_pk": batch_pk},
-                status=422,
-            )
+            return _error("Invalid amount.")
 
         expense_date_str = data.get("expense_date")
         expense_date = None
@@ -74,12 +89,7 @@ class ExpenseLogView(LoginRequiredMixin, View):
                     recorded_by=request.user,
                 )
             except ValueError as exc:
-                return render(
-                    request,
-                    "expenses/_expense_log_form.html",
-                    {"error": str(exc), "batch_pk": batch_pk},
-                    status=422,
-                )
+                return _error(str(exc))
 
         response = render(
             request,
@@ -91,16 +101,46 @@ class ExpenseLogView(LoginRequiredMixin, View):
 
 
 class ExpenseTableView(LoginRequiredMixin, View):
-    """GET /finance/expenses/<uuid:batch_pk>/table/"""
+    """GET /finance/expenses/<uuid:batch_pk>/table/ — supports date range + category filters."""
 
     def get(self, request, batch_pk):
+        from apps.infrastructure.core.filters import DateRangeFilter
+        from .models import ExpenseRecord
+
         org = _get_org(request)
+        df = DateRangeFilter()
+        date_from, date_to = df.get_date_range(request)
+        filter_ctx = df.get_filter_context(request)
+        category = request.GET.get("category", "")
+
         with set_tenant_context(org):
             expenses = ExpenseService(org).get_batch_expenses(str(batch_pk))
+            expenses = expenses.filter(
+                expense_date__gte=date_from,
+                expense_date__lte=date_to,
+            )
+            if category:
+                expenses = expenses.filter(category=category)
+            expenses = list(expenses)
+
+        PRESETS = [
+            ("7d", "7 days"),
+            ("30d", "30 days"),
+            ("90d", "90 days"),
+            ("this_month", "This month"),
+        ]
+
         return render(
             request,
             "expenses/_expense_table.html",
-            {"expenses": expenses, "batch_pk": batch_pk},
+            {
+                "expenses": expenses,
+                "batch_pk": batch_pk,
+                "active_category": category,
+                "category_choices": ExpenseRecord.CATEGORY_CHOICES,
+                "presets": PRESETS,
+                **filter_ctx,
+            },
         )
 
 

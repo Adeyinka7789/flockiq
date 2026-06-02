@@ -1,59 +1,65 @@
 {% load tz %}
 <div class="w-80 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
-  <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-    <h3 class="text-sm font-semibold text-gray-800">Notifications</h3>
-    <form
-      method="post"
-      action="{% url 'notifications:mark_all_read' %}"
-      hx-post="{% url 'notifications:mark_all_read' %}"
-      hx-target="closest div"
-      hx-swap="outerHTML"
-    >
+  <div style="display:flex;align-items:center;justify-content:space-between;
+              padding:12px 16px;border-bottom:1px solid #f1f5f9">
+    <span style="font-size:13px;font-weight:700;color:#1a2744">Notifications</span>
+    <form method="post"
+          action="{% url 'notifications:mark_all_read' %}"
+          hx-post="{% url 'notifications:mark_all_read' %}"
+          hx-target="#notification-dropdown"
+          hx-swap="innerHTML">
       {% csrf_token %}
-      <button type="submit" class="text-xs text-green-600 hover:text-green-800 font-medium">
+      <button type="submit"
+              style="font-size:11px;font-weight:600;color:#3d5a99;
+                     background:none;border:none;cursor:pointer">
         Mark all read
       </button>
     </form>
   </div>
 
   {% if notifications %}
-    <ul class="divide-y divide-gray-50 max-h-96 overflow-y-auto">
-      {% for notif in notifications %}
-        <li class="{% if not notif.is_read %}bg-green-50{% else %}bg-white{% endif %} hover:bg-gray-50 transition-colors">
-          <form
-            method="post"
-            action="{% url 'notifications:mark_read' notif.id %}"
-            hx-post="{% url 'notifications:mark_read' notif.id %}"
-            hx-target="#notification-bell-badge"
-            hx-swap="outerHTML"
-            class="block px-4 py-3 cursor-pointer"
-          >
-            {% csrf_token %}
-            <button type="submit" class="w-full text-left">
-              <div class="flex items-start gap-2">
-                {% if notif.severity == "critical" %}
-                  <span class="mt-0.5 w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
-                {% elif notif.severity == "warning" %}
-                  <span class="mt-0.5 w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></span>
-                {% else %}
-                  <span class="mt-0.5 w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></span>
-                {% endif %}
-                <div class="min-w-0">
-                  <p class="text-sm font-medium text-gray-800 truncate">{{ notif.title }}</p>
-                  <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                    {{ notif.body|truncatechars:80 }}
-                  </p>
-                  <p class="text-xs text-gray-400 mt-1">{{ notif.created_at|timesince }} ago</p>
-                </div>
-              </div>
-            </button>
-          </form>
-        </li>
-      {% endfor %}
-    </ul>
+    {% for notif in notifications %}
+    <a href="{% url 'notifications:notifications_page' %}"
+       hx-post="{% url 'notifications:mark_read' notif.pk %}"
+       hx-swap="none"
+       style="display:flex;gap:10px;padding:10px 14px;text-decoration:none;
+              background:{% if not notif.is_read %}#f4f7fe{% else %}white{% endif %};
+              border-bottom:1px solid #f1f5f9;transition:background 0.1s"
+       onmouseover="this.style.background='#e8eef8'"
+       onmouseout="this.style.background='{% if not notif.is_read %}#f4f7fe{% else %}white{% endif %}'">
+      <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;
+                  background:{% if notif.severity == 'critical' %}#ef4444
+                  {% elif notif.severity == 'warning' %}#f59e0b
+                  {% else %}#5b8dd9{% endif %}">
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;
+                    font-weight:{% if not notif.is_read %}700{% else %}500{% endif %};
+                    color:#1a2744;margin-bottom:2px">
+          {{ notif.title }}
+        </div>
+        <div style="font-size:11px;color:#8a96a8;
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          {{ notif.body|truncatechars:60 }}
+        </div>
+        <div style="font-size:10px;color:#b0bac9;margin-top:3px">
+          {{ notif.created_at|timesince }} ago
+        </div>
+      </div>
+    </a>
+    {% endfor %}
   {% else %}
-    <div class="px-4 py-8 text-center text-sm text-gray-400">
-      No notifications yet
+    <div style="padding:32px 16px;text-align:center;
+                font-size:13px;color:#8a96a8">
+      No unread notifications
     </div>
   {% endif %}
+
+  <a href="{% url 'notifications:notifications_page' %}"
+     style="display:block;text-align:center;padding:10px;
+            font-size:12px;font-weight:600;color:#3d5a99;
+            text-decoration:none;border-top:1px solid #f1f5f9;
+            background:#fafafa">
+    View all notifications →
+  </a>
 </div>

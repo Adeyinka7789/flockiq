@@ -195,40 +195,75 @@
 
   <!-- TAB 4: Finance -->
   <div x-show="tab === 'finance'" x-cloak class="mt-6">
-    <div hx-get="{% url 'finance:pl' batch.pk %}"
-         hx-trigger="intersect once">
-      {% include 'partials/_skeleton_metric_cards.html' %}
-    </div>
-    <div class="mt-6"
-         hx-get="{% url 'finance:breakeven' batch.pk %}"
-         hx-trigger="intersect once">
-      {% include 'partials/_skeleton_card.html' %}
-    </div>
-    <div class="mt-6"
-         hx-get="{% url 'expenses:breakdown' batch.pk %}"
-         hx-trigger="intersect once">
-      {% include 'partials/_skeleton_chart.html' %}
-    </div>
-    <div class="flex flex-wrap gap-3 mt-6">
+
+    <!-- Action buttons — prominent, at top -->
+    <div style="display:flex;gap:10px;margin-bottom:20px">
       <button hx-get="{% url 'finance:sale_log' batch.pk %}"
               hx-target="#modal-container"
               hx-swap="innerHTML"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              style="flex:1;padding:12px;background:#3d5a99;color:white;border:none;
+                     border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;
+                     display:flex;align-items:center;justify-content:center;gap:6px">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
         Record Sale
       </button>
       <button hx-get="{% url 'expenses:log' batch.pk %}"
               hx-target="#modal-container"
               hx-swap="innerHTML"
-              class="inline-flex items-center gap-2 px-4 py-2 bg-[#3d5a99] text-white text-sm font-medium rounded-lg hover:bg-[#2e4577] transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              style="flex:1;padding:12px;background:white;color:#3d5a99;
+                     border:2px solid #3d5a99;border-radius:10px;font-size:13px;
+                     font-weight:700;cursor:pointer;
+                     display:flex;align-items:center;justify-content:center;gap:6px">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
         Record Expense
       </button>
     </div>
+
+    <!-- P&L summary -->
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;
+                padding:16px;margin-bottom:16px"
+         hx-get="{% url 'finance:pl' batch.pk %}"
+         hx-trigger="intersect once">
+      {% include 'partials/_skeleton_metric_cards.html' %}
+    </div>
+
+    <!-- Expense breakdown chart -->
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;
+                padding:16px;margin-bottom:16px"
+         hx-get="{% url 'expenses:breakdown' batch.pk %}"
+         hx-trigger="intersect once">
+      {% include 'partials/_skeleton_chart.html' %}
+    </div>
+
+    <!-- Expense ledger with filter -->
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;
+                padding:16px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:12px">Expense Records</div>
+      <div id="expense-table-wrap"
+           hx-get="{% url 'expenses:table' batch.pk %}"
+           hx-trigger="load, expenseAdded from:body"
+           hx-swap="innerHTML">
+        {% include 'partials/_skeleton_table.html' %}
+      </div>
+    </div>
+
+    <!-- Sales records -->
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px">
+      <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:12px">Sales Records</div>
+      <div id="sale-table-wrap"
+           hx-get="{% url 'finance:sale_table' batch.pk %}"
+           hx-trigger="load, saleAdded from:body"
+           hx-swap="innerHTML">
+        {% include 'partials/_skeleton_table.html' %}
+      </div>
+    </div>
+
   </div>
 
   <!-- TAB 5: AI Insights -->

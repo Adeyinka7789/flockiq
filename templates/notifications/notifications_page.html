@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block breadcrumb %}Notifications{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;margin:0 auto">
+
+  <!-- Static page title -->
+  <div style="margin-bottom:20px">
+    <div style="font-size:20px;font-weight:700;color:#1a2744">Notifications</div>
+  </div>
+
+  <!-- Dynamic list: counts, mark-all button, unread/read items -->
+  <div id="notifications-list">
+    {% include 'notifications/_notifications_list.html' %}
+  </div>
+
+</div>
+{% endblock %}
