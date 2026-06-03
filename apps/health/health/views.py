@@ -6,7 +6,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
 from django.db.models import Q
 from django.http import Http404, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.views import View
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -396,6 +396,78 @@ class OutbreakAlertView(TenantRequiredMixin, View):
             "health/outbreaks.html",
             {"alerts": alerts},
         )
+
+
+class AddVaccinationView(TenantRequiredMixin, View):
+    """GET+POST /health/vaccinations/add/ — Manual vaccination schedule creation."""
+
+    def get(self, request):
+        from apps.farm.flocks.models import Batch
+
+        org = _get_org(request)
+        with set_tenant_context(org):
+            batches = list(Batch.objects.filter(status="active").select_related("farm"))
+        return render(request, "health/_add_vaccination_form.html", {"batches": batches})
+
+    def post(self, request):
+        from datetime import datetime
+
+        from apps.farm.flocks.models import Batch
+
+        from .models import VaccinationSchedule
+
+        org = _get_org(request)
+        batch_id = request.POST.get("batch_id")
+        vaccine_name = request.POST.get("vaccine_name", "").strip()
+        due_date_str = request.POST.get("due_date")
+        route = request.POST.get("route", "oral")
+        notes = request.POST.get("notes", "").strip()
+
+        if not all([batch_id, vaccine_name, due_date_str]):
+            with set_tenant_context(org):
+                batches = list(Batch.objects.filter(status="active").select_related("farm"))
+            return render(
+                request,
+                "health/_add_vaccination_form.html",
+                {"batches": batches, "error": "Batch, vaccine name, and due date are required."},
+            )
+
+        try:
+            with set_tenant_context(org):
+                batch = get_object_or_404(Batch, pk=batch_id, org=org)
+                due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
+                VaccinationSchedule.objects.create(
+                    org=org,
+                    batch=batch,
+                    farm=batch.farm,
+                    vaccine_name=vaccine_name,
+                    due_date=due_date,
+                    route=route,
+                    notes=notes,
+                    status="scheduled",
+                )
+        except Exception as exc:
+            logger.warning("add_vaccination_failed", error=str(exc))
+            with set_tenant_context(org):
+                batches = list(Batch.objects.filter(status="active").select_related("farm"))
+            return render(
+                request,
+                "health/_add_vaccination_form.html",
+                {"batches": batches, "error": str(exc)},
+            )
+
+        response = HttpResponse()
+        response["HX-Trigger"] = json.dumps(
+            {
+                "showToast": {
+                    "message": f"{vaccine_name} scheduled for {due_date_str}",
+                    "type": "success",
+                },
+                "closeModal": {},
+            }
+        )
+        response["HX-Refresh"] = "true"
+        return response
 
 
 # ── DRF API ──────────────────────────────────────────────────────────────────

@@ -89,9 +89,30 @@ class DashboardView(TemplateView):
 
     def render_landing(self, request):
         from apps.infrastructure.billing.models import BillingPlan
+        from apps.farm.farms.models import Farm
+        from apps.infrastructure.core.rls import no_tenant_context
+
         plans = BillingPlan.objects.filter(is_active=True).order_by("amount_kobo")
+
+        try:
+            with no_tenant_context():
+                farm_locations = list(
+                    Farm.objects.filter(is_active=True)
+                    .values_list("location", flat=True)
+                    .distinct()[:20]
+                )
+        except Exception:
+            farm_locations = []
+
+        if not farm_locations:
+            farm_locations = [
+                "Lagos", "Ibadan", "Kano", "Abuja",
+                "Port Harcourt", "Osogbo", "Enugu", "Kaduna",
+            ]
+
         return render(request, "landing.html", {
             "billing_plans": plans if plans.exists() else None,
+            "farm_locations": farm_locations,
         })
 
     def super_admin_view(self, request):

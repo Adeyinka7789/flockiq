@@ -1,48 +1,100 @@
 {% for v in vaccinations %}
-<div class="vacc-row {{ v.urgency }}">
-
-  <div class="vacc-vaccine-name">{{ v.vaccine_name }}</div>
-
-  <div class="vacc-batch-info">
-    <div class="vacc-batch-name">
-      <a href="{% url 'flocks:detail' v.batch.pk %}" style="color:#3d5a99;text-decoration:none">
+<tr>
+  <td>
+    <div class="vacc-name-wrap">
+      <div class="vacc-icon"
+           style="background:{% if v.urgency == 'overdue' %}#fee2e2
+                  {% elif v.urgency == 'today' %}#fef3c7
+                  {% elif v.urgency == 'soon' %}#edfae8
+                  {% else %}#e8eef8{% endif %}">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+             stroke="{% if v.urgency == 'overdue' %}#dc2626
+             {% elif v.urgency == 'today' %}#d97706
+             {% elif v.urgency == 'soon' %}#16a34a
+             {% else %}#3d5a99{% endif %}"
+             stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+      </div>
+      <span class="vacc-name-text">{{ v.vaccine_name }}</span>
+    </div>
+  </td>
+  <td>
+    <div class="vacc-batch-id">
+      <a href="{% url 'flocks:detail' v.batch.pk %}"
+         style="color:#3d5a99;text-decoration:none;font-weight:600">
         {{ v.batch.batch_name }}
       </a>
     </div>
-    <div class="vacc-farm-name">
-      {{ v.batch.farm.name }} · {{ v.batch.bird_type|title }} · Day {{ v.batch.cycle_day }}
+    <div style="font-size:11px;color:#8a96a8;margin-top:2px">
+      {{ v.batch.bird_type|title }}
     </div>
-  </div>
-
-  <div class="vacc-due-date">{{ v.due_date|date:"M d, Y" }}</div>
-
-  <span class="days-badge {{ v.urgency }}">{{ v.days_label }}</span>
-
-  <span class="status-badge status-{{ v.status }}">{{ v.status|title }}</span>
-
-  {% if v.status == 'scheduled' %}
-  <button class="mark-done-btn"
-          hx-post="{% url 'health:complete' v.pk %}"
-          hx-target="closest .vacc-row"
-          hx-swap="outerHTML"
-          hx-confirm="Mark {{ v.vaccine_name }} as completed?">
-    Mark Done
-  </button>
-  {% else %}
-  <button class="mark-done-btn done" disabled>&#10003; Done</button>
-  {% endif %}
-
-</div>
+  </td>
+  <td>
+    <div class="vacc-location">{{ v.batch.farm.name }}</div>
+    <div style="font-size:11px;color:#8a96a8;margin-top:2px">
+      Day {{ v.batch.cycle_day }}
+    </div>
+  </td>
+  <td>
+    <div class="due-date-text {% if v.urgency == 'overdue' %}overdue{% endif %}">
+      {{ v.due_date|date:"M d, Y" }}
+    </div>
+    <div style="font-size:11px;margin-top:2px">
+      <span style="padding:2px 7px;border-radius:10px;font-weight:600;
+                   {% if v.urgency == 'overdue' %}background:#fee2e2;color:#991b1b
+                   {% elif v.urgency == 'today' %}background:#fef3c7;color:#92400e
+                   {% elif v.urgency == 'soon' %}background:#edfae8;color:#166534
+                   {% else %}background:#e8eef8;color:#2d4578{% endif %}">
+        {{ v.days_label }}
+      </span>
+    </div>
+  </td>
+  <td>
+    <div class="reminder-icons">
+      <div class="reminder-icon active" title="SMS reminder set">
+        <svg width="12" height="12" fill="none" viewBox="0 0 24 24"
+             stroke="#16a34a" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+        </svg>
+      </div>
+      <div class="reminder-icon" title="Email reminder">
+        <svg width="12" height="12" fill="none" viewBox="0 0 24 24"
+             stroke="#8a96a8" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+        </svg>
+      </div>
+    </div>
+  </td>
+  <td>
+    <span class="status-pill {{ v.status }}">{{ v.status|title }}</span>
+  </td>
+  <td>
+    {% if v.status == 'scheduled' %}
+    <button class="action-btn primary"
+            hx-post="{% url 'health:complete' v.pk %}"
+            hx-target="closest tr"
+            hx-swap="outerHTML"
+            hx-confirm="Mark {{ v.vaccine_name }} as completed?">
+      Mark Done
+    </button>
+    {% else %}
+    <button class="action-btn done" disabled>✓ Done</button>
+    {% endif %}
+  </td>
+</tr>
 {% empty %}
-<div class="empty-vacc">
-  {% if active_status == 'overdue' %}
-    &#10003; No overdue vaccinations
-  {% elif active_status == 'today' %}
-    No vaccinations due today
-  {% elif active_status == 'completed' %}
-    No completed vaccinations yet
-  {% else %}
-    No vaccinations scheduled
-  {% endif %}
-</div>
+<tr>
+  <td colspan="7">
+    <div class="empty-state">
+      {% if active_status == 'overdue' %}✓ No overdue vaccinations
+      {% elif active_status == 'today' %}No vaccinations due today
+      {% elif active_status == 'completed' %}No completed vaccinations yet
+      {% else %}No vaccinations scheduled{% endif %}
+    </div>
+  </td>
+</tr>
 {% endfor %}

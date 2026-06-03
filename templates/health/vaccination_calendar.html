@@ -4,16 +4,49 @@
 
 {% block content %}
 <style>
-  .vacc-wrap { max-width: 1000px; margin: 0 auto; }
+  .vacc-wrap { max-width: 1100px; margin: 0 auto; }
 
+  /* Header */
+  .vacc-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .vacc-header-title {
+    font-size: 22px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.3px;
+  }
+  .vacc-header-sub {
+    font-size: 11px; font-weight: 700;
+    color: #8a96a8; text-transform: uppercase;
+    letter-spacing: 0.1em; margin-top: 2px;
+  }
+  .schedule-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; background: #3d5a99; color: white;
+    border: none; border-radius: 10px; font-size: 13px;
+    font-weight: 700; cursor: pointer; transition: all 0.15s;
+    text-decoration: none;
+  }
+  .schedule-btn:hover { background: #2d4578; transform: translateY(-1px); }
+
+  /* Two column layout */
+  .vacc-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+
+  /* Metric cards row */
   .vacc-metrics {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
-    gap: 14px; margin-bottom: 20px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px; margin-bottom: 20px;
   }
   .vacc-metric {
     background: white; border: 1px solid #e2e8f0;
-    border-radius: 14px; padding: 16px 18px;
+    border-radius: 12px; padding: 16px 18px;
   }
   .vacc-metric-lbl {
     font-size: 10px; font-weight: 700; color: #8a96a8;
@@ -21,22 +54,110 @@
     margin-bottom: 6px;
   }
   .vacc-metric-val {
-    font-size: 28px; font-weight: 800; color: #1a2744;
-    line-height: 1;
+    font-size: 30px; font-weight: 800; color: #1a2744; line-height: 1;
   }
-  .vacc-metric-val.danger  { color: #dc2626; }
+  .vacc-metric-val.danger { color: #dc2626; }
   .vacc-metric-val.warning { color: #d97706; }
 
-  .vacc-card {
+  /* Right sidebar cards */
+  .sidebar-card {
     background: white; border: 1px solid #e2e8f0;
     border-radius: 14px; overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .sidebar-card-hd {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 10px; font-weight: 700;
+    color: #8a96a8; text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
 
+  /* Upcoming next 24h card */
+  .upcoming-card {
+    background: linear-gradient(135deg, #2d4578, #3d5a99);
+    border-radius: 14px; padding: 18px;
+    color: white; margin-bottom: 14px;
+  }
+  .upcoming-label {
+    font-size: 10px; font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 12px;
+  }
+  .upcoming-item {
+    display: flex; gap: 12px; align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  .upcoming-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: rgba(255,255,255,0.12);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .upcoming-name {
+    font-size: 14px; font-weight: 700; color: white;
+  }
+  .upcoming-batch {
+    font-size: 11px; color: rgba(255,255,255,0.6);
+    margin-top: 2px;
+  }
+  .confirm-btn {
+    width: 100%; padding: 10px;
+    background: white; color: #3d5a99;
+    border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+    margin-top: 4px;
+  }
+  .confirm-btn:hover { background: #e8eef8; }
+
+  /* Compliance score */
+  .compliance-score {
+    font-size: 36px; font-weight: 800;
+    color: #1a2744; line-height: 1;
+    margin-bottom: 4px;
+  }
+  .compliance-change {
+    font-size: 12px; font-weight: 600;
+    color: #16a34a; margin-bottom: 10px;
+  }
+  .compliance-bar {
+    height: 6px; background: #e2e8f0;
+    border-radius: 3px; overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .compliance-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, #8bc87a, #16a34a);
+    transition: width 1s ease;
+  }
+  .compliance-note {
+    font-size: 11px; color: #8a96a8;
+    font-style: italic;
+  }
+
+  /* Main table section */
+  .registry-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .registry-title {
+    font-size: 16px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.2px;
+  }
+
+  /* Filter tabs */
   .vacc-tabs {
     display: flex; align-items: center;
     gap: 4px; padding: 12px 16px;
     border-bottom: 1px solid #f1f5f9;
     flex-wrap: wrap;
+    background: white;
+    border-radius: 12px 12px 0 0;
+    border: 1px solid #e2e8f0;
+    border-bottom: none;
   }
   .vacc-tab {
     padding: 6px 14px; border-radius: 8px;
@@ -46,21 +167,14 @@
     transition: all 0.15s;
     display: flex; align-items: center; gap: 5px;
   }
-  .vacc-tab.active {
-    background: #3d5a99; color: white;
-    border-color: #3d5a99;
-  }
-  .vacc-tab.danger.active {
-    background: #ef4444; border-color: #ef4444;
-  }
+  .vacc-tab.active { background: #3d5a99; color: white; border-color: #3d5a99; }
+  .vacc-tab.danger.active { background: #ef4444; border-color: #ef4444; }
   .vacc-tab-count {
     background: rgba(255,255,255,0.2);
     border-radius: 20px; padding: 1px 6px;
     font-size: 10px; font-weight: 700;
   }
-  .vacc-tab:not(.active) .vacc-tab-count {
-    background: #f1f5f9; color: #475569;
-  }
+  .vacc-tab:not(.active) .vacc-tab-count { background: #f1f5f9; color: #475569; }
 
   .farm-filter {
     margin-left: auto;
@@ -69,209 +183,382 @@
     background: white; cursor: pointer; outline: none;
   }
 
-  #vacc-table-wrap { min-height: 200px; }
-
-  .vacc-row {
-    display: flex; align-items: center; gap: 16px;
-    padding: 14px 18px;
+  /* Registry table */
+  .registry-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 0 0 14px 14px; overflow: hidden;
+  }
+  .registry-table {
+    width: 100%; border-collapse: collapse;
+  }
+  .registry-table th {
+    text-align: left; padding: 10px 16px;
+    font-size: 10px; font-weight: 700;
+    color: #8a96a8; text-transform: uppercase;
+    letter-spacing: 0.07em;
+    background: #fafafa;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .registry-table td {
+    padding: 14px 16px;
     border-bottom: 1px solid #f8faff;
-    border-left: 3px solid transparent;
-    transition: background 0.1s;
+    vertical-align: middle;
   }
-  .vacc-row:last-child { border-bottom: none; }
-  .vacc-row:hover { background: #fafbff; }
-  .vacc-row.overdue { border-left-color: #ef4444; }
-  .vacc-row.today   { border-left-color: #f59e0b; }
-  .vacc-row.soon    { border-left-color: #8bc87a; }
+  .registry-table tr:last-child td { border-bottom: none; }
+  .registry-table tr:hover td { background: #fafbff; }
 
-  .vacc-vaccine-name {
+  /* Vaccine icon */
+  .vacc-icon {
+    width: 34px; height: 34px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .vacc-name-wrap { display: flex; align-items: center; gap: 10px; }
+  .vacc-name-text {
     font-size: 13px; font-weight: 700; color: #1a2744;
-    min-width: 160px;
   }
-  .vacc-batch-info { flex: 1; min-width: 0; }
-  .vacc-batch-name {
-    font-size: 13px; font-weight: 600; color: #3d5a99;
+  .vacc-batch-id {
+    font-size: 12px; color: #3d5a99; font-weight: 600;
   }
-  .vacc-farm-name {
-    font-size: 11px; color: #8a96a8; margin-top: 1px;
-  }
-
-  .vacc-due-date {
+  .vacc-location {
     font-size: 12px; color: #4a5568;
-    min-width: 100px; font-weight: 500;
   }
+  .due-date-text {
+    font-size: 12px; font-weight: 600; color: #1a2744;
+  }
+  .due-date-text.overdue { color: #dc2626; }
 
-  .days-badge {
-    padding: 4px 10px; border-radius: 20px;
+  .reminder-icons { display: flex; gap: 6px; }
+  .reminder-icon {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: #e8eef8; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .reminder-icon.active { background: #dcfce7; }
+
+  .status-pill {
+    display: inline-flex; padding: 3px 10px;
+    border-radius: 20px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .status-pill.completed { background: #dcfce7; color: #166534; }
+  .status-pill.pending   { background: #fef3c7; color: #92400e; }
+  .status-pill.overdue   { background: #fee2e2; color: #991b1b; }
+  .status-pill.scheduled { background: #e8eef8; color: #2d4578; }
+
+  .action-btn {
+    padding: 6px 14px; border-radius: 8px;
     font-size: 11px; font-weight: 700;
-    min-width: 80px; text-align: center;
-    white-space: nowrap;
+    border: none; cursor: pointer; transition: all 0.15s;
   }
-  .days-badge.overdue   { background: #fee2e2; color: #991b1b; }
-  .days-badge.today     { background: #fef3c7; color: #92400e; }
-  .days-badge.soon      { background: #edfae8; color: #166534; }
-  .days-badge.upcoming  { background: #e8eef8; color: #2d4578; }
-  .days-badge.completed { background: #f1f5f9; color: #475569; }
+  .action-btn.primary { background: #3d5a99; color: white; }
+  .action-btn.primary:hover { background: #2d4578; }
+  .action-btn.done { background: #f1f5f9; color: #8a96a8; cursor: default; }
 
-  .status-badge {
-    padding: 3px 9px; border-radius: 20px;
-    font-size: 11px; font-weight: 600;
-  }
-  .status-scheduled { background: #fef9c3; color: #713f12; }
-  .status-completed { background: #dcfce7; color: #166534; }
-  .status-skipped   { background: #f1f5f9; color: #475569; }
-
-  .mark-done-btn {
-    padding: 7px 14px; border-radius: 8px;
-    background: #3d5a99; color: white;
-    border: none; font-size: 12px; font-weight: 700;
-    cursor: pointer; transition: all 0.15s;
-    white-space: nowrap;
-  }
-  .mark-done-btn:hover { background: #2d4578; }
-  .mark-done-btn.done {
-    background: #f1f5f9; color: #8a96a8;
-    cursor: default;
+  .empty-state {
+    padding: 48px; text-align: center;
+    color: #8a96a8; font-size: 13px;
   }
 
-  .empty-vacc {
-    padding: 48px; text-align: center; color: #8a96a8;
-    font-size: 13px;
+  @media(max-width:900px){
+    .vacc-layout{grid-template-columns:1fr}
+    .vacc-metrics{grid-template-columns:1fr 1fr}
   }
 </style>
 
 <div class="vacc-wrap">
 
-  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+  <!-- Header -->
+  <div class="vacc-header">
     <div>
-      <h1 style="font-size:20px;font-weight:800;color:#1a2744">Vaccination Calendar</h1>
-      <p style="font-size:13px;color:#8a96a8;margin-top:3px">
-        Scheduled and completed vaccinations across all batches
-      </p>
+      <div class="vacc-header-title">Vaccination Schedule</div>
+      <div class="vacc-header-sub">Health Surveillance Cluster</div>
     </div>
     {% if request.user.role in 'owner,manager' %}
-    <div style="display:flex;gap:8px;flex-shrink:0">
+    <div style="display:flex;gap:8px;align-items:center">
       {% if plan_features.pdf_export %}
       <a href="{% url 'health:export_pdf' %}" target="_blank"
-         style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:white;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#dc2626;text-decoration:none;transition:all 0.15s"
-         onmouseover="this.style.borderColor='#dc2626';this.style.background='#fee2e2'"
-         onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-        </svg>
-        PDF Report
+         style="display:inline-flex;align-items:center;gap:6px;
+                padding:8px 14px;background:white;
+                border:1.5px solid #e2e8f0;border-radius:10px;
+                font-size:12px;font-weight:600;color:#dc2626;
+                text-decoration:none">
+        PDF
       </a>
       {% else %}
-      <button disabled title="Upgrade to Monthly to unlock PDF exports"
-              style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f4f7fe;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#b0bac9;cursor:not-allowed">
-        🔒 PDF Report
+      <button disabled style="padding:8px 14px;background:#f4f7fe;
+              border:1.5px solid #e2e8f0;border-radius:10px;
+              font-size:12px;font-weight:600;color:#b0bac9;cursor:not-allowed">
+        🔒 PDF
       </button>
       {% endif %}
-      {% if plan_features.excel_export %}
-      <a href="{% url 'health:export_excel' %}"
-         style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:white;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#166534;text-decoration:none;transition:all 0.15s"
-         onmouseover="this.style.borderColor='#166534';this.style.background='#edfae8'"
-         onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      <button class="schedule-btn"
+              hx-get="{% url 'health:add_vaccination' %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML"
+              hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
-        Excel
-      </a>
-      {% else %}
-      <button disabled title="Upgrade to Monthly to unlock Excel exports"
-              style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f4f7fe;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#b0bac9;cursor:not-allowed">
-        🔒 Excel
+        Schedule New Vaccination
       </button>
-      {% endif %}
     </div>
     {% endif %}
   </div>
 
+  <!-- Metrics row -->
   <div class="vacc-metrics">
-    <div class="vacc-metric red">
+    <div class="vacc-metric">
       <div class="vacc-metric-lbl">Overdue</div>
-      <div class="vacc-metric-val {% if overdue_count %}danger{% endif %}">{{ overdue_count }}</div>
+      <div class="vacc-metric-val {% if overdue_count %}danger{% endif %}">
+        {{ overdue_count }}
+      </div>
     </div>
-    <div class="vacc-metric amber">
+    <div class="vacc-metric">
       <div class="vacc-metric-lbl">Due This Week</div>
-      <div class="vacc-metric-val {% if due_this_week %}warning{% endif %}">{{ due_this_week }}</div>
+      <div class="vacc-metric-val {% if due_this_week %}warning{% endif %}">
+        {{ due_this_week }}
+      </div>
     </div>
-    <div class="vacc-metric green">
+    <div class="vacc-metric">
       <div class="vacc-metric-lbl">Completed This Month</div>
       <div class="vacc-metric-val">{{ completed_month }}</div>
     </div>
-    <div class="vacc-metric navy">
+    <div class="vacc-metric">
       <div class="vacc-metric-lbl">Total Scheduled</div>
       <div class="vacc-metric-val">{{ total_scheduled }}</div>
     </div>
   </div>
 
-  <div class="vacc-card">
+  <!-- Two column layout: table + sidebar -->
+  <div class="vacc-layout">
 
-    <div class="vacc-tabs">
-      <button class="vacc-tab {% if active_status == 'upcoming' %}active{% endif %}"
-              hx-get="{% url 'health:calendar' %}"
-              hx-vals='{"status":"upcoming"}'
-              hx-target="#vacc-table-wrap"
-              hx-include="[name='farm']"
-              hx-push-url="true">
-        All Upcoming
-      </button>
-      <button class="vacc-tab danger {% if active_status == 'overdue' %}active{% endif %}"
-              hx-get="{% url 'health:calendar' %}"
-              hx-vals='{"status":"overdue"}'
-              hx-target="#vacc-table-wrap"
-              hx-include="[name='farm']"
-              hx-push-url="true">
-        Overdue
-        {% if overdue_count %}<span class="vacc-tab-count">{{ overdue_count }}</span>{% endif %}
-      </button>
-      <button class="vacc-tab {% if active_status == 'today' %}active{% endif %}"
-              hx-get="{% url 'health:calendar' %}"
-              hx-vals='{"status":"today"}'
-              hx-target="#vacc-table-wrap"
-              hx-include="[name='farm']"
-              hx-push-url="true">
-        Today
-      </button>
-      <button class="vacc-tab {% if active_status == 'this_week' %}active{% endif %}"
-              hx-get="{% url 'health:calendar' %}"
-              hx-vals='{"status":"this_week"}'
-              hx-target="#vacc-table-wrap"
-              hx-include="[name='farm']"
-              hx-push-url="true">
-        This Week
-        {% if due_this_week %}<span class="vacc-tab-count">{{ due_this_week }}</span>{% endif %}
-      </button>
-      <button class="vacc-tab {% if active_status == 'completed' %}active{% endif %}"
-              hx-get="{% url 'health:calendar' %}"
-              hx-vals='{"status":"completed"}'
-              hx-target="#vacc-table-wrap"
-              hx-include="[name='farm']"
-              hx-push-url="true">
-        Completed
-      </button>
+    <!-- LEFT: Table -->
+    <div>
+      <!-- Registry header -->
+      <div class="registry-header">
+        <span class="registry-title">Master Vaccination Registry</span>
+      </div>
 
-      <select name="farm" class="farm-filter"
-              hx-get="{% url 'health:calendar' %}"
-              hx-target="#vacc-table-wrap"
-              hx-include="[name='farm']"
-              hx-vals='{"status":"{{ active_status }}"}'
-              hx-push-url="true">
-        <option value="">All Farms</option>
-        {% for farm in farms %}
-        <option value="{{ farm.pk }}"
-                {% if active_farm == farm.pk|stringformat:'s' %}selected{% endif %}>
-          {{ farm.name }}
-        </option>
-        {% endfor %}
-      </select>
+      <!-- Filter tabs -->
+      <div class="vacc-tabs">
+        <button class="vacc-tab {% if active_status == 'upcoming' %}active{% endif %}"
+                hx-get="{% url 'health:calendar' %}"
+                hx-vals='{"status":"upcoming"}'
+                hx-target="#vacc-table-wrap"
+                hx-include="[name='farm']"
+                hx-push-url="true">
+          All Upcoming
+        </button>
+        <button class="vacc-tab danger {% if active_status == 'overdue' %}active{% endif %}"
+                hx-get="{% url 'health:calendar' %}"
+                hx-vals='{"status":"overdue"}'
+                hx-target="#vacc-table-wrap"
+                hx-include="[name='farm']"
+                hx-push-url="true">
+          Overdue
+          {% if overdue_count %}
+          <span class="vacc-tab-count">{{ overdue_count }}</span>
+          {% endif %}
+        </button>
+        <button class="vacc-tab {% if active_status == 'today' %}active{% endif %}"
+                hx-get="{% url 'health:calendar' %}"
+                hx-vals='{"status":"today"}'
+                hx-target="#vacc-table-wrap"
+                hx-include="[name='farm']"
+                hx-push-url="true">
+          Today
+        </button>
+        <button class="vacc-tab {% if active_status == 'this_week' %}active{% endif %}"
+                hx-get="{% url 'health:calendar' %}"
+                hx-vals='{"status":"this_week"}'
+                hx-target="#vacc-table-wrap"
+                hx-include="[name='farm']"
+                hx-push-url="true">
+          This Week
+          {% if due_this_week %}
+          <span class="vacc-tab-count">{{ due_this_week }}</span>
+          {% endif %}
+        </button>
+        <button class="vacc-tab {% if active_status == 'completed' %}active{% endif %}"
+                hx-get="{% url 'health:calendar' %}"
+                hx-vals='{"status":"completed"}'
+                hx-target="#vacc-table-wrap"
+                hx-include="[name='farm']"
+                hx-push-url="true">
+          Completed
+        </button>
+        <select name="farm" class="farm-filter"
+                hx-get="{% url 'health:calendar' %}"
+                hx-target="#vacc-table-wrap"
+                hx-include="[name='farm']"
+                hx-vals='{"status":"{{ active_status }}"}'
+                hx-push-url="true">
+          <option value="">All Farms</option>
+          {% for farm in farms %}
+          <option value="{{ farm.pk }}"
+                  {% if active_farm == farm.pk|stringformat:'s' %}selected{% endif %}>
+            {{ farm.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Table -->
+      <div class="registry-card">
+        <table class="registry-table">
+          <thead>
+            <tr>
+              <th>Vaccine Name</th>
+              <th>Batch ID</th>
+              <th>Farm Location</th>
+              <th>Due Date</th>
+              <th>Reminders</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="vacc-table-wrap">
+            {% include 'health/_vaccination_table.html' %}
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <div id="vacc-table-wrap">
-      {% include 'health/_vaccination_table.html' %}
-    </div>
+    <!-- RIGHT: Sidebar -->
+    <div>
 
+      <!-- Upcoming Next 24H -->
+      {% if vaccinations %}
+      {% with next_vacc=vaccinations|first %}
+      <div class="upcoming-card">
+        <div class="upcoming-label">Upcoming Next 24H</div>
+        <div class="upcoming-item">
+          <div class="upcoming-icon">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+                 stroke="white" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+            </svg>
+          </div>
+          <div>
+            <div class="upcoming-name">{{ next_vacc.vaccine_name }}</div>
+            <div class="upcoming-batch">
+              {{ next_vacc.batch.batch_name }} · {{ next_vacc.batch.farm.name }}
+            </div>
+          </div>
+        </div>
+        <button class="confirm-btn"
+                onclick="
+                  window.dispatchEvent(new CustomEvent('show-toast', {
+                    detail: {
+                      message: 'Stock confirmed for {{ next_vacc.vaccine_name }}',
+                      type: 'success'
+                    }
+                  }));
+                  this.textContent = '✓ Stock Confirmed';
+                  this.style.background = '#dcfce7';
+                  this.style.color = '#166534';
+                  this.disabled = true;
+                ">
+          Confirm Stock
+        </button>
+      </div>
+      {% endwith %}
+      {% endif %}
+
+      <!-- Compliance Score -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-hd">Compliance Score</div>
+        <div style="padding:16px">
+          {% with comp_score=completed_month|add:0 %}
+          {% if total_scheduled > 0 %}
+          {% widthratio completed_month total_scheduled 100 as pct %}
+          <div class="compliance-score">{{ pct }}%</div>
+          <div class="compliance-change">
+            ↑ Target: 100% for bio-security safety
+          </div>
+          <div class="compliance-bar">
+            <div class="compliance-fill" style="width:{{ pct }}%"></div>
+          </div>
+          {% else %}
+          <div class="compliance-score">—</div>
+          <div class="compliance-change" style="color:#8a96a8">
+            No schedules yet
+          </div>
+          <div class="compliance-bar">
+            <div class="compliance-fill" style="width:0%"></div>
+          </div>
+          {% endif %}
+          {% endwith %}
+          <div class="compliance-note">
+            Track completed vaccinations to improve your score.
+          </div>
+        </div>
+      </div>
+
+      <!-- Overdue alert -->
+      {% if overdue_count %}
+      <div style="background:#fef3c7;border:1px solid #fde68a;
+                  border-radius:14px;padding:16px;margin-bottom:14px">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="width:32px;height:32px;border-radius:8px;
+                      background:#fef9c3;display:flex;align-items:center;
+                      justify-content:center;flex-shrink:0">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+                 stroke="#d97706" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">
+              {{ overdue_count }} Overdue Vaccination{{ overdue_count|pluralize }}
+            </div>
+            <div style="font-size:12px;color:#92400e;line-height:1.5">
+              Delayed vaccinations increase disease risk. Address immediately.
+            </div>
+            <button hx-get="{% url 'health:calendar' %}"
+                    hx-vals='{"status":"overdue"}'
+                    hx-target="#vacc-table-wrap"
+                    hx-push-url="true"
+                    style="margin-top:8px;font-size:11px;font-weight:700;
+                           color:#92400e;background:none;border:none;
+                           cursor:pointer;text-decoration:underline;padding:0">
+              Settle Now →
+            </button>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Quick stats -->
+      <div class="sidebar-card">
+        <div class="sidebar-card-hd">This Month</div>
+        <div style="padding:14px">
+          <div style="display:flex;justify-content:space-between;
+                      align-items:center;padding:8px 0;
+                      border-bottom:1px solid #f8faff;font-size:13px">
+            <span style="color:#4a5568">Completed</span>
+            <span style="font-weight:700;color:#16a34a">{{ completed_month }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;
+                      align-items:center;padding:8px 0;
+                      border-bottom:1px solid #f8faff;font-size:13px">
+            <span style="color:#4a5568">Due This Week</span>
+            <span style="font-weight:700;color:#d97706">{{ due_this_week }}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;
+                      align-items:center;padding:8px 0;font-size:13px">
+            <span style="color:#4a5568">Overdue</span>
+            <span style="font-weight:700;color:#dc2626">{{ overdue_count }}</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
   </div>
+
 </div>
 {% endblock %}

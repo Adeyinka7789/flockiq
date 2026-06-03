@@ -22,6 +22,11 @@ urlpatterns = [
         name="export_excel",
     ),
     path(
+        "health/vaccinations/add/",
+        views.AddVaccinationView.as_view(),
+        name="add_vaccination",
+    ),
+    path(
         "health/vaccinations/<uuid:pk>/complete/",
         views.VaccinationCompleteView.as_view(),
         name="complete",

@@ -1,0 +1,71 @@
+<div class="p-5 border-b border-gray-100">
+  <h2 class="text-base font-semibold" style="color:#1a2744">Schedule New Vaccination</h2>
+  <p class="text-xs text-gray-400 mt-0.5">Add a manual vaccination entry for an active batch</p>
+</div>
+
+<form hx-post="{% url 'health:add_vaccination' %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML"
+      class="p-5 grid grid-cols-2 gap-4">
+  {% csrf_token %}
+
+  {% if error %}
+  <div class="col-span-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <div class="col-span-2">
+    <label class="block text-xs font-medium text-gray-600 mb-1">Batch</label>
+    <select name="batch_id" required
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#3d5a99]">
+      <option value="">— Select active batch —</option>
+      {% for batch in batches %}
+      <option value="{{ batch.pk }}">{{ batch.batch_name }} · {{ batch.farm.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-span-2">
+    <label class="block text-xs font-medium text-gray-600 mb-1">Vaccine Name</label>
+    <input name="vaccine_name" required placeholder="e.g. Newcastle Disease, Gumboro"
+           class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#3d5a99]">
+  </div>
+
+  <div>
+    <label class="block text-xs font-medium text-gray-600 mb-1">Due Date</label>
+    <input type="date" name="due_date" required
+           class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#3d5a99]">
+  </div>
+
+  <div>
+    <label class="block text-xs font-medium text-gray-600 mb-1">Route</label>
+    <select name="route"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#3d5a99]">
+      <option value="oral">Oral</option>
+      <option value="injection">Injection</option>
+      <option value="spray">Spray</option>
+      <option value="eye_drop">Eye Drop</option>
+      <option value="wing_web">Wing Web</option>
+    </select>
+  </div>
+
+  <div class="col-span-2">
+    <label class="block text-xs font-medium text-gray-600 mb-1">Notes / Dose (optional)</label>
+    <input name="notes" placeholder="e.g. 1 drop per bird, live attenuated"
+           class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#3d5a99]">
+  </div>
+
+  <div class="col-span-2 flex gap-3 mt-1">
+    <button type="button"
+            @click="open = false"
+            class="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+      Cancel
+    </button>
+    <button type="submit"
+            class="flex-1 px-4 py-2 text-white text-sm font-semibold rounded-lg transition-colors"
+            style="background:#3d5a99">
+      Schedule Vaccination
+    </button>
+  </div>
+</form>
