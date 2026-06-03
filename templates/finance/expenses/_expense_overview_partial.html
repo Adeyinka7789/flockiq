@@ -1,0 +1,203 @@
+{% load static %}
+<div class="exp-layout">
+
+  <!-- LEFT: Main content -->
+  <div class="exp-main">
+
+    <!-- Monthly trend chart -->
+    <div class="exp-trend-card">
+      <div class="exp-trend-eyebrow">Monthly Spending Trend</div>
+      <div class="exp-total">₦{{ total_naira|floatformat:0 }}</div>
+
+      {% if change_pct is not None %}
+      <div class="exp-change {% if change_pct > 0 %}up{% elif change_pct < 0 %}down{% else %}neutral{% endif %}">
+        {% if change_pct > 0 %}↑ +{% elif change_pct < 0 %}↓ {% endif %}{{ change_pct }}% vs previous period
+      </div>
+      {% else %}
+      <div class="exp-change neutral">No previous period data</div>
+      {% endif %}
+
+      {% if monthly_trend %}
+      {% with max_val=monthly_trend|dictsort:"total"|last %}
+      <div class="bar-chart">
+        {% for month in monthly_trend %}
+        <div class="bar-col">
+          {% if max_val.total > 0 %}
+          <div class="bar-fill {% if forloop.last %}current{% endif %}"
+               style="height:{% widthratio month.total max_val.total 140 %}px"
+               title="{{ month.month }}: ₦{{ month.total|floatformat:0 }}"></div>
+          {% else %}
+          <div class="bar-fill" style="height:4px"></div>
+          {% endif %}
+          <div class="bar-label">{{ month.month }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endwith %}
+      {% endif %}
+    </div>
+
+    <!-- Transaction log -->
+    <div class="exp-log-card">
+      <div class="exp-log-hd">
+        <span class="exp-log-title">Transaction Log</span>
+        <a href="{% url 'expenses:overview' %}?preset={{ active_preset }}&farm={{ active_farm }}&download=csv"
+           class="exp-csv-btn">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Download CSV
+        </a>
+      </div>
+
+      {% for expense in expenses %}
+      <div class="exp-row">
+        <div class="exp-row-icon"
+             style="background:{% if expense.category == 'feed' %}#fef3c7{% elif expense.category == 'medication' %}#fee2e2{% elif expense.category == 'labour' %}#edfae8{% elif expense.category == 'utilities' %}#fef9c3{% elif expense.category == 'equipment' %}#e8eef8{% elif expense.category == 'chicks' %}#fff7ed{% else %}#f1f5f9{% endif %}">
+          {% if expense.category == 'feed' %}🌾
+          {% elif expense.category == 'medication' %}💉
+          {% elif expense.category == 'labour' %}👷
+          {% elif expense.category == 'utilities' %}⚡
+          {% elif expense.category == 'equipment' %}🔧
+          {% elif expense.category == 'chicks' %}🐣
+          {% elif expense.category == 'transport' %}🚚
+          {% elif expense.category == 'veterinary' %}🩺
+          {% elif expense.category == 'packaging' %}📦
+          {% else %}📋{% endif %}
+        </div>
+        <div class="exp-row-info">
+          <div class="exp-row-name">{{ expense.description }}</div>
+          <div class="exp-row-meta">
+            {{ expense.expense_date|date:"M d, Y" }} •
+            {{ expense.get_category_display }}
+            {% if expense.batch %} • {{ expense.batch.batch_name }}{% endif %}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="exp-row-amount">₦{{ expense.amount_naira|floatformat:0 }}</div>
+          <span class="exp-status">Logged</span>
+        </div>
+      </div>
+      {% empty %}
+      <div class="empty-state">
+        No expense records found for this period.
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Sidebar -->
+  <div class="exp-sidebar">
+
+    <!-- Break-Even Calculator -->
+    <div class="breakeven-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:36px;height:36px;border-radius:10px;
+                    background:rgba(255,255,255,0.12);
+                    display:flex;align-items:center;justify-content:center;font-size:18px">🧮</div>
+        <div class="breakeven-title">Break-Even Calculator</div>
+      </div>
+      <div class="breakeven-sub">
+        Calculate how many units you need to sell to cover current batch expenses.
+      </div>
+
+      {% if breakeven_batches %}
+      {% with first=breakeven_batches.0 %}
+      <div class="breakeven-field">
+        <div class="breakeven-label">Total Batch Expense</div>
+        <div style="font-size:22px;font-weight:800;color:white;font-variant-numeric:tabular-nums">
+          ₦{{ first.total_expenses_naira|floatformat:0 }}
+        </div>
+      </div>
+
+      <div class="breakeven-field">
+        <div class="breakeven-label">Sale Price Per Unit (Egg / Bird)</div>
+        <div class="breakeven-input-wrap">
+          <span class="breakeven-prefix">₦</span>
+          <input type="number" class="breakeven-input" id="be-price"
+                 value="3200" min="1" oninput="updateBreakeven()">
+        </div>
+      </div>
+
+      <div class="breakeven-field">
+        <div class="breakeven-label">Current Batch Size</div>
+        <div class="breakeven-input-wrap">
+          <span class="breakeven-prefix">#</span>
+          <input type="number" class="breakeven-input" id="be-size"
+                 value="{{ first.batch.current_count }}" min="1" oninput="updateBreakeven()">
+        </div>
+      </div>
+
+      <div class="breakeven-result">
+        <div class="breakeven-result-label">Required to Profit</div>
+        <div class="breakeven-result-val" id="be-units">— Units</div>
+        <div class="breakeven-result-sub" id="be-pct-text">Calculating…</div>
+        <div class="breakeven-bar">
+          <div class="breakeven-bar-fill" id="be-bar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <button class="breakeven-update-btn" onclick="updateBreakeven()">Update Projection</button>
+      {% endwith %}
+      {% else %}
+      <div style="text-align:center;padding:20px;color:rgba(255,255,255,0.5);font-size:13px">
+        No active batches with expense data.
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Category breakdown -->
+    {% if category_breakdown %}
+    <div class="category-card">
+      <div class="category-card-hd">Spending by Category</div>
+      {% with max_cat=category_breakdown.0.total %}
+      {% for cat in category_breakdown %}
+      <div class="cat-row">
+        <span class="cat-label">{{ cat.category }}</span>
+        <div class="cat-bar">
+          {% if max_cat > 0 %}
+          <div class="cat-bar-fill" style="width:{% widthratio cat.total max_cat 100 %}%"></div>
+          {% endif %}
+        </div>
+        <span class="cat-amount">₦{{ cat.total|floatformat:0 }}</span>
+      </div>
+      {% endfor %}
+      {% endwith %}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<script>
+(function () {
+  var totalExpense = {{ breakeven_batches.0.total_expenses_naira|default:0 }};
+
+  function updateBreakeven() {
+    var price = parseFloat(document.getElementById('be-price')?.value) || 3200;
+    var size = parseFloat(document.getElementById('be-size')?.value) || 1;
+    if (price <= 0 || size <= 0) return;
+
+    var required = Math.ceil(totalExpense / price);
+    var pct = Math.min(100, Math.round((required / size) * 100));
+
+    var unitsEl = document.getElementById('be-units');
+    var barEl = document.getElementById('be-bar');
+    var pctEl = document.getElementById('be-pct-text');
+
+    if (unitsEl) unitsEl.textContent = required.toLocaleString() + ' Units';
+    if (barEl) barEl.style.width = pct + '%';
+    if (pctEl) {
+      var status = pct <= 50 ? 'Excellent' : pct <= 75 ? 'Good' : pct <= 90 ? 'Tight' : 'Critical';
+      pctEl.textContent = pct + '% of batch size • STATUS: ' + status;
+    }
+  }
+
+  window.updateBreakeven = updateBreakeven;
+  document.addEventListener('DOMContentLoaded', updateBreakeven);
+  document.addEventListener('htmx:afterSettle', updateBreakeven);
+})();
+</script>

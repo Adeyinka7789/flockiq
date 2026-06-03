@@ -6,6 +6,11 @@ app_name = "expenses"
 
 urlpatterns = [
     path(
+        "expenses/",
+        views.ExpenseOverviewView.as_view(),
+        name="overview",
+    ),
+    path(
         "finance/expenses/<uuid:batch_pk>/log/",
         views.ExpenseLogView.as_view(),
         name="log",

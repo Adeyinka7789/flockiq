@@ -1,9 +1,12 @@
+import csv
 import datetime
 import io
 import json
+from datetime import date, timedelta
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Sum
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views import View
@@ -11,12 +14,171 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.core.filters import DateRangeFilter
 from apps.infrastructure.core.rls import set_tenant_context
 from apps.infrastructure.core.views import TenantRequiredMixin
 
 from .services import ExpenseService
 
 logger = structlog.get_logger(__name__)
+
+
+class ExpenseOverviewView(TenantRequiredMixin, View):
+    """GET /expenses/ — farm-wide expense overview with break-even calculator."""
+
+    def get(self, request):
+        from apps.farm.farms.models import Farm
+        from apps.farm.flocks.models import Batch
+
+        from .models import ExpenseRecord
+
+        org = request.user.org
+        date_filter = DateRangeFilter()
+        date_from, date_to = date_filter.get_date_range(request)
+        preset = request.GET.get("preset", "30d")
+        farm_id = request.GET.get("farm", "")
+        batch_id = request.GET.get("batch", "")
+        category = request.GET.get("category", "")
+
+        # CSV export — resolve queryset then return early
+        if request.GET.get("download") == "csv":
+            with set_tenant_context(org):
+                qs = (
+                    ExpenseRecord.objects.filter(
+                        expense_date__gte=date_from,
+                        expense_date__lte=date_to,
+                    )
+                    .select_related("batch__farm")
+                    .order_by("-expense_date")
+                )
+                if farm_id:
+                    qs = qs.filter(farm_id=farm_id)
+                if category:
+                    qs = qs.filter(category=category)
+
+                response = HttpResponse(content_type="text/csv")
+                response["Content-Disposition"] = 'attachment; filename="expenses.csv"'
+                writer = csv.writer(response)
+                writer.writerow(["Date", "Description", "Category", "Batch", "Farm", "Amount (₦)"])
+                for e in qs:
+                    writer.writerow([
+                        e.expense_date,
+                        e.description,
+                        e.category,
+                        e.batch.batch_name if e.batch else "",
+                        e.batch.farm.name if e.batch and e.batch.farm else "",
+                        e.amount_kobo // 100,
+                    ])
+            return response
+
+        with set_tenant_context(org):
+            farms = list(Farm.objects.filter(is_active=True))
+
+            qs = (
+                ExpenseRecord.objects.filter(
+                    expense_date__gte=date_from,
+                    expense_date__lte=date_to,
+                )
+                .select_related("batch__farm")
+                .order_by("-expense_date")
+            )
+            if farm_id:
+                qs = qs.filter(farm_id=farm_id)
+            if batch_id:
+                qs = qs.filter(batch_id=batch_id)
+            if category:
+                qs = qs.filter(category=category)
+
+            expenses = list(qs)
+            total_kobo = sum(e.amount_kobo for e in expenses)
+            total_naira = total_kobo // 100
+
+            # Monthly trend — last 6 calendar months
+            today = date.today()
+            monthly_trend = []
+            for i in range(5, -1, -1):
+                month_start = (today.replace(day=1) - timedelta(days=i * 30)).replace(day=1)
+                if month_start.month == 12:
+                    next_month_start = month_start.replace(year=month_start.year + 1, month=1)
+                else:
+                    next_month_start = month_start.replace(month=month_start.month + 1)
+                month_end = next_month_start - timedelta(days=1) if i > 0 else today
+
+                month_qs = ExpenseRecord.objects.filter(
+                    expense_date__gte=month_start,
+                    expense_date__lte=month_end,
+                )
+                if farm_id:
+                    month_qs = month_qs.filter(farm_id=farm_id)
+
+                month_total = month_qs.aggregate(total=Sum("amount_kobo"))["total"] or 0
+                monthly_trend.append({
+                    "month": month_start.strftime("%b").upper(),
+                    "total": month_total // 100,
+                })
+
+            # Category breakdown from current filtered expenses
+            categories: dict = {}
+            for e in expenses:
+                cat = e.category or "other"
+                categories[cat] = categories.get(cat, 0) + e.amount_kobo
+
+            category_breakdown = [
+                {"category": k, "total": v // 100}
+                for k, v in sorted(categories.items(), key=lambda x: x[1], reverse=True)
+            ]
+
+            # Compare to previous period
+            period_days = (date_to - date_from).days or 1
+            prev_from = date_from - timedelta(days=period_days)
+            prev_total = (
+                ExpenseRecord.objects.filter(
+                    expense_date__gte=prev_from,
+                    expense_date__lt=date_from,
+                ).aggregate(total=Sum("amount_kobo"))["total"]
+                or 0
+            )
+            if prev_total > 0:
+                change_pct = round((total_kobo - prev_total) / prev_total * 100, 1)
+            else:
+                change_pct = None
+
+            batches = list(Batch.objects.filter(status="active").select_related("farm"))
+
+            # Break-even data for up to 5 active batches
+            breakeven_batches = []
+            for batch in batches[:5]:
+                batch_expense = (
+                    ExpenseRecord.objects.filter(batch=batch).aggregate(total=Sum("amount_kobo"))["total"]
+                    or 0
+                )
+                breakeven_batches.append({
+                    "batch": batch,
+                    "total_expenses_naira": batch_expense // 100,
+                })
+
+        context = {
+            "expenses": expenses,
+            "total_naira": total_naira,
+            "change_pct": change_pct,
+            "monthly_trend": monthly_trend,
+            "category_breakdown": category_breakdown,
+            "farms": farms,
+            "batches": batches,
+            "active_farm": farm_id,
+            "active_batch": batch_id,
+            "active_category": category,
+            "active_preset": preset,
+            "date_from": date_from.strftime("%Y-%m-%d"),
+            "date_to": date_to.strftime("%Y-%m-%d"),
+            "category_choices": ExpenseRecord.CATEGORY_CHOICES,
+            "breakeven_batches": breakeven_batches,
+            "today": date.today(),
+        }
+
+        if request.headers.get("HX-Request"):
+            return render(request, "finance/expenses/_expense_overview_partial.html", context)
+        return render(request, "finance/expenses/expense_overview.html", context)
 
 
 def _get_org(request):
