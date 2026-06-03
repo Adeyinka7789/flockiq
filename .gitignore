@@ -56,3 +56,5 @@ celerybeat-schedule
 celerybeat.pid
 
 CLAUDE.md
+
+stitch
