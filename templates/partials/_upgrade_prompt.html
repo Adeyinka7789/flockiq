@@ -1,0 +1,46 @@
+{% load i18n %}
+<div style="background:linear-gradient(135deg,#1a2744,#2d4578);
+            border-radius:14px;padding:28px;text-align:center;
+            color:white;position:relative;overflow:hidden">
+  <div style="position:absolute;width:120px;height:120px;
+              border-radius:50%;background:rgba(255,255,255,0.04);
+              right:-20px;top:-20px;pointer-events:none"></div>
+  <div style="position:absolute;width:80px;height:80px;
+              border-radius:50%;background:rgba(139,200,122,0.06);
+              left:-10px;bottom:-10px;pointer-events:none"></div>
+
+  <div style="width:44px;height:44px;border-radius:12px;
+              background:rgba(255,255,255,0.08);
+              display:flex;align-items:center;justify-content:center;
+              margin:0 auto 14px;font-size:20px">
+    🔒
+  </div>
+
+  <div style="font-size:15px;font-weight:800;margin-bottom:6px">
+    {{ feature_name }} is not included in your
+    {{ user_plan|title }} plan
+  </div>
+
+  <div style="font-size:13px;color:rgba(255,255,255,0.6);
+              margin-bottom:20px;line-height:1.6;
+              max-width:360px;margin-left:auto;margin-right:auto">
+    Upgrade to {{ required_plan|title }} to unlock
+    {{ feature_name }} and all other advanced features.
+  </div>
+
+  <a href="/billing/"
+     style="display:inline-flex;align-items:center;gap:8px;
+            padding:12px 24px;background:#8bc87a;color:#0f1c35;
+            border-radius:10px;font-size:13px;font-weight:800;
+            text-decoration:none;transition:all 0.15s"
+     onmouseover="this.style.background='#6aaa57'"
+     onmouseout="this.style.background='#8bc87a'">
+    Upgrade to {{ required_plan|title }} &rarr;
+  </a>
+
+  {% if user_plan == 'trial' %}
+  <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:10px">
+    No credit card required to upgrade
+  </div>
+  {% endif %}
+</div>

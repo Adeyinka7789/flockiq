@@ -108,6 +108,23 @@ class BatchCreateView(LoginRequiredMixin, View):
         org = _get_org(request)
         is_htmx = request.headers.get("HX-Request") == "true"
 
+        from apps.infrastructure.billing.features import get_plan_features
+        features = get_plan_features(org.plan_tier)
+        with set_tenant_context(org):
+            active_batches = Batch.objects.filter(status='active').count()
+        if active_batches >= features['max_active_batches']:
+            response = HttpResponse(status=403)
+            response['HX-Trigger'] = json.dumps({
+                'showToast': {
+                    'message': (
+                        f'Your {org.plan_tier} plan allows {features["max_active_batches"]} active batch(es). '
+                        f'Upgrade to add more.'
+                    ),
+                    'type': 'error',
+                }
+            })
+            return response
+
         if form.is_valid():
             cd = form.cleaned_data
             try:

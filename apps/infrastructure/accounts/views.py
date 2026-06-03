@@ -434,6 +434,17 @@ class InviteUserView(LoginRequiredMixin, View):
         if request.user.role != "owner":
             return HttpResponse(status=403)
 
+        from apps.infrastructure.billing.features import get_plan_features
+        features = get_plan_features(request.user.org.plan_tier)
+        current_members = CustomUser.objects.filter(org=request.user.org).count()
+        if current_members >= features['team_members']:
+            return render(request, "accounts/_invite_form.html", {
+                "error": (
+                    f'Your {request.user.org.plan_tier} plan allows {features["team_members"]} team member(s). '
+                    f'Upgrade to add more.'
+                ),
+            })
+
         email = request.POST.get("email", "").strip()
         first_name = request.POST.get("first_name", "").strip()
         last_name = request.POST.get("last_name", "").strip()

@@ -79,6 +79,7 @@
     </div>
 
     <!-- Exit Optimizer (broiler only) -->
+    {% if plan_features.exit_optimizer %}
     {% if exit_analysis %}
     <div id="exit-optimizer-card" style="background:white;border:1px solid #e2e8f0;
          border-radius:14px;overflow:hidden;margin-top:16px">
@@ -137,8 +138,14 @@
       </div>
     </div>
     {% endif %}
+    {% elif batch.bird_type == 'broiler' %}
+    <div style="margin-top:16px">
+      {% with feature_name="Exit Optimizer" required_plan="Cycle" %}{% include "partials/_upgrade_prompt.html" %}{% endwith %}
+    </div>
+    {% endif %}
 
     <!-- FCR Analysis (broiler only) -->
+    {% if plan_features.fcr_advisor %}
     {% if fcr_analysis %}
     <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:18px;margin-top:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -175,6 +182,11 @@
       <div style="font-size:11px;color:#8a96a8;margin-top:8px">
         Total feed consumed: {{ fcr_analysis.total_feed_kg }}kg
       </div>
+    </div>
+    {% endif %}
+    {% elif batch.bird_type == 'broiler' %}
+    <div style="margin-top:16px">
+      {% with feature_name="FCR Advisor" required_plan="Cycle" %}{% include "partials/_upgrade_prompt.html" %}{% endwith %}
     </div>
     {% endif %}
 
@@ -300,6 +312,7 @@
     </div>
 
     <!-- AI Symptom Checker -->
+    {% if plan_features.ai_symptom_diagnosis %}
     <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;margin-top:16px">
       <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9">
         <span style="font-size:13px;font-weight:700;color:#1a2744">AI Symptom Checker</span>
@@ -339,6 +352,11 @@
         <div id="diagnosis-result" style="margin-top:14px"></div>
       </div>
     </div>
+    {% else %}
+    <div style="margin-top:16px">
+      {% with feature_name="AI Symptom Diagnosis" required_plan="Monthly" %}{% include "partials/_upgrade_prompt.html" %}{% endwith %}
+    </div>
+    {% endif %}
   </div>
 
   <!-- TAB 4: Finance -->
@@ -371,6 +389,44 @@
         </svg>
         Record Expense
       </button>
+    </div>
+
+    <!-- Export buttons -->
+    <div style="display:flex;gap:10px;margin-bottom:20px">
+      {% if plan_features.pdf_export %}
+      <button style="flex:1;padding:10px;background:white;color:#3d5a99;
+                     border:1.5px solid #3d5a99;border-radius:10px;font-size:13px;
+                     font-weight:600;cursor:pointer;
+                     display:flex;align-items:center;justify-content:center;gap:6px">
+        📄 PDF Export
+      </button>
+      {% else %}
+      <button disabled
+              title="Upgrade to Monthly to unlock PDF exports"
+              style="flex:1;padding:10px;background:#f8fafc;color:#b0bac9;
+                     border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;
+                     font-weight:600;cursor:not-allowed;opacity:0.7;
+                     display:flex;align-items:center;justify-content:center;gap:6px">
+        🔒 PDF Export
+      </button>
+      {% endif %}
+      {% if plan_features.excel_export %}
+      <button style="flex:1;padding:10px;background:white;color:#166534;
+                     border:1.5px solid #16a34a;border-radius:10px;font-size:13px;
+                     font-weight:600;cursor:pointer;
+                     display:flex;align-items:center;justify-content:center;gap:6px">
+        📊 Excel Export
+      </button>
+      {% else %}
+      <button disabled
+              title="Upgrade to Monthly to unlock Excel exports"
+              style="flex:1;padding:10px;background:#f8fafc;color:#b0bac9;
+                     border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;
+                     font-weight:600;cursor:not-allowed;opacity:0.7;
+                     display:flex;align-items:center;justify-content:center;gap:6px">
+        🔒 Excel Export
+      </button>
+      {% endif %}
     </div>
 
     <!-- P&L summary -->

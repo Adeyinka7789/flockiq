@@ -89,6 +89,23 @@ class FarmCreateView(LoginRequiredMixin, View):
         org = _get_org(request)
         is_htmx = request.headers.get("HX-Request") == "true"
 
+        from apps.infrastructure.billing.features import get_plan_features
+        features = get_plan_features(org.plan_tier)
+        with set_tenant_context(org):
+            current_farms = Farm.objects.filter(is_active=True).count()
+        if current_farms >= features['max_farms']:
+            response = HttpResponse(status=403)
+            response['HX-Trigger'] = json.dumps({
+                'showToast': {
+                    'message': (
+                        f'Your {org.plan_tier} plan allows {features["max_farms"]} farm(s). '
+                        f'Upgrade to add more.'
+                    ),
+                    'type': 'error',
+                }
+            })
+            return response
+
         if form.is_valid():
             cd = form.cleaned_data
             with set_tenant_context(org):

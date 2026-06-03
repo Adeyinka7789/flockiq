@@ -47,7 +47,9 @@
       </svg>
     </div>
     <div style="padding:16px">
-      {% if not flags.anomaly %}
+      {% if not plan_features.ai_anomaly_detection %}
+      {% with feature_name="AI Anomaly Detection" required_plan="Monthly" %}{% include "partials/_upgrade_prompt.html" %}{% endwith %}
+      {% elif not flags.anomaly %}
       <div style="text-align:center;padding:32px 0;color:#8a96a8">
         <div style="font-size:24px;margin-bottom:8px">🔒</div>
         <div style="font-size:13px;font-weight:600;margin-bottom:4px">Feature disabled</div>
@@ -118,7 +120,9 @@
       </div>
     </div>
     <div style="padding:16px">
-      {% if not flags.theft %}
+      {% if not plan_features.ai_theft_detection %}
+      {% with feature_name="Theft Detection" required_plan="Monthly" %}{% include "partials/_upgrade_prompt.html" %}{% endwith %}
+      {% elif not flags.theft %}
       <div style="text-align:center;padding:32px 0;color:#8a96a8">
         <div style="font-size:24px;margin-bottom:8px">🔒</div>
         <div style="font-size:13px;font-weight:600;margin-bottom:4px">Feature disabled</div>
@@ -183,7 +187,9 @@
       </div>
     </div>
     <div style="padding:16px">
-      {% if not flags.sale_timing %}
+      {% if not plan_features.ai_sale_timing %}
+      {% with feature_name="Sale Timing" required_plan="Cycle" %}{% include "partials/_upgrade_prompt.html" %}{% endwith %}
+      {% elif not flags.sale_timing %}
       <div style="text-align:center;padding:32px 0;color:#8a96a8">
         <div style="font-size:24px;margin-bottom:8px">🔒</div>
         <div style="font-size:13px;font-weight:600;margin-bottom:4px">Feature disabled</div>
@@ -251,7 +257,9 @@
       </div>
     </div>
     <div style="padding:16px">
-      {% if not flags.forecast %}
+      {% if not plan_features.ai_egg_forecast %}
+      {% with feature_name="Egg Forecast" required_plan="Monthly" %}{% include "partials/_upgrade_prompt.html" %}{% endwith %}
+      {% elif not flags.forecast %}
       <div style="text-align:center;padding:32px 0;color:#8a96a8">
         <div style="font-size:24px;margin-bottom:8px">🔒</div>
         <div style="font-size:13px;font-weight:600;margin-bottom:4px">Feature disabled</div>

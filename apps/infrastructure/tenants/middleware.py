@@ -25,14 +25,17 @@ class TrialEnforcementMiddleware:
         if not hasattr(request.user, 'org') or not request.user.org:
             return self.get_response(request)
 
+        org = request.user.org
+
+        from apps.infrastructure.billing.features import get_plan_features
+        request.plan_features = get_plan_features(org.plan_tier)
+
         if request.user.is_superuser or request.user.role == 'super_admin':
             return self.get_response(request)
 
         for path in self.EXEMPT_PATHS:
             if request.path.startswith(path):
                 return self.get_response(request)
-
-        org = request.user.org
 
         if org.subscription_status == 'active':
             return self.get_response(request)
