@@ -349,52 +349,6 @@
       </button>
     </div>
 
-    <!-- AI Symptom Checker -->
-    {% if plan_features.ai_symptom_diagnosis %}
-    <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;margin-top:16px">
-      <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9">
-        <span style="font-size:13px;font-weight:700;color:#1a2744">AI Symptom Checker</span>
-      </div>
-      <div style="padding:18px">
-        <p style="font-size:12px;color:#8a96a8;margin-bottom:14px">
-          Select all symptoms you are observing in this batch:
-        </p>
-        <form hx-post="{% url 'analytics:diagnose' %}"
-              hx-target="#diagnosis-result"
-              hx-swap="innerHTML"
-              style="display:flex;flex-direction:column;gap:10px">
-          {% csrf_token %}
-          <input type="hidden" name="batch_id" value="{{ batch.pk }}">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            {% for value, label in symptom_choices %}
-            <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;
-                          border:1.5px solid #e2e8f0;border-radius:8px;cursor:pointer;
-                          font-size:12px;color:#1a2744;transition:all 0.15s"
-                   onmouseover="this.style.borderColor='#3d5a99'"
-                   onmouseout="if(!this.querySelector('input').checked)this.style.borderColor='#e2e8f0'">
-              <input type="checkbox" name="symptoms" value="{{ value }}"
-                     style="accent-color:#3d5a99"
-                     onchange="this.closest('label').style.borderColor=this.checked?'#3d5a99':'#e2e8f0';
-                               this.closest('label').style.background=this.checked?'#e8eef8':'white'">
-              {{ label }}
-            </label>
-            {% endfor %}
-          </div>
-          <button type="submit"
-                  style="padding:10px;background:#3d5a99;color:white;border:none;
-                         border-radius:10px;font-size:13px;font-weight:700;
-                         cursor:pointer;margin-top:6px">
-            Analyze Symptoms &rarr;
-          </button>
-        </form>
-        <div id="diagnosis-result" style="margin-top:14px"></div>
-      </div>
-    </div>
-    {% else %}
-    <div style="margin-top:16px">
-      {% with feature_name="AI Symptom Diagnosis" required_plan="Monthly" %}{% include "partials/_upgrade_prompt.html" %}{% endwith %}
-    </div>
-    {% endif %}
   </div>
 
   <!-- TAB 4: Finance -->
@@ -593,27 +547,615 @@
 
   <!-- TAB 6: AI Insights -->
   <div x-show="tab === 'ai'" x-cloak class="mt-6">
-    <div hx-get="{% url 'analytics:forecast' batch.pk %}"
-         hx-trigger="intersect once">
-      {% include 'partials/_skeleton_chart.html' %}
+
+<style>
+.ai-wrap { max-width: 860px; }
+
+.ai-header-bar {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 20px;
+}
+.ai-live {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #edfae8; color: #166534;
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+}
+.ai-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #16a34a;
+  animation: aiblink 2s ease-in-out infinite;
+}
+@keyframes aiblink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.ai-card {
+  background: white; border: 1px solid #e2e8f0;
+  border-radius: 16px; overflow: hidden;
+  margin-bottom: 16px;
+}
+.ai-card-hd {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #f8fafc, white);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+/* Timeline for sale timing */
+.sale-timeline {
+  display: flex; align-items: center;
+  gap: 0; margin: 16px 0; position: relative;
+}
+.timeline-node {
+  display: flex; flex-direction: column;
+  align-items: center; z-index: 1;
+}
+.timeline-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px currentColor;
+  margin-bottom: 6px;
+}
+.timeline-label {
+  font-size: 10px; font-weight: 700;
+  color: #8a96a8; text-align: center;
+  white-space: nowrap;
+}
+.timeline-line {
+  flex: 1; height: 3px;
+  background: #e2e8f0; margin-bottom: 20px;
+  position: relative;
+}
+.timeline-line-fill {
+  position: absolute; top: 0; left: 0;
+  height: 100%; background: #3d5a99;
+  border-radius: 2px;
+}
+.timeline-line-fill.optimal { background: #8bc87a; }
+.ai-card-title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 700; color: #1a2744;
+}
+.ai-icon {
+  width: 32px; height: 32px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+}
+.ai-badge {
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.03em;
+}
+.ai-badge.wait     { background:#e8eef8; color:#2d4578; }
+.ai-badge.sell     { background:#edfae8; color:#166534; }
+.ai-badge.urgent   { background:#fee2e2; color:#991b1b; }
+.ai-badge.safe     { background:#edfae8; color:#166534; }
+.ai-badge.warning  { background:#fef3c7; color:#92400e; }
+.ai-badge.critical { background:#fee2e2; color:#991b1b; }
+.ai-badge.locked   { background:#f1f5f9; color:#8a96a8; }
+.ai-badge.info     { background:#e8eef8; color:#2d4578; }
+
+.ai-body { padding: 20px; }
+
+/* Sale timing card */
+.sale-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px; margin-bottom: 16px;
+}
+.sale-stat {
+  background: #f4f7fe; border-radius: 12px;
+  padding: 14px; text-align: center;
+}
+.sale-stat-val {
+  font-size: 22px; font-weight: 800;
+  color: #1a2744; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+.sale-stat-lbl {
+  font-size: 10px; font-weight: 700;
+  color: #8a96a8; text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.sale-message {
+  background: #f8fafc; border: 1px solid #e2e8f0;
+  border-radius: 10px; padding: 12px 16px;
+  font-size: 13px; color: #4a5568; line-height: 1.6;
+  margin-bottom: 14px;
+}
+.sale-message strong { color: #1a2744; }
+
+/* Progress bar for days */
+.days-bar-wrap { margin-bottom: 6px; }
+.days-bar-label {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: #8a96a8; font-weight: 600;
+  margin-bottom: 6px;
+}
+.days-bar {
+  height: 8px; background: #e2e8f0;
+  border-radius: 4px; overflow: hidden;
+}
+.days-bar-fill {
+  height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, #3d5a99, #5b8dd9);
+  transition: width 1s ease;
+}
+.days-bar-fill.green {
+  background: linear-gradient(90deg, #8bc87a, #16a34a);
+}
+.days-bar-fill.red {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+/* Reconciliation */
+.recon-row {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f8faff;
+  font-size: 13px;
+}
+.recon-row:last-child { border-bottom: none; }
+.recon-label { color: #4a5568; }
+.recon-val { font-weight: 700; color: #1a2744; }
+.recon-val.danger { color: #dc2626; }
+.recon-val.safe { color: #16a34a; }
+
+.recon-bar-wrap {
+  margin: 14px 0;
+  background: #f4f7fe; border-radius: 12px; padding: 14px;
+}
+.recon-bar-label {
+  font-size: 11px; font-weight: 700; color: #8a96a8;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.recon-bar {
+  height: 10px; background: #e2e8f0;
+  border-radius: 5px; overflow: hidden;
+  margin-bottom: 6px;
+}
+.recon-bar-fill {
+  height: 100%; border-radius: 5px;
+  background: #8bc87a; transition: width 1s ease;
+}
+.recon-bar-fill.warning { background: #f59e0b; }
+.recon-bar-fill.danger { background: #ef4444; }
+
+/* Anomaly */
+.anomaly-alert {
+  border-radius: 12px; padding: 16px;
+  display: flex; gap: 14px; align-items: flex-start;
+  margin-bottom: 14px;
+}
+.anomaly-alert.safe { background:#f0fdf4; border:1px solid #bbf7d0; }
+.anomaly-alert.warning { background:#fffbeb; border:1px solid #fde68a; }
+.anomaly-alert.critical { background:#fff5f5; border:1px solid #fecaca; }
+.anomaly-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.anomaly-title { font-size:13px; font-weight:700; color:#1a2744; margin-bottom:4px; }
+.anomaly-body { font-size:12px; color:#4a5568; line-height:1.6; }
+
+/* Locked state */
+.ai-locked {
+  padding: 32px; text-align: center;
+  background: #f8fafc;
+}
+.ai-locked-icon { font-size: 28px; margin-bottom: 10px; }
+.ai-locked-title { font-size:14px; font-weight:700; color:#1a2744; margin-bottom:6px; }
+.ai-locked-sub { font-size:12px; color:#8a96a8; line-height:1.6; margin-bottom:14px; }
+.ai-upgrade-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:9px 18px; background:#3d5a99; color:white;
+  border-radius:10px; font-size:12px; font-weight:700;
+  text-decoration:none;
+}
+</style>
+
+<div class="ai-wrap">
+  <div class="ai-header-bar">
+    <h2 style="font-size:16px;font-weight:800;color:#1a2744">
+      AI Insights
+    </h2>
+    <span class="ai-live">
+      <span class="ai-dot"></span>
+      Models Active
+    </span>
+  </div>
+
+  <!-- ① SALE TIMING ──────────────────────────────────────────── -->
+  {% if sale_timing and sale_timing.status != 'unavailable' %}
+  <div class="ai-card">
+    <div class="ai-card-hd">
+      <div class="ai-card-title">
+        <div class="ai-icon" style="background:#e8eef8">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+               stroke="#3d5a99" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        Broiler Exit Optimizer
+      </div>
+      <span class="ai-badge {{ sale_timing.recommendation|default:'wait' }}">
+        {{ sale_timing.recommendation|upper|default:'WAIT' }}
+      </span>
     </div>
-    <div class="mt-6"
-         hx-get="{% url 'analytics:anomalies' batch.pk %}"
-         hx-trigger="intersect once">
-      {% include 'partials/_skeleton_table.html' %}
+    <div class="ai-body">
+      <div class="sale-message">
+        {{ sale_timing.message|default:sale_timing.reason }}
+      </div>
+      <div class="sale-grid">
+        <div class="sale-stat">
+          <div class="sale-stat-val">Day {{ sale_timing.batch_age|default:batch.cycle_day }}</div>
+          <div class="sale-stat-lbl">Batch Age</div>
+        </div>
+        <div class="sale-stat">
+          <div class="sale-stat-val">
+            {{ sale_timing.recommended_date|default:sale_timing.optimal_date|default:"—" }}
+          </div>
+          <div class="sale-stat-lbl">Recommended Date</div>
+        </div>
+        <div class="sale-stat">
+          <div class="sale-stat-val" style="color:#166534">
+            {% if sale_timing.days_until_optimal %}
+              {{ sale_timing.days_until_optimal }}d
+            {% else %}
+              Now
+            {% endif %}
+          </div>
+          <div class="sale-stat-lbl">Days Until Window</div>
+        </div>
+      </div>
+      <!-- Timeline: Day 1 → Day 38 (optimal) → Day 42 (exit) -->
+      <div class="sale-timeline">
+        <div class="timeline-node">
+          <div class="timeline-dot" style="color:#8a96a8;background:#8a96a8"></div>
+          <div class="timeline-label">Day 1<br>Start</div>
+        </div>
+        <div class="timeline-line">
+          <div class="timeline-line-fill"
+               style="width:{% widthratio batch.cycle_day 42 100 %}%">
+          </div>
+        </div>
+        <div class="timeline-node">
+          <div class="timeline-dot"
+               style="color:{% if batch.cycle_day >= 38 %}#8bc87a{% else %}#e2e8f0{% endif %};
+                      background:{% if batch.cycle_day >= 38 %}#8bc87a{% else %}#e2e8f0{% endif %}">
+          </div>
+          <div class="timeline-label">Day 38<br>Optimal</div>
+        </div>
+        <div class="timeline-line">
+          <div class="timeline-line-fill optimal"
+               style="width:{% if batch.cycle_day >= 38 %}100%{% else %}0%{% endif %}">
+          </div>
+        </div>
+        <div class="timeline-node">
+          <div class="timeline-dot"
+               style="color:{% if batch.cycle_day >= 42 %}#ef4444{% else %}#e2e8f0{% endif %};
+                      background:{% if batch.cycle_day >= 42 %}#ef4444{% else %}#e2e8f0{% endif %}">
+          </div>
+          <div class="timeline-label">Day 42<br>Exit</div>
+        </div>
+      </div>
     </div>
-    {% if batch.bird_type == 'broiler' %}
-    <div class="mt-6"
-         hx-get="{% url 'analytics:sale_timing' batch.pk %}"
-         hx-trigger="intersect once">
-      {% include 'partials/_skeleton_card.html' %}
+  </div>
+  {% elif not plan_features.ai_sale_timing %}
+  <div class="ai-card">
+    <div class="ai-card-hd">
+      <div class="ai-card-title">
+        <div class="ai-icon" style="background:#f1f5f9">💰</div>
+        Broiler Exit Optimizer
+      </div>
+      <span class="ai-badge locked">🔒 LOCKED</span>
     </div>
-    {% endif %}
-    <div class="mt-6"
-         hx-get="{% url 'analytics:theft' batch.pk %}"
-         hx-trigger="intersect once">
-      {% include 'partials/_skeleton_card.html' %}
+    <div class="ai-locked">
+      <div class="ai-locked-icon">💰</div>
+      <div class="ai-locked-title">Upgrade to unlock Exit Optimizer</div>
+      <div class="ai-locked-sub">Available on Cycle plan and above.</div>
+      <a href="/billing/" class="ai-upgrade-btn">Upgrade Plan →</a>
     </div>
+  </div>
+  {% endif %}
+
+  <!-- ② ANOMALY DETECTION ────────────────────────────────────── -->
+  <div class="ai-card">
+    <div class="ai-card-hd">
+      <div class="ai-card-title">
+        <div class="ai-icon" style="background:#fef3c7">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+               stroke="#d97706" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+        Anomaly Detection
+      </div>
+      {% if anomaly_result and anomaly_result.status != 'unavailable' %}
+      <span class="ai-badge
+           {% if anomaly_result.anomaly_detected %}warning{% else %}safe{% endif %}">
+        {% if anomaly_result.anomaly_detected %}⚠ ALERT{% else %}✓ NORMAL{% endif %}
+      </span>
+      {% elif not plan_features.ai_anomaly_detection %}
+      <span class="ai-badge locked">🔒 LOCKED</span>
+      {% else %}
+      <span class="ai-badge info">MONITORING</span>
+      {% endif %}
+    </div>
+    <div class="ai-body">
+      {% if not plan_features.ai_anomaly_detection %}
+      <div class="ai-locked">
+        <div class="ai-locked-icon">🔬</div>
+        <div class="ai-locked-title">Upgrade to unlock AI Anomaly Detection</div>
+        <div class="ai-locked-sub">Available on Monthly plan and above.</div>
+        <a href="/billing/" class="ai-upgrade-btn">Upgrade Plan →</a>
+      </div>
+      {% elif anomaly_result and anomaly_result.status != 'unavailable' %}
+        {% if anomaly_result.anomaly_detected %}
+        <div class="anomaly-alert warning">
+          <div class="anomaly-icon" style="background:#fef3c7">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+                 stroke="#d97706" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="anomaly-title">Mortality anomaly detected</div>
+            <div class="anomaly-body">
+              Z-score: <strong>{{ anomaly_result.z_score|default:"—" }}</strong>
+              — exceeds threshold of 3.0.
+              {{ anomaly_result.message|default:"Unusual mortality pattern detected." }}
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="anomaly-alert safe">
+          <div class="anomaly-icon" style="background:#edfae8">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+                 stroke="#16a34a" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="anomaly-title">All clear — mortality within normal range</div>
+            <div class="anomaly-body">
+              No anomalies detected in the last 30 days.
+              Current mortality patterns are within expected thresholds.
+            </div>
+          </div>
+        </div>
+        {% endif %}
+        {% if anomaly_result.z_score %}
+        <div style="background:#f4f7fe;border-radius:10px;padding:14px;margin-top:10px">
+          <div style="font-size:11px;font-weight:700;color:#8a96a8;
+                      text-transform:uppercase;letter-spacing:0.06em;
+                      margin-bottom:8px;display:flex;justify-content:space-between">
+            <span>Z-Score Meter</span>
+            <span style="color:{% if anomaly_result.z_score > 3 %}#dc2626{% else %}#3d5a99{% endif %}">
+              {{ anomaly_result.z_score|floatformat:1 }} / 3.0 threshold
+            </span>
+          </div>
+          <div style="height:8px;background:#e2e8f0;border-radius:4px;
+                      overflow:hidden;position:relative">
+            <div style="height:100%;border-radius:4px;
+                        width:{% widthratio anomaly_result.z_score 5 100 %}%;
+                        background:{% if anomaly_result.z_score > 3 %}#ef4444
+                        {% elif anomaly_result.z_score > 2 %}#f59e0b
+                        {% else %}#8bc87a{% endif %};
+                        transition:width 1s ease">
+            </div>
+            <div style="position:absolute;top:0;bottom:0;left:60%;
+                        width:2px;background:#1a2744;opacity:0.4"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;
+                      font-size:10px;color:#8a96a8;margin-top:4px">
+            <span>0 — Normal</span>
+            <span>3.0 — Alert</span>
+            <span>5.0 — Critical</span>
+          </div>
+        </div>
+        {% endif %}
+      {% else %}
+      <div class="anomaly-alert safe" style="background:#f4f7fe;border-color:#e2e8f0">
+        <div class="anomaly-icon" style="background:#e8eef8">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+               stroke="#3d5a99" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01"/>
+          </svg>
+        </div>
+        <div>
+          <div class="anomaly-title">Monitoring — need 7+ days of data</div>
+          <div class="anomaly-body">
+            Log daily mortality data to enable anomaly detection.
+            AI will alert you when unusual patterns are detected.
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ③ THEFT DETECTION / RECONCILIATION ─────────────────────── -->
+  <div class="ai-card">
+    <div class="ai-card-hd">
+      <div class="ai-card-title">
+        <div class="ai-icon" style="background:#fee2e2">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+               stroke="#dc2626" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+        </div>
+        Bird Count Reconciliation
+      </div>
+      {% if theft_result and theft_result.status != 'unavailable' %}
+      <span class="ai-badge
+           {% if theft_result.theft_suspected %}critical{% else %}safe{% endif %}">
+        {% if theft_result.theft_suspected %}⚠ FLAGGED{% else %}✓ CLEAN{% endif %}
+      </span>
+      {% else %}
+      <span class="ai-badge info">TRACKING</span>
+      {% endif %}
+    </div>
+    <div class="ai-body">
+      {% if theft_result and theft_result.status != 'unavailable' %}
+
+      <!-- Audit layout: ledger left, verdict right -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#8a96a8;
+                      text-transform:uppercase;letter-spacing:0.08em;
+                      margin-bottom:10px">Bird Audit</div>
+          <div class="recon-row">
+            <span class="recon-label">Initial placement</span>
+            <span class="recon-val">{{ theft_result.initial_count }}</span>
+          </div>
+          <div class="recon-row">
+            <span class="recon-label">Deaths logged</span>
+            <span class="recon-val" style="color:#ef4444">
+              − {{ theft_result.total_mortality }}
+            </span>
+          </div>
+          <div class="recon-row">
+            <span class="recon-label">Sales recorded</span>
+            <span class="recon-val">− {{ theft_result.total_sold }}</span>
+          </div>
+          <div class="recon-row" style="border-top:2px solid #e2e8f0;padding-top:10px;margin-top:4px">
+            <span class="recon-label" style="font-weight:700">Expected count</span>
+            <span class="recon-val">{{ theft_result.accounted_for }}</span>
+          </div>
+          <div class="recon-row">
+            <span class="recon-label" style="font-weight:700">Actual count</span>
+            <span class="recon-val">{{ theft_result.current_count }}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;
+                    align-items:center;background:#f4f7fe;border-radius:12px;
+                    padding:20px;text-align:center">
+          {% if theft_result.theft_suspected %}
+          <div style="font-size:32px;margin-bottom:8px">⚠️</div>
+          <div style="font-size:15px;font-weight:800;color:#dc2626;margin-bottom:4px">
+            {{ theft_result.unaccounted }} birds
+          </div>
+          <div style="font-size:12px;color:#dc2626;font-weight:600">
+            Unaccounted ({{ theft_result.variance_pct|floatformat:1 }}%)
+          </div>
+          <div style="font-size:11px;color:#8a96a8;margin-top:8px;line-height:1.5">
+            Exceeds 1.5% threshold.<br>Investigate immediately.
+          </div>
+          {% else %}
+          <div style="font-size:32px;margin-bottom:8px">✅</div>
+          <div style="font-size:15px;font-weight:800;color:#166534;margin-bottom:4px">
+            All Clear
+          </div>
+          <div style="font-size:12px;color:#166534;font-weight:600">
+            {{ theft_result.variance_pct|floatformat:1 }}% variance
+          </div>
+          <div style="font-size:11px;color:#8a96a8;margin-top:8px;line-height:1.5">
+            Within acceptable range.<br>No theft detected.
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      {% else %}
+      <!-- Fallback: show raw counts from batch -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#8a96a8;
+                      text-transform:uppercase;letter-spacing:0.08em;
+                      margin-bottom:10px">Bird Audit</div>
+          <div class="recon-row">
+            <span class="recon-label">Initial placement</span>
+            <span class="recon-val">{{ batch.initial_count }}</span>
+          </div>
+          <div class="recon-row">
+            <span class="recon-label">Current count</span>
+            <span class="recon-val">{{ batch.current_count }}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:center;
+                    align-items:center;background:#f4f7fe;border-radius:12px;
+                    padding:20px;text-align:center">
+          <div style="font-size:32px;margin-bottom:8px">📊</div>
+          <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:4px">
+            Tracking Active
+          </div>
+          <div style="font-size:11px;color:#8a96a8;line-height:1.5">
+            {% widthratio batch.current_count batch.initial_count 100 %}%
+            survival rate
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ④ SYMPTOM CHECKER ──────────────────────────────────────── -->
+  {% if plan_features.ai_symptom_diagnosis %}
+  <div class="ai-card">
+    <div class="ai-card-hd">
+      <div class="ai-card-title">
+        <div class="ai-icon" style="background:#edfae8">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+               stroke="#16a34a" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        AI Symptom Diagnosis
+      </div>
+      <span class="ai-badge info">READY</span>
+    </div>
+    <div class="ai-body">
+      <p style="font-size:12px;color:#8a96a8;margin-bottom:14px">
+        Select all symptoms currently observed in this batch:
+      </p>
+      <form hx-post="{% url 'analytics:diagnose' %}"
+            hx-target="#ai-diagnosis-result"
+            hx-swap="innerHTML"
+            style="display:flex;flex-direction:column;gap:10px">
+        {% csrf_token %}
+        <input type="hidden" name="batch_id" value="{{ batch.pk }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          {% for value, label in symptom_choices %}
+          <label style="display:flex;align-items:center;gap:8px;
+                        padding:9px 12px;border:1.5px solid #e2e8f0;
+                        border-radius:9px;cursor:pointer;
+                        font-size:12px;color:#1a2744;
+                        transition:all 0.15s;background:white"
+                 onmouseover="this.style.borderColor='#3d5a99'"
+                 onmouseout="if(!this.querySelector('input').checked)this.style.borderColor='#e2e8f0'">
+            <input type="checkbox" name="symptoms" value="{{ value }}"
+                   style="accent-color:#3d5a99"
+                   onchange="
+                     this.closest('label').style.borderColor=this.checked?'#3d5a99':'#e2e8f0';
+                     this.closest('label').style.background=this.checked?'#e8eef8':'white'">
+            {{ label }}
+          </label>
+          {% endfor %}
+        </div>
+        <button type="submit"
+                style="padding:11px;background:#3d5a99;color:white;
+                       border:none;border-radius:10px;font-size:13px;
+                       font-weight:700;cursor:pointer;margin-top:4px">
+          Analyze Symptoms →
+        </button>
+      </form>
+      <div id="ai-diagnosis-result" style="margin-top:14px"></div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
   </div>
 
 </div>
