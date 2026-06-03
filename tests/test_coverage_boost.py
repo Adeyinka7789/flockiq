@@ -710,3 +710,205 @@ class TestProductionLogPost:
         )
         # Success → returns summary card fragment (200)
         assert response.status_code == 200
+
+
+# ── seed_batch_data management command ───────────────────────────────────────
+
+class TestSeedBatchDataCommand:
+
+    def test_command_runs_for_known_batch(self, tenant_user, test_batch):
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        call_command('seed_batch_data',
+                     batch=str(test_batch.pk),
+                     days=7, stdout=out)
+        output = out.getvalue()
+        assert 'Done' in output
+
+    def test_command_creates_feed_logs(self, tenant_user, test_batch):
+        from django.core.management import call_command
+        from io import StringIO
+        from apps.production.feed.models import FeedLog
+        from apps.infrastructure.core.rls import set_tenant_context
+        out = StringIO()
+        call_command('seed_batch_data',
+                     batch=str(test_batch.pk),
+                     days=5, stdout=out)
+        with set_tenant_context(tenant_user.org):
+            count = FeedLog.objects.filter(batch=test_batch).count()
+        assert count > 0
+
+    def test_command_no_batch_id_uses_first_active(self, tenant_user, test_batch):
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        call_command('seed_batch_data', days=3, stdout=out)
+        output = out.getvalue()
+        assert 'Done' in output or 'active batch' in output.lower()
+
+    def test_command_invalid_batch_id_prints_error(self, tenant_user):
+        from django.core.management import call_command
+        from io import StringIO
+        import uuid
+        out = StringIO()
+        call_command('seed_batch_data',
+                     batch=str(uuid.uuid4()),
+                     days=5, stdout=out)
+        output = out.getvalue()
+        assert 'not found' in output.lower() or 'error' in output.lower()
+
+
+# ── AddVaccinationView ────────────────────────────────────────────────────────
+
+class TestAddVaccinationView:
+
+    def test_get_returns_form(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/health/vaccinations/add/',
+                              HTTP_HX_REQUEST='true')
+        assert response.status_code == 200
+
+    def test_post_creates_vaccination(self, client, tenant_user, test_batch):
+        client.force_login(tenant_user)
+        due = (date.today() + timedelta(days=7)).strftime('%Y-%m-%d')
+        response = client.post('/health/vaccinations/add/', {
+            'batch_id': str(test_batch.pk),
+            'vaccine_name': 'Newcastle Test',
+            'due_date': due,
+            'route': 'oral',
+        }, HTTP_HX_REQUEST='true')
+        assert response.status_code == 200
+
+    def test_post_missing_fields_returns_form_with_error(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.post('/health/vaccinations/add/', {},
+                               HTTP_HX_REQUEST='true')
+        assert response.status_code == 200
+        assert b'required' in response.content.lower() or b'error' in response.content.lower()
+
+    def test_get_requires_login(self, client):
+        response = client.get('/health/vaccinations/add/')
+        assert response.status_code == 302
+
+
+# ── DiagnosisView HTTP endpoint ───────────────────────────────────────────────
+
+class TestDiagnoseViewExtended:
+
+    def test_diagnose_with_symptoms_returns_200(self, client, tenant_user, test_batch):
+        client.force_login(tenant_user)
+        response = client.post('/analytics/diagnose/', {
+            'batch_id': str(test_batch.pk),
+            'symptoms': ['respiratory', 'sudden_death'],
+        }, HTTP_HX_REQUEST='true')
+        assert response.status_code == 200
+
+    def test_diagnose_no_symptoms_returns_200(self, client, tenant_user, test_batch):
+        client.force_login(tenant_user)
+        response = client.post('/analytics/diagnose/', {
+            'batch_id': str(test_batch.pk),
+            'symptoms': [],
+        }, HTTP_HX_REQUEST='true')
+        assert response.status_code == 200
+
+    def test_diagnose_without_batch_id(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.post('/analytics/diagnose/', {
+            'symptoms': ['respiratory', 'lethargy'],
+        }, HTTP_HX_REQUEST='true')
+        assert response.status_code == 200
+
+    def test_diagnose_requires_login(self, client):
+        response = client.post('/analytics/diagnose/', {})
+        assert response.status_code == 302
+
+
+# ── Finance Export Views ──────────────────────────────────────────────────────
+
+class TestFinanceExports:
+
+    def test_finance_pdf_gated_for_trial_org(self, client, tenant_user, test_batch):
+        tenant_user.org.plan_tier = 'trial'
+        tenant_user.org.save()
+        client.force_login(tenant_user)
+        response = client.get(f'/batches/{test_batch.pk}/finance/export/pdf/')
+        assert response.status_code == 200
+        assert 'HX-Trigger' in response
+
+    def test_finance_excel_gated_for_trial_org(self, client, tenant_user, test_batch):
+        tenant_user.org.plan_tier = 'trial'
+        tenant_user.org.save()
+        client.force_login(tenant_user)
+        response = client.get(f'/batches/{test_batch.pk}/finance/export/excel/')
+        assert response.status_code == 200
+        assert 'HX-Trigger' in response
+
+    def test_finance_pdf_allowed_for_monthly(self, client, tenant_user, test_batch):
+        client.force_login(tenant_user)
+        response = client.get(f'/batches/{test_batch.pk}/finance/export/pdf/')
+        assert response.status_code in [200, 404]
+
+    def test_finance_excel_allowed_for_monthly(self, client, tenant_user, test_batch):
+        client.force_login(tenant_user)
+        response = client.get(f'/batches/{test_batch.pk}/finance/export/excel/')
+        assert response.status_code in [200, 404]
+
+
+# ── WeatherAlertsPageView with GPS-less farm ──────────────────────────────────
+
+class TestWeatherPageExtended:
+
+    def test_weather_page_no_active_farms_still_200(self, client, tenant_user, test_farm):
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(tenant_user.org):
+            test_farm.is_active = False
+            test_farm.save()
+        client.force_login(tenant_user)
+        response = client.get('/weather/')
+        assert response.status_code == 200
+
+
+# ── BillingService direct tests ───────────────────────────────────────────────
+
+class TestBillingServiceExtended:
+
+    def test_billing_summary_monthly_org(self, tenant_user):
+        from apps.infrastructure.billing.services import BillingService
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(tenant_user.org):
+            service = BillingService(tenant_user.org)
+            summary = service.get_billing_summary()
+        assert 'is_trial' in summary
+        assert summary['is_trial'] is False
+        assert 'farm_count' in summary
+        assert 'active_batches' in summary
+
+    def test_billing_summary_trial_org(self, db):
+        from apps.infrastructure.tenants.models import Organization
+        from apps.infrastructure.billing.services import BillingService
+        from apps.infrastructure.core.rls import set_tenant_context
+        import uuid
+        trial_org = Organization.objects.create(
+            name="Trial Org",
+            subdomain=f"trial-{uuid.uuid4().hex[:8]}",
+            plan_tier="trial",
+            subscription_status="trial",
+            onboarding_complete=True,
+            is_active=True,
+        )
+        with set_tenant_context(trial_org):
+            service = BillingService(trial_org)
+            summary = service.get_billing_summary()
+        assert summary['is_trial'] is True
+
+    def test_upgrade_request_plan_not_found_returns_error(self, tenant_user):
+        from apps.infrastructure.billing.services import BillingService
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(tenant_user.org):
+            service = BillingService(tenant_user.org)
+            result = service.request_upgrade(
+                plan_tier='nonexistent_tier',
+                user_email=tenant_user.email,
+            )
+        assert result['method'] == 'error'

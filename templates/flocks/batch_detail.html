@@ -549,7 +549,7 @@
   <div x-show="tab === 'ai'" x-cloak class="mt-6">
 
 <style>
-.ai-wrap { max-width: 860px; }
+.ai-wrap { max-width: 860px; margin: 0 auto; }
 
 .ai-header-bar {
   display: flex; align-items: center;
@@ -766,7 +766,7 @@
   </div>
 
   <!-- ① SALE TIMING ──────────────────────────────────────────── -->
-  {% if sale_timing and sale_timing.status != 'unavailable' %}
+  {% if sale_timing and sale_timing.recommendation != 'unavailable' %}
   <div class="ai-card">
     <div class="ai-card-hd">
       <div class="ai-card-title">
@@ -785,7 +785,7 @@
     </div>
     <div class="ai-body">
       <div class="sale-message">
-        {{ sale_timing.message|default:sale_timing.reason }}
+        {{ sale_timing.message|default:"Sale timing analysis complete." }}
       </div>
       <div class="sale-grid">
         <div class="sale-stat">

@@ -267,6 +267,60 @@ class BatchDetailView(TenantRequiredMixin, View):
                     "total_feed_kg": round(float(total_feed), 1),
                 }
 
+        from apps.infrastructure.billing.features import get_plan_features
+        import waffle
+
+        plan_features = get_plan_features(org.plan_tier)
+
+        # --- AI Insights context ---
+        sale_timing = None
+        if batch.bird_type == "broiler" and waffle.flag_is_active(request, "ai_sale_timing"):
+            try:
+                with set_tenant_context(org):
+                    from apps.health.analytics.services import SaleTimingService
+                    raw = SaleTimingService(org).get_recommendation(batch)
+                days_until = max(0, 38 - batch.cycle_day) if batch.cycle_day < 38 else 0
+                sale_timing = {
+                    **raw,
+                    "status": None if raw.get("available") else "unavailable",
+                    "recommendation": raw.get("urgency", "wait"),
+                    "batch_age": raw.get("cycle_day", batch.cycle_day),
+                    "recommended_date": raw.get("recommended_sale_date"),
+                    "optimal_date": raw.get("recommended_sale_date"),
+                    "days_until_optimal": days_until,
+                }
+            except Exception:
+                pass
+
+        anomaly_result = None
+        if waffle.flag_is_active(request, "ai_anomaly_detection"):
+            try:
+                with set_tenant_context(org):
+                    from apps.health.analytics.services import AnomalyDetectionService
+                    raw = AnomalyDetectionService(org).check_mortality_anomaly(batch)
+                anomaly_result = {
+                    **raw,
+                    "status": None,
+                    "message": raw.get("description"),
+                }
+            except Exception:
+                pass
+
+        theft_result = None
+        if waffle.flag_is_active(request, "ai_theft_detection"):
+            try:
+                with set_tenant_context(org):
+                    from apps.health.analytics.services import TheftDetectionService
+                    raw = TheftDetectionService(org).reconcile_batch(batch)
+                theft_result = {
+                    **raw,
+                    "status": None,
+                    "theft_suspected": raw.get("flagged"),
+                    "accounted_for": raw.get("accounted"),
+                }
+            except Exception:
+                pass
+
         context = {
             "batch": batch,
             "mortality_form": MortalityLogForm(),
@@ -275,6 +329,10 @@ class BatchDetailView(TenantRequiredMixin, View):
             "weight_data_json": weight_data_json,
             "exit_analysis": exit_analysis,
             "fcr_analysis": fcr_analysis,
+            "plan_features": plan_features,
+            "sale_timing": sale_timing,
+            "anomaly_result": anomaly_result,
+            "theft_result": theft_result,
             "symptom_choices": [
                 ("respiratory", "Respiratory distress / coughing"),
                 ("sudden_death", "Sudden unexplained death"),
