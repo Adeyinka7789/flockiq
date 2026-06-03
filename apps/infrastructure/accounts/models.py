@@ -44,6 +44,7 @@ class CustomUser(AbstractUser):
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="data_entry")
     phone = models.CharField(max_length=20, blank=True)
+    bio = models.TextField(blank=True, default="")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]

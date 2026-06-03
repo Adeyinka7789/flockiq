@@ -8,6 +8,7 @@ from django.contrib.auth import authenticate, login, logout, update_session_auth
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 from django.core.mail import send_mail
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.decorators import method_decorator
@@ -363,7 +364,8 @@ class EditProfileView(LoginRequiredMixin, View):
         user.first_name = request.POST.get("first_name", "").strip()
         user.last_name = request.POST.get("last_name", "").strip()
         user.phone = request.POST.get("phone", "").strip()
-        user.save(update_fields=["first_name", "last_name", "phone"])
+        user.bio = request.POST.get("bio", "").strip()
+        user.save(update_fields=["first_name", "last_name", "phone", "bio"])
         logger.info("profile_updated", user_id=str(user.id))
         response = render(request, "accounts/_edit_profile_form.html")
         response["HX-Trigger"] = json.dumps({
@@ -409,16 +411,26 @@ class TeamListView(LoginRequiredMixin, View):
     def get(self, request):
         if request.user.role not in ("owner", "manager"):
             return redirect("dashboard")
-        users = CustomUser.objects.filter(org=request.user.org).order_by("role", "email")
-        active_count = users.filter(is_active=True).count()
-        unique_roles = users.values_list("role", flat=True).distinct().count()
+        all_users = CustomUser.objects.filter(org=request.user.org)
+        active_count = all_users.filter(is_active=True).count()
+        unique_roles = all_users.values_list("role", flat=True).distinct().count()
+        q = request.GET.get("q", "").strip()
+        users = all_users.order_by("role", "email")
+        if q:
+            users = users.filter(
+                Q(first_name__icontains=q)
+                | Q(last_name__icontains=q)
+                | Q(email__icontains=q)
+            )
+        if "q" in request.GET and request.headers.get("HX-Request"):
+            return render(request, "accounts/_member_rows.html", {"users": users})
         role_choices = [c for c in CustomUser.ROLE_CHOICES if c[0] in _INVITABLE_ROLES]
         return render(request, "accounts/team.html", {
             "users": users,
             "active_count": active_count,
             "unique_roles": unique_roles,
             "role_choices": role_choices,
-            "pending_invites": [],
+            "search_query": q,
         })
 
 

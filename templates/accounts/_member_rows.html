@@ -1,0 +1,11 @@
+{% load static %}
+{% for member in users %}
+  {% include "accounts/_member_row.html" %}
+{% empty %}
+<tr>
+  <td colspan="4" class="px-6 py-16 text-center text-on-surface-variant">
+    <span class="material-symbols-outlined text-4xl text-outline/40 mb-2">group_off</span>
+    <p class="text-sm font-medium">No team members found.</p>
+  </td>
+</tr>
+{% endfor %}

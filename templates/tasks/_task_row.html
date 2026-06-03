@@ -1,35 +1,63 @@
-<li id="task-{{ task.id }}" class="flex items-center gap-4 px-4 py-3
-  {% if task.status == 'complete' %}bg-green-50{% elif task.status == 'overdue' %}bg-red-50{% else %}bg-white{% endif %}">
+{% load static %}
+<div id="task-{{ task.id }}" 
+     class="flex items-center justify-between gap-4 px-5 py-3.5 transition-colors duration-150 hover:bg-slate-50/50 
+     {% if task.status == 'complete' %} bg-slate-50/40 {% elif task.status == 'overdue' %} bg-red-50/20 {% endif %}">
+  
+  <div class="flex items-center gap-3.5 min-w-0">
+    {% if task.status == 'complete' %}
+      <div class="w-5 h-5 rounded-md bg-secondary text-white flex items-center justify-center shrink-0 shadow-sm">
+        <span class="material-symbols-outlined text-xs font-black">check</span>
+      </div>
+    {% else %}
+      <button hx-post="{% url 'tasks:complete' task.id %}"
+              hx-target="#task-{{ task.id }}"
+              hx-swap="outerHTML"
+              class="w-5 h-5 rounded-md border-2 border-gray-300 bg-white hover:border-primary hover:bg-blue-50/50 transition-all flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20">
+        <span class="material-symbols-outlined text-xs text-transparent hover:text-primary transition-colors">check</span>
+      </button>
+    {% endif %}
 
-  <!-- Priority badge -->
-  <span class="inline-flex items-center justify-center w-2 h-2 rounded-full
-    {% if task.priority == 'high' %}bg-red-500{% elif task.priority == 'medium' %}bg-amber-400{% else %}bg-earth-300{% endif %}">
-  </span>
-
-  <!-- Task info -->
-  <div class="flex-1 min-w-0">
-    <p class="text-sm font-medium text-earth-800 truncate
-      {% if task.status == 'complete' %}line-through text-earth-400{% endif %}">
-      {{ task.title }}
-    </p>
-    <p class="text-xs text-earth-500">
-      {{ task.farm.name }}{% if task.batch %} · {{ task.batch.batch_name }}{% endif %}
-    </p>
+    <div class="min-w-0">
+      <p class="text-xs font-semibold text-on-surface leading-snug truncate group
+                {% if task.status == 'complete' %} line-through text-slate-400 font-normal {% endif %}">
+        {{ task.title }}
+      </p>
+      
+      <div class="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-400 font-medium">
+        <span class="w-1.5 h-1.5 rounded-full shrink-0
+          {% if task.priority == 'high' %} bg-error {% elif task.priority == 'medium' %} bg-amber-400 {% else %} bg-slate-300 {% endif %}">
+        </span>
+        <span class="truncate text-slate-500">{{ task.farm.name }}</span>
+        {% if task.batch %}
+          <span class="text-slate-300">•</span>
+          <span class="truncate bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono text-[10px]">{{ task.batch.batch_name }}</span>
+        {% endif %}
+        {% if task.status == 'overdue' and task.due_date %}
+          <span class="text-red-400/80">• Due {{ task.due_date }}</span>
+        {% endif %}
+        {% if task.status == 'complete' and task.completed_by %}
+          <span class="text-slate-400/80">• Done by {{ task.completed_by.get_full_name }}</span>
+        {% endif %}
+      </div>
+    </div>
   </div>
 
-  <!-- Status / action -->
-  <div class="flex-shrink-0">
+  <div class="shrink-0 text-right">
     {% if task.status == 'complete' %}
-      <span class="text-green-600 text-sm font-medium">&#10003; Done</span>
+      <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-secondary bg-green-50 px-2 py-1 rounded-md border border-green-100">
+        Verified
+      </span>
     {% elif task.status == 'overdue' %}
-      <span class="text-red-600 text-xs font-semibold uppercase">Overdue</span>
+      <span class="inline-flex items-center px-2 py-1 bg-red-50 text-error rounded-md text-[10px] font-bold uppercase tracking-wider border border-red-100 animate-pulse">
+        Overdue
+      </span>
     {% else %}
-      <button
-        hx-post="{% url 'tasks:complete' task.id %}"
-        hx-target="#task-{{ task.id }}"
-        hx-swap="outerHTML"
-        class="px-3 py-1 text-xs font-medium bg-green-600 text-white rounded-full hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-      >Complete</button>
+      <button hx-post="{% url 'tasks:complete' task.id %}"
+              hx-target="#task-{{ task.id }}"
+              hx-swap="outerHTML"
+              class="px-3 py-1 bg-white border border-gray-200 hover:border-slate-300 rounded-lg text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 transition-all cursor-pointer">
+        Complete
+      </button>
     {% endif %}
   </div>
-</li>
+</div>
