@@ -11,6 +11,16 @@ urlpatterns = [
         name="overview",
     ),
     path(
+        "production/export/pdf/",
+        views.ProductionOverviewPDFExportView.as_view(),
+        name="export_pdf",
+    ),
+    path(
+        "production/export/excel/",
+        views.ProductionOverviewExcelExportView.as_view(),
+        name="export_excel",
+    ),
+    path(
         "production/eggs/<uuid:batch_pk>/log/",
         views.ProductionLogView.as_view(),
         name="log",

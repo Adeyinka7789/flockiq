@@ -528,12 +528,19 @@ class BatchMetricsCardView(LoginRequiredMixin, View):
 # ── Export views ────────────────────────────────────────────────────────────────
 
 class BatchPDFExportView(LoginRequiredMixin, View):
-    """GET /batches/<uuid>/export/pdf/ → Waffle-gated PDF download."""
+    """GET /batches/<uuid>/export/pdf/ → Plan-gated PDF download."""
 
     def get(self, request, pk):
-        from waffle import flag_is_active
-        if not flag_is_active(request, 'pdf_export'):
-            return HttpResponse('PDF export not enabled.', status=403)
+        from apps.infrastructure.billing.features import has_feature
+        if not has_feature(request.user.org, 'pdf_export'):
+            response = HttpResponse(status=200)
+            response['HX-Trigger'] = json.dumps({
+                'showToast': {
+                    'message': '🔒 PDF exports are available on the Monthly plan and above. Upgrade to unlock.',
+                    'type': 'error',
+                }
+            })
+            return response
 
         org = _get_org(request)
         with set_tenant_context(org):
@@ -550,12 +557,19 @@ class BatchPDFExportView(LoginRequiredMixin, View):
 
 
 class BatchExcelExportView(LoginRequiredMixin, View):
-    """GET /batches/<uuid>/export/excel/ → Waffle-gated Excel download."""
+    """GET /batches/<uuid>/export/excel/ → Plan-gated Excel download."""
 
     def get(self, request, pk):
-        from waffle import flag_is_active
-        if not flag_is_active(request, 'excel_export'):
-            return HttpResponse('Excel export not enabled.', status=403)
+        from apps.infrastructure.billing.features import has_feature
+        if not has_feature(request.user.org, 'excel_export'):
+            response = HttpResponse(status=200)
+            response['HX-Trigger'] = json.dumps({
+                'showToast': {
+                    'message': '🔒 Excel exports are available on the Monthly plan and above. Upgrade to unlock.',
+                    'type': 'error',
+                }
+            })
+            return response
 
         org = _get_org(request)
         with set_tenant_context(org):

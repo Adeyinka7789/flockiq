@@ -119,6 +119,77 @@ class VaccinationCalendarView(TenantRequiredMixin, View):
         return render(request, "health/vaccination_calendar.html", context)
 
 
+class VaccinationCalendarPDFExportView(TenantRequiredMixin, View):
+    """GET /health/vaccinations/export/pdf/ → Waffle-gated PDF of vaccination calendar."""
+
+    def get(self, request):
+        from waffle import flag_is_active
+        if not flag_is_active(request, 'pdf_export'):
+            return HttpResponse('PDF export requires an upgraded plan.', status=403)
+
+        org = _get_org(request)
+        today = date.today()
+        with set_tenant_context(org):
+            from .models import VaccinationSchedule
+            vaccinations = list(
+                VaccinationSchedule.objects.select_related('batch__farm', 'batch__house')
+                .order_by('due_date')
+            )
+            for v in vaccinations:
+                delta = (v.due_date - today).days
+                if v.status == 'completed':
+                    v.days_label = 'Done'
+                elif delta < 0:
+                    v.days_label = f'{abs(delta)}d overdue'
+                elif delta == 0:
+                    v.days_label = 'Today!'
+                else:
+                    v.days_label = f'In {delta}d'
+
+        from apps.infrastructure.core.exports import generate_vaccination_calendar_pdf
+        pdf_bytes = generate_vaccination_calendar_pdf(vaccinations, today)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="vaccination-calendar-{today}.pdf"'
+        return response
+
+
+class VaccinationCalendarExcelExportView(TenantRequiredMixin, View):
+    """GET /health/vaccinations/export/excel/ → Waffle-gated Excel of vaccination calendar."""
+
+    def get(self, request):
+        from waffle import flag_is_active
+        if not flag_is_active(request, 'excel_export'):
+            return HttpResponse('Excel export requires an upgraded plan.', status=403)
+
+        org = _get_org(request)
+        today = date.today()
+        with set_tenant_context(org):
+            from .models import VaccinationSchedule
+            vaccinations = list(
+                VaccinationSchedule.objects.select_related('batch__farm', 'batch__house')
+                .order_by('due_date')
+            )
+            for v in vaccinations:
+                delta = (v.due_date - today).days
+                if v.status == 'completed':
+                    v.days_label = 'Done'
+                elif delta < 0:
+                    v.days_label = f'{abs(delta)}d overdue'
+                elif delta == 0:
+                    v.days_label = 'Today!'
+                else:
+                    v.days_label = f'In {delta}d'
+
+        from apps.infrastructure.core.exports import generate_vaccination_calendar_excel
+        xlsx_bytes = generate_vaccination_calendar_excel(vaccinations, today)
+        response = HttpResponse(
+            xlsx_bytes,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="vaccination-calendar-{today}.xlsx"'
+        return response
+
+
 class VaccinationCompleteView(LoginRequiredMixin, View):
     """POST /health/vaccinations/<uuid>/complete/ — Marks vaccination administered."""
 

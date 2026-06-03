@@ -129,6 +129,93 @@ class ProductionOverviewView(TenantRequiredMixin, View):
             'production/production/production_overview.html', context)
 
 
+class ProductionOverviewPDFExportView(TenantRequiredMixin, View):
+    """GET /production/export/pdf/ → Waffle-gated PDF of production overview."""
+
+    def get(self, request):
+        from waffle import flag_is_active
+        if not flag_is_active(request, 'pdf_export'):
+            from django.http import HttpResponse
+            return HttpResponse('PDF export requires an upgraded plan.', status=403)
+
+        org = request.user.org
+        today = date.today()
+        with set_tenant_context(org):
+            from apps.farm.flocks.models import Batch
+            layer_batches = list(
+                Batch.objects.filter(status='active', bird_type='layer')
+                .select_related('farm', 'house')
+            )
+            batch_summaries = []
+            for batch in layer_batches:
+                latest_log = EggProductionLog.objects.filter(
+                    batch=batch, record_date=today
+                ).first()
+                avg_7day = EggProductionLog.objects.filter(
+                    batch=batch,
+                    record_date__gte=today - timedelta(days=7)
+                ).aggregate(avg=Avg('hen_day_pct'))['avg'] or 0
+                batch_summaries.append({
+                    'batch': batch,
+                    'todays_eggs': latest_log.total_eggs if latest_log else 0,
+                    'todays_hen_day': float(latest_log.hen_day_pct) if latest_log and latest_log.hen_day_pct else 0,
+                    'avg_7day_hen_day': round(float(avg_7day), 1),
+                    'logged_today': latest_log is not None,
+                })
+
+        from apps.infrastructure.core.exports import generate_production_overview_pdf
+        from django.http import HttpResponse
+        pdf_bytes = generate_production_overview_pdf(batch_summaries, today)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="production-overview-{today}.pdf"'
+        return response
+
+
+class ProductionOverviewExcelExportView(TenantRequiredMixin, View):
+    """GET /production/export/excel/ → Waffle-gated Excel of production overview."""
+
+    def get(self, request):
+        from waffle import flag_is_active
+        if not flag_is_active(request, 'excel_export'):
+            from django.http import HttpResponse
+            return HttpResponse('Excel export requires an upgraded plan.', status=403)
+
+        org = request.user.org
+        today = date.today()
+        with set_tenant_context(org):
+            from apps.farm.flocks.models import Batch
+            layer_batches = list(
+                Batch.objects.filter(status='active', bird_type='layer')
+                .select_related('farm', 'house')
+            )
+            batch_summaries = []
+            for batch in layer_batches:
+                latest_log = EggProductionLog.objects.filter(
+                    batch=batch, record_date=today
+                ).first()
+                avg_7day = EggProductionLog.objects.filter(
+                    batch=batch,
+                    record_date__gte=today - timedelta(days=7)
+                ).aggregate(avg=Avg('hen_day_pct'))['avg'] or 0
+                batch_summaries.append({
+                    'batch': batch,
+                    'todays_eggs': latest_log.total_eggs if latest_log else 0,
+                    'todays_hen_day': float(latest_log.hen_day_pct) if latest_log and latest_log.hen_day_pct else 0,
+                    'avg_7day_hen_day': round(float(avg_7day), 1),
+                    'logged_today': latest_log is not None,
+                })
+
+        from apps.infrastructure.core.exports import generate_production_overview_excel
+        from django.http import HttpResponse
+        xlsx_bytes = generate_production_overview_excel(batch_summaries, today)
+        response = HttpResponse(
+            xlsx_bytes,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="production-overview-{today}.xlsx"'
+        return response
+
+
 class ProductionLogView(LoginRequiredMixin, View):
     """GET/POST /production/eggs/<batch_pk>/log/ → Returns log form or updated summary card."""
 

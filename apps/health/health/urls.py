@@ -12,6 +12,16 @@ urlpatterns = [
         name="calendar",
     ),
     path(
+        "health/vaccinations/export/pdf/",
+        views.VaccinationCalendarPDFExportView.as_view(),
+        name="export_pdf",
+    ),
+    path(
+        "health/vaccinations/export/excel/",
+        views.VaccinationCalendarExcelExportView.as_view(),
+        name="export_excel",
+    ),
+    path(
         "health/vaccinations/<uuid:pk>/complete/",
         views.VaccinationCompleteView.as_view(),
         name="complete",

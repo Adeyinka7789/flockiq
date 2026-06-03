@@ -100,3 +100,153 @@ def generate_batch_excel(batch) -> bytes:
     buffer = BytesIO()
     wb.save(buffer)
     return buffer.getvalue()
+
+
+def generate_production_overview_pdf(batch_summaries: list, today) -> bytes:
+    """Return a PDF of the production overview across all active layer batches."""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        leftMargin=2 * cm, rightMargin=2 * cm,
+        topMargin=2 * cm, bottomMargin=2 * cm,
+    )
+    styles = getSampleStyleSheet()
+    story = []
+
+    story.append(Paragraph('Egg Production Overview', styles['Title']))
+    story.append(Paragraph(f'Generated: {today}', styles['Normal']))
+    story.append(Spacer(1, 0.5 * cm))
+
+    data = [['Batch', 'Farm', 'Today\'s Eggs', 'Hen-Day %', '7-Day Avg %', 'Logged Today']]
+    for s in batch_summaries:
+        data.append([
+            s['batch'].batch_name,
+            s['batch'].farm.name,
+            str(s['todays_eggs']),
+            f"{s['todays_hen_day']:.1f}%",
+            f"{s['avg_7day_hen_day']:.1f}%",
+            'Yes' if s['logged_today'] else 'No',
+        ])
+
+    col_widths = [4 * cm, 4 * cm, 3 * cm, 3 * cm, 3 * cm, 3 * cm]
+    t = Table(data, colWidths=col_widths)
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, STRIPE]),
+        ('GRID', (0, 0), (-1, -1), 0.5, GRID),
+        ('PADDING', (0, 0), (-1, -1), 5),
+    ]))
+    story.append(t)
+    doc.build(story)
+    return buffer.getvalue()
+
+
+def generate_production_overview_excel(batch_summaries: list, today) -> bytes:
+    """Return an Excel of the production overview."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Production Overview'
+
+    header_font = Font(bold=True, color='FFFFFF')
+    header_fill = PatternFill('solid', fgColor='3D5A99')
+    headers = ['Batch', 'Farm', "Today's Eggs", 'Hen-Day %', '7-Day Avg %', 'Logged Today']
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+
+    for row_idx, s in enumerate(batch_summaries, 2):
+        ws.cell(row=row_idx, column=1, value=s['batch'].batch_name)
+        ws.cell(row=row_idx, column=2, value=s['batch'].farm.name)
+        ws.cell(row=row_idx, column=3, value=s['todays_eggs'])
+        ws.cell(row=row_idx, column=4, value=round(s['todays_hen_day'], 1))
+        ws.cell(row=row_idx, column=5, value=s['avg_7day_hen_day'])
+        ws.cell(row=row_idx, column=6, value='Yes' if s['logged_today'] else 'No')
+
+    for col in ['A', 'B', 'C', 'D', 'E', 'F']:
+        ws.column_dimensions[col].width = 18
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
+def generate_vaccination_calendar_pdf(vaccinations: list, today) -> bytes:
+    """Return a PDF of the vaccination calendar."""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        leftMargin=2 * cm, rightMargin=2 * cm,
+        topMargin=2 * cm, bottomMargin=2 * cm,
+    )
+    styles = getSampleStyleSheet()
+    story = []
+
+    story.append(Paragraph('Vaccination Calendar', styles['Title']))
+    story.append(Paragraph(f'Generated: {today}', styles['Normal']))
+    story.append(Spacer(1, 0.5 * cm))
+
+    data = [['Batch', 'Farm', 'Vaccine', 'Due Date', 'Status', 'Days']]
+    for v in vaccinations:
+        data.append([
+            v.batch.batch_name,
+            v.batch.farm.name,
+            v.vaccine_name,
+            str(v.due_date),
+            v.get_status_display() if hasattr(v, 'get_status_display') else v.status,
+            getattr(v, 'days_label', ''),
+        ])
+
+    col_widths = [3.5 * cm, 3.5 * cm, 4 * cm, 3 * cm, 2.5 * cm, 2.5 * cm]
+    t = Table(data, colWidths=col_widths)
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, STRIPE]),
+        ('GRID', (0, 0), (-1, -1), 0.5, GRID),
+        ('PADDING', (0, 0), (-1, -1), 5),
+    ]))
+    story.append(t)
+    doc.build(story)
+    return buffer.getvalue()
+
+
+def generate_vaccination_calendar_excel(vaccinations: list, today) -> bytes:
+    """Return an Excel of the vaccination calendar."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Vaccination Calendar'
+
+    header_font = Font(bold=True, color='FFFFFF')
+    header_fill = PatternFill('solid', fgColor='3D5A99')
+    headers = ['Batch', 'Farm', 'Vaccine', 'Due Date', 'Status', 'Days']
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+
+    for row_idx, v in enumerate(vaccinations, 2):
+        ws.cell(row=row_idx, column=1, value=v.batch.batch_name)
+        ws.cell(row=row_idx, column=2, value=v.batch.farm.name)
+        ws.cell(row=row_idx, column=3, value=v.vaccine_name)
+        ws.cell(row=row_idx, column=4, value=str(v.due_date))
+        ws.cell(row=row_idx, column=5, value=v.get_status_display() if hasattr(v, 'get_status_display') else v.status)
+        ws.cell(row=row_idx, column=6, value=getattr(v, 'days_label', ''))
+
+    for col in ['A', 'B', 'C', 'D', 'E', 'F']:
+        ws.column_dimensions[col].width = 18
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()

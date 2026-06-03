@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+{% block title %}Weather & Alerts{% endblock %}
+{% block breadcrumb %}Weather & Alerts{% endblock %}
+
+{% block content %}
+<style>
+  .wx-wrap { max-width: 1000px; margin: 0 auto; }
+
+  .wx-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; margin-bottom: 20px;
+  }
+
+  .wx-farms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px; margin-bottom: 20px;
+  }
+  .wx-farm-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 18px;
+    position: relative; overflow: hidden;
+    transition: all 0.2s;
+  }
+  .wx-farm-card.heat-critical {
+    border-color: #fecaca;
+    background: linear-gradient(135deg, #fff5f5, white);
+  }
+  .wx-farm-card.heat-warning {
+    border-color: #fde68a;
+    background: linear-gradient(135deg, #fffbeb, white);
+  }
+  .wx-farm-name {
+    font-size: 12px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+  .wx-temp {
+    font-size: 42px; font-weight: 800; line-height: 1;
+    margin-bottom: 4px; font-variant-numeric: tabular-nums;
+  }
+  .wx-temp.critical { color: #dc2626; }
+  .wx-temp.warning  { color: #d97706; }
+  .wx-temp.normal   { color: #1a2744; }
+  .wx-desc {
+    font-size: 13px; color: #8a96a8; margin-bottom: 12px;
+  }
+
+  .wx-forecast {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; margin-top: 10px;
+  }
+  .wx-day {
+    background: #f4f7fe; border-radius: 10px;
+    padding: 10px 6px; text-align: center;
+  }
+  .wx-day.today { background: #3d5a99; }
+  .wx-day-name {
+    font-size: 9px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 5px;
+  }
+  .wx-day.today .wx-day-name { color: rgba(255,255,255,0.7); }
+  .wx-day-temp {
+    font-size: 18px; font-weight: 800; color: #1a2744;
+    line-height: 1;
+  }
+  .wx-day.today .wx-day-temp { color: white; }
+  .wx-day-desc {
+    font-size: 9px; color: #8a96a8; margin-top: 3px;
+  }
+  .wx-day.today .wx-day-desc { color: rgba(255,255,255,0.6); }
+
+  .wx-alert {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 16px 18px; margin-bottom: 10px;
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    border-left: 4px solid transparent;
+  }
+  .wx-alert.critical { border-left-color: #ef4444; }
+  .wx-alert.warning  { border-left-color: #f59e0b; }
+
+  .wx-alert-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .wx-alert-icon.critical { background: #fee2e2; }
+  .wx-alert-icon.warning  { background: #fef3c7; }
+
+  .wx-alert-title {
+    font-size: 14px; font-weight: 700; color: #1a2744;
+    margin-bottom: 4px;
+  }
+  .wx-alert-body {
+    font-size: 12px; color: #4a5568; line-height: 1.6;
+  }
+  .wx-alert-meta {
+    font-size: 11px; color: #8a96a8; margin-top: 6px;
+  }
+  .wx-action-badge {
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .wx-action-badge.critical { background: #fee2e2; color: #991b1b; }
+  .wx-action-badge.warning  { background: #fef3c7; color: #92400e; }
+
+  .seasonal-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .seasonal-item {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .seasonal-item:last-child { border-bottom: none; }
+  .seasonal-item.active   { background: #edfae8; }
+  .seasonal-item.upcoming { background: #fef9c3; }
+  .seasonal-title {
+    font-size: 13px; font-weight: 700; color: #1a2744;
+    margin-bottom: 4px;
+  }
+  .seasonal-body {
+    font-size: 12px; color: #4a5568; line-height: 1.6;
+  }
+
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #edfae8; color: #166534;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #8bc87a;
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+
+  .no-gps-state {
+    padding: 48px; text-align: center;
+    color: #8a96a8; font-size: 13px;
+  }
+</style>
+
+<div class="wx-wrap">
+
+  <!-- Header -->
+  <div class="wx-header">
+    <div>
+      <h1 style="font-size:20px;font-weight:800;color:#1a2744">Weather & Alerts</h1>
+      <p style="font-size:13px;color:#8a96a8;margin-top:3px">
+        OpenWeatherMap · Refreshed every 6 hours per farm GPS
+      </p>
+    </div>
+    <span class="live-badge">
+      <span class="live-dot"></span>
+      Live weather
+    </span>
+  </div>
+
+  {% if not has_farms_with_gps %}
+  <div class="seasonal-card">
+    <div class="no-gps-state">
+      <div style="font-size:32px;margin-bottom:12px">🌦️</div>
+      <h3 style="font-size:15px;font-weight:700;color:#1a2744;margin-bottom:6px">
+        No farm GPS coordinates set
+      </h3>
+      <p style="margin-bottom:16px">
+        Add GPS coordinates to your farms to enable live weather monitoring and heat stress alerts.
+      </p>
+      <a href="{% url 'farms:list' %}"
+         style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;
+                background:#3d5a99;color:white;border-radius:10px;
+                font-size:13px;font-weight:700;text-decoration:none">
+        Update Farm Coordinates →
+      </a>
+    </div>
+  </div>
+
+  {% else %}
+
+  <!-- Farm weather cards -->
+  <div class="wx-farms-grid">
+    {% for wx in weather_data %}
+    {% with temp=wx.current_temp|default:0 %}
+    <div class="wx-farm-card {% if temp >= 34 %}heat-critical{% elif temp >= 30 %}heat-warning{% endif %}">
+
+      <div class="wx-farm-name">{{ wx.farm.name }}</div>
+
+      <div class="wx-temp {% if temp >= 34 %}critical{% elif temp >= 30 %}warning{% else %}normal{% endif %}">
+        {{ temp }}°C
+      </div>
+
+      <div class="wx-desc">
+        {{ wx.description|default:"Conditions unknown"|title }}
+        {% if temp >= 34 %}
+        · <span style="color:#dc2626;font-weight:600">Heat stress risk</span>
+        {% elif temp >= 30 %}
+        · <span style="color:#d97706;font-weight:600">Warm — monitor</span>
+        {% endif %}
+      </div>
+
+      <div style="font-size:11px;color:#8a96a8;margin-bottom:10px">
+        {{ wx.farm.latitude }}°N {{ wx.farm.longitude }}°E
+        · Humidity {{ wx.humidity|default:"—" }}%
+      </div>
+
+      {% if wx.forecast %}
+      <div class="wx-forecast">
+        {% for day in wx.forecast|slice:":4" %}
+        <div class="wx-day {% if forloop.first %}today{% endif %}">
+          <div class="wx-day-name">
+            {% if forloop.first %}TODAY{% else %}{{ day.day_name }}{% endif %}
+          </div>
+          <div class="wx-day-temp">{{ day.temp }}°</div>
+          <div class="wx-day-desc">{{ day.description|truncatechars:10 }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div>
+    {% endwith %}
+    {% empty %}
+    <div style="padding:24px;color:#8a96a8;font-size:13px">
+      Weather data unavailable. Check OpenWeatherMap API key.
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Alerts -->
+  {% if alerts %}
+  <div style="margin-bottom:20px">
+    <h2 style="font-size:14px;font-weight:700;color:#1a2744;margin-bottom:12px">
+      Active Alerts
+    </h2>
+    {% for alert in alerts %}
+    <div class="wx-alert {{ alert.severity }}">
+      <div class="wx-alert-icon {{ alert.severity }}">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+             stroke="{% if alert.severity == 'critical' %}#dc2626{% else %}#d97706{% endif %}"
+             stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <div style="flex:1">
+        <div class="wx-alert-title">{{ alert.title }}</div>
+        <div class="wx-alert-body">{{ alert.body }}</div>
+        <div class="wx-alert-meta">
+          OpenWeatherMap · {{ alert.farm.latitude }}°N {{ alert.farm.longitude }}°E
+        </div>
+      </div>
+      <span class="wx-action-badge {{ alert.severity }}">{{ alert.action }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% endif %}
+
+  <!-- Seasonal Market Intelligence -->
+  <h2 style="font-size:14px;font-weight:700;color:#1a2744;margin-bottom:12px">
+    Seasonal Market Intelligence
+  </h2>
+  <div class="seasonal-card">
+
+    {% if seasonal.current_events %}
+    {% for event in seasonal.current_events %}
+    <div class="seasonal-item active">
+      <div class="seasonal-title" style="color:#166534">
+        ● {{ event.name }} — Active Now
+      </div>
+      <div class="seasonal-body">
+        {{ event.note }}.
+        Egg demand +{{ event.egg_demand_multiplier|floatformat:0 }}×,
+        Broiler demand +{{ event.broiler_demand_multiplier|floatformat:0 }}×.
+        {{ event.advice }}
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if seasonal.upcoming_events %}
+    {% for event in seasonal.upcoming_events %}
+    <div class="seasonal-item upcoming">
+      <div class="seasonal-title" style="color:#92400e">
+        ⚡ {{ event.name }} — Coming Next Month
+      </div>
+      <div class="seasonal-body">
+        {{ event.note }}.
+        Expected: Egg demand +{{ event.egg_demand_multiplier|floatformat:0 }}×,
+        Broiler demand +{{ event.broiler_demand_multiplier|floatformat:0 }}×.
+        {{ event.advice }}
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if not seasonal.current_events and not seasonal.upcoming_events %}
+    <div class="seasonal-item">
+      <div class="seasonal-title">{{ seasonal.month }}</div>
+      <div class="seasonal-body">No major seasonal demand events this month or next.</div>
+    </div>
+    {% endif %}
+
+    <div class="seasonal-item">
+      <div class="seasonal-title">💡 Placement Recommendation</div>
+      <div class="seasonal-body">{{ placement_rec }}</div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

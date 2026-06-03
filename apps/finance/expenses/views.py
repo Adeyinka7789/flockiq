@@ -1,15 +1,18 @@
 import datetime
+import io
+import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import Http404
-from django.shortcuts import render
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404, render
 from django.views import View
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.infrastructure.core.rls import set_tenant_context
+from apps.infrastructure.core.views import TenantRequiredMixin
 
 from .services import ExpenseService
 
@@ -230,3 +233,194 @@ class ExpenseAPIView(APIView):
             },
             status=201,
         )
+
+
+class FinancePDFExportView(TenantRequiredMixin, View):
+    def get(self, request, batch_pk):
+        from apps.infrastructure.billing.features import has_feature
+
+        if not has_feature(request.user.org, "pdf_export"):
+            response = HttpResponse(status=200)
+            response["HX-Trigger"] = json.dumps({
+                "showToast": {
+                    "message": "PDF exports are on the Monthly plan. Upgrade to unlock.",
+                    "type": "error",
+                }
+            })
+            return response
+
+        from apps.farm.flocks.models import Batch
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.platypus import (
+            Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle)
+
+        from apps.finance.finance.models import SalesRecord
+
+        from .models import ExpenseRecord
+
+        with set_tenant_context(request.user.org):
+            batch = get_object_or_404(Batch, pk=batch_pk)
+            expenses = list(ExpenseRecord.objects.filter(batch=batch).order_by("-expense_date"))
+            sales = list(SalesRecord.objects.filter(batch=batch).order_by("-sale_date"))
+            total_revenue = sum(s.total_amount_kobo for s in sales) // 100
+            total_expenses = sum(e.amount_kobo for e in expenses) // 100
+            profit = total_revenue - total_expenses
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        styles = getSampleStyleSheet()
+        story = []
+
+        story.append(Paragraph(f"Financial Report — {batch.batch_name}", styles["Title"]))
+        story.append(Paragraph(
+            f"{batch.farm.name} | {batch.bird_type.title()} | Day {batch.cycle_day}",
+            styles["Normal"],
+        ))
+        story.append(Spacer(1, 20))
+
+        story.append(Paragraph("P&L Summary", styles["Heading2"]))
+        pl_data = [
+            ["", "Amount"],
+            ["Total Revenue", f"₦{total_revenue:,}"],
+            ["Total Expenses", f"₦{total_expenses:,}"],
+            ["Net Profit", f"₦{profit:,}"],
+        ]
+        pl_table = Table(pl_data, colWidths=[300, 150])
+        pl_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3d5a99")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f7fe")]),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+            ("PADDING", (0, 0), (-1, -1), 8),
+        ]))
+        story.append(pl_table)
+        story.append(Spacer(1, 20))
+
+        if sales:
+            story.append(Paragraph("Sales Records", styles["Heading2"]))
+            sales_data = [["Date", "Product", "Qty", "Unit Price", "Total"]]
+            for s in sales:
+                sales_data.append([
+                    str(s.sale_date),
+                    s.product_type,
+                    str(s.quantity),
+                    f"₦{s.unit_price_kobo // 100:,}",
+                    f"₦{s.total_amount_kobo // 100:,}",
+                ])
+            sales_table = Table(sales_data, colWidths=[80, 100, 60, 100, 100])
+            sales_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3d5a99")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f7fe")]),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+                ("PADDING", (0, 0), (-1, -1), 6),
+            ]))
+            story.append(sales_table)
+            story.append(Spacer(1, 20))
+
+        if expenses:
+            story.append(Paragraph("Expense Records", styles["Heading2"]))
+            exp_data = [["Date", "Category", "Description", "Amount"]]
+            for e in expenses:
+                exp_data.append([
+                    str(e.expense_date),
+                    e.category,
+                    e.description[:40],
+                    f"₦{e.amount_kobo // 100:,}",
+                ])
+            exp_table = Table(exp_data, colWidths=[80, 100, 180, 100])
+            exp_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#3d5a99")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f4f7fe")]),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+                ("PADDING", (0, 0), (-1, -1), 6),
+            ]))
+            story.append(exp_table)
+
+        doc.build(story)
+        buffer.seek(0)
+
+        response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="finance_{batch.batch_name}.pdf"'
+        )
+        return response
+
+
+class FinanceExcelExportView(TenantRequiredMixin, View):
+    def get(self, request, batch_pk):
+        from apps.infrastructure.billing.features import has_feature
+
+        if not has_feature(request.user.org, "excel_export"):
+            response = HttpResponse(status=200)
+            response["HX-Trigger"] = json.dumps({
+                "showToast": {
+                    "message": "Excel exports are on the Monthly plan. Upgrade to unlock.",
+                    "type": "error",
+                }
+            })
+            return response
+
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill
+
+        from apps.farm.flocks.models import Batch
+        from apps.finance.finance.models import SalesRecord
+
+        from .models import ExpenseRecord
+
+        with set_tenant_context(request.user.org):
+            batch = get_object_or_404(Batch, pk=batch_pk)
+            expenses = list(ExpenseRecord.objects.filter(batch=batch).order_by("-expense_date"))
+            sales = list(SalesRecord.objects.filter(batch=batch).order_by("-sale_date"))
+
+        wb = openpyxl.Workbook()
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(fill_type="solid", fgColor="3d5a99")
+
+        ws_sales = wb.active
+        ws_sales.title = "Sales"
+        ws_sales.append(["Date", "Product", "Quantity", "Unit Price (₦)", "Total (₦)"])
+        for cell in ws_sales[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+        for s in sales:
+            ws_sales.append([
+                str(s.sale_date),
+                s.product_type,
+                s.quantity,
+                s.unit_price_kobo // 100,
+                s.total_amount_kobo // 100,
+            ])
+
+        ws_exp = wb.create_sheet("Expenses")
+        ws_exp.append(["Date", "Category", "Description", "Amount (₦)"])
+        for cell in ws_exp[1]:
+            cell.font = header_font
+            cell.fill = header_fill
+        for e in expenses:
+            ws_exp.append([
+                str(e.expense_date),
+                e.category,
+                e.description,
+                e.amount_kobo // 100,
+            ])
+
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = (
+            f'attachment; filename="finance_{batch.batch_name}.xlsx"'
+        )
+        return response

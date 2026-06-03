@@ -404,6 +404,15 @@
           </svg>
           <span class="sb-text">AI Analytics</span>
         </a>
+        <a href="{% url 'weather:alerts' %}"
+           class="sb-item {% if app_name == 'weather' and url_name == 'alerts' %}active{% endif %}">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
+          </svg>
+          <span class="sb-text">Weather & Alerts</span>
+        </a>
 
         <!-- FINANCE -->
         <div class="sb-group"><span class="sb-text sb-group-label">Finance</span></div>

@@ -7,7 +7,8 @@
 <div class="max-w-6xl mx-auto px-4 py-8" x-data="{ tab: 'overview' }">
 
   <!-- Batch header -->
-  <div class="flex flex-wrap items-center gap-3 mb-6">
+  <div class="flex flex-wrap items-start justify-between gap-3 mb-6">
+  <div class="flex flex-wrap items-center gap-3">
     <h1 class="text-2xl font-bold text-gray-900">{{ batch.batch_name }}</h1>
     {% if batch.breed_name %}
     <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">{{ batch.breed_name }}</span>
@@ -27,6 +28,43 @@
     {% if batch.cycle_day is not None %}
     <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">Day {{ batch.cycle_day }}</span>
     {% endif %}
+  </div>
+  {% if request.user.role in 'owner,manager' %}
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    {% if plan_features.pdf_export %}
+    <a href="{% url 'flocks:export_pdf' batch.pk %}" target="_blank"
+       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:white;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#dc2626;text-decoration:none;transition:all 0.15s"
+       onmouseover="this.style.borderColor='#dc2626';this.style.background='#fee2e2'"
+       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      Full Report
+    </a>
+    {% else %}
+    <button hx-get="{% url 'flocks:export_pdf' batch.pk %}" hx-swap="none"
+            style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f4f7fe;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#b0bac9;cursor:pointer">
+      🔒 Full Report
+    </button>
+    {% endif %}
+    {% if plan_features.excel_export %}
+    <a href="{% url 'flocks:export_excel' batch.pk %}"
+       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:white;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#166534;text-decoration:none;transition:all 0.15s"
+       onmouseover="this.style.borderColor='#166534';this.style.background='#edfae8'"
+       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+      </svg>
+      Full Export
+    </a>
+    {% else %}
+    <button hx-get="{% url 'flocks:export_excel' batch.pk %}" hx-swap="none"
+            style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f4f7fe;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#b0bac9;cursor:pointer">
+      🔒 Full Export
+    </button>
+    {% endif %}
+  </div>
+  {% endif %}
   </div>
 
   <!-- Tab buttons -->
@@ -362,16 +400,49 @@
   <!-- TAB 4: Finance -->
   <div x-show="tab === 'finance'" x-cloak class="mt-6">
 
-    <!-- Action buttons — prominent, at top -->
-    <div style="display:flex;gap:10px;margin-bottom:20px">
+    <!-- Finance tab toolbar: export buttons + action buttons on one line -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
+      {% if request.user.role in 'owner,manager' %}
+        {% if plan_features.pdf_export %}
+        <a href="{% url 'expenses:finance_pdf' batch.pk %}" target="_blank"
+           style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:white;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#dc2626;text-decoration:none;transition:all 0.15s"
+           onmouseover="this.style.borderColor='#dc2626';this.style.background='#fee2e2'"
+           onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Finance PDF
+        </a>
+        {% else %}
+        <button hx-get="{% url 'expenses:finance_pdf' batch.pk %}" hx-swap="none"
+                style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:#f4f7fe;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#b0bac9;cursor:pointer">
+          🔒 Finance PDF
+        </button>
+        {% endif %}
+        {% if plan_features.excel_export %}
+        <a href="{% url 'expenses:finance_excel' batch.pk %}"
+           style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:white;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#166534;text-decoration:none;transition:all 0.15s"
+           onmouseover="this.style.borderColor='#166534';this.style.background='#edfae8'"
+           onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Finance Excel
+        </a>
+        {% else %}
+        <button hx-get="{% url 'expenses:finance_excel' batch.pk %}" hx-swap="none"
+                style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:#f4f7fe;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#b0bac9;cursor:pointer">
+          🔒 Finance Excel
+        </button>
+        {% endif %}
+      {% endif %}
       <button hx-get="{% url 'finance:sale_log' batch.pk %}"
               hx-target="#modal-container"
               hx-swap="innerHTML"
-              style="flex:1;padding:12px;background:#3d5a99;color:white;border:none;
-                     border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;
-                     display:flex;align-items:center;justify-content:center;gap:6px">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
-             stroke="currentColor" stroke-width="2.5">
+              style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:#3d5a99;color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.15s"
+              onmouseover="this.style.background='#2d4578'"
+              onmouseout="this.style.background='#3d5a99'">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
         Record Sale
@@ -379,54 +450,14 @@
       <button hx-get="{% url 'expenses:log' batch.pk %}"
               hx-target="#modal-container"
               hx-swap="innerHTML"
-              style="flex:1;padding:12px;background:white;color:#3d5a99;
-                     border:2px solid #3d5a99;border-radius:10px;font-size:13px;
-                     font-weight:700;cursor:pointer;
-                     display:flex;align-items:center;justify-content:center;gap:6px">
-        <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
-             stroke="currentColor" stroke-width="2.5">
+              style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:#3d5a99;color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;transition:background 0.15s"
+              onmouseover="this.style.background='#2d4578'"
+              onmouseout="this.style.background='#3d5a99'">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
         Record Expense
       </button>
-    </div>
-
-    <!-- Export buttons -->
-    <div style="display:flex;gap:10px;margin-bottom:20px">
-      {% if plan_features.pdf_export %}
-      <button style="flex:1;padding:10px;background:white;color:#3d5a99;
-                     border:1.5px solid #3d5a99;border-radius:10px;font-size:13px;
-                     font-weight:600;cursor:pointer;
-                     display:flex;align-items:center;justify-content:center;gap:6px">
-        📄 PDF Export
-      </button>
-      {% else %}
-      <button disabled
-              title="Upgrade to Monthly to unlock PDF exports"
-              style="flex:1;padding:10px;background:#f8fafc;color:#b0bac9;
-                     border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;
-                     font-weight:600;cursor:not-allowed;opacity:0.7;
-                     display:flex;align-items:center;justify-content:center;gap:6px">
-        🔒 PDF Export
-      </button>
-      {% endif %}
-      {% if plan_features.excel_export %}
-      <button style="flex:1;padding:10px;background:white;color:#166534;
-                     border:1.5px solid #16a34a;border-radius:10px;font-size:13px;
-                     font-weight:600;cursor:pointer;
-                     display:flex;align-items:center;justify-content:center;gap:6px">
-        📊 Excel Export
-      </button>
-      {% else %}
-      <button disabled
-              title="Upgrade to Monthly to unlock Excel exports"
-              style="flex:1;padding:10px;background:#f8fafc;color:#b0bac9;
-                     border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;
-                     font-weight:600;cursor:not-allowed;opacity:0.7;
-                     display:flex;align-items:center;justify-content:center;gap:6px">
-        🔒 Excel Export
-      </button>
-      {% endif %}
     </div>
 
     <!-- P&L summary -->

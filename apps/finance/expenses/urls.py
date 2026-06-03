@@ -30,4 +30,14 @@ urlpatterns = [
         views.ExpenseAPIView.as_view(),
         name="api_list",
     ),
+    path(
+        "batches/<uuid:batch_pk>/finance/export/pdf/",
+        views.FinancePDFExportView.as_view(),
+        name="finance_pdf",
+    ),
+    path(
+        "batches/<uuid:batch_pk>/finance/export/excel/",
+        views.FinanceExcelExportView.as_view(),
+        name="finance_excel",
+    ),
 ]
