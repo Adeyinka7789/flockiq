@@ -1,5 +1,5 @@
 import json
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import redirect_to_login
@@ -227,6 +227,17 @@ class DashboardView(TemplateView):
             except Exception:
                 pass
 
+        hour = datetime.now().hour
+        if hour < 12:
+            time_greeting = "Good morning"
+            time_emoji = "🌅"
+        elif hour < 17:
+            time_greeting = "Good afternoon"
+            time_emoji = "☀️"
+        else:
+            time_greeting = "Good evening"
+            time_emoji = "🌙"
+
         ctx.update(
             {
                 "farms_count": farms_count,
@@ -241,6 +252,8 @@ class DashboardView(TemplateView):
                 "upcoming_vaccinations": upcoming_vaccinations,
                 "task_summary": task_summary,
                 "daily_brief": daily_brief,
+                "time_greeting": time_greeting,
+                "time_emoji": time_emoji,
             }
         )
         return ctx

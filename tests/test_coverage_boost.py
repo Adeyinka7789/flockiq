@@ -974,3 +974,204 @@ class TestWasteServiceErrors:
                     waste_type='litter',
                     quantity_kg=100,
                 )
+
+
+# ── PlatformConfig singleton ──────────────────────────────────────────────────
+
+class TestPlatformConfigCoverage:
+
+    def test_platform_config_get_creates_singleton(self):
+        from apps.infrastructure.core.config import PlatformConfig
+        PlatformConfig.objects.all().delete()
+        config = PlatformConfig.get()
+        assert config.pk == 1
+
+    def test_platform_config_str(self):
+        from apps.infrastructure.core.config import PlatformConfig
+        config = PlatformConfig.get()
+        assert str(config) == 'Platform Configuration'
+
+    def test_platform_config_save_enforces_pk1(self):
+        from apps.infrastructure.core.config import PlatformConfig
+        config = PlatformConfig.get()
+        config.bank_name = 'GTBank'
+        config.save()
+        assert PlatformConfig.objects.count() == 1
+
+
+# ── Task views ────────────────────────────────────────────────────────────────
+
+class TestTaskViewsCoverage:
+
+    def test_task_create_get(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/tasks/create/', HTTP_HX_REQUEST='true')
+        assert response.status_code == 200
+
+    def test_task_create_post_valid(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.post('/tasks/create/', {
+            'title': 'Test vaccination task',
+            'category': 'medication',
+            'priority': 'high',
+            'due_date': (date.today() + timedelta(days=1)).strftime('%Y-%m-%d'),
+        }, HTTP_HX_REQUEST='true')
+        assert response.status_code in [200, 204]
+
+    def test_task_create_post_missing_title(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.post('/tasks/create/', {
+            'title': '',
+            'category': 'medication',
+        }, HTTP_HX_REQUEST='true')
+        assert response.status_code == 200
+
+    def test_task_status_change(self, client, tenant_user):
+        from apps.farm.tasks.models import FarmTask
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(tenant_user.org):
+            task = FarmTask.objects.create(
+                org=tenant_user.org,
+                title='Test task',
+                status='pending',
+                created_by=tenant_user,
+            )
+        client.force_login(tenant_user)
+        response = client.post(
+            f'/tasks/{task.pk}/status/',
+            {'status': 'in_progress'},
+            HTTP_HX_REQUEST='true',
+        )
+        assert response.status_code in [200, 204]
+        task.refresh_from_db()
+        assert task.status == 'in_progress'
+
+    def test_task_status_invalid(self, client, tenant_user):
+        from apps.farm.tasks.models import FarmTask
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(tenant_user.org):
+            task = FarmTask.objects.create(
+                org=tenant_user.org,
+                title='Test task',
+                status='pending',
+                created_by=tenant_user,
+            )
+        client.force_login(tenant_user)
+        response = client.post(
+            f'/tasks/{task.pk}/status/',
+            {'status': 'invalid_status'},
+        )
+        assert response.status_code in [400, 200]
+
+    def test_task_delete(self, client, tenant_user):
+        from apps.farm.tasks.models import FarmTask
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(tenant_user.org):
+            task = FarmTask.objects.create(
+                org=tenant_user.org,
+                title='Task to delete',
+                status='pending',
+                created_by=tenant_user,
+            )
+        pk = task.pk
+        client.force_login(tenant_user)
+        response = client.post(
+            f'/tasks/{pk}/delete/',
+            HTTP_HX_REQUEST='true',
+        )
+        assert response.status_code in [200, 204]
+
+    def test_task_list_high_priority_tab(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/tasks/?tab=high_priority')
+        assert response.status_code == 200
+
+    def test_task_list_my_assignments_tab(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/tasks/?tab=my_assignments')
+        assert response.status_code == 200
+
+    def test_task_summary_widget(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/tasks/summary/')
+        assert response.status_code == 200
+
+
+# ── Batch list filters ────────────────────────────────────────────────────────
+
+class TestBatchListCoverage:
+
+    def test_batch_list_bird_type_filter(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/batches/?bird_type=broiler')
+        assert response.status_code == 200
+
+    def test_batch_list_status_all(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/batches/?status=all')
+        assert response.status_code == 200
+
+    def test_batch_list_search(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/batches/?q=Batch')
+        assert response.status_code == 200
+
+    def test_batch_list_htmx_partial(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/batches/', HTTP_HX_REQUEST='true')
+        assert response.status_code == 200
+
+    def test_batch_list_status_closed(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/batches/?status=closed')
+        assert response.status_code == 200
+
+
+# ── Dashboard greeting context ────────────────────────────────────────────────
+
+class TestDashboardGreeting:
+
+    def test_dashboard_has_greeting_context(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/')
+        assert 'time_greeting' in response.context
+        assert response.context['time_greeting'] in [
+            'Good morning', 'Good afternoon', 'Good evening'
+        ]
+
+    def test_dashboard_has_time_emoji(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/')
+        assert 'time_emoji' in response.context
+        assert response.context['time_emoji'] in ['🌅', '☀️', '🌙']
+
+
+# ── BankTransferNotifyView ────────────────────────────────────────────────────
+
+class TestBankTransferNotifyView:
+
+    def test_bank_transfer_notify_post_returns_200(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.post('/billing/bank-transfer/notify/', {
+            'plan_tier': 'monthly',
+            'amount': '15000',
+        })
+        assert response.status_code == 200
+
+    def test_bank_transfer_notify_returns_wa_url(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.post('/billing/bank-transfer/notify/', {
+            'plan_tier': 'yearly',
+            'amount': '45000',
+        })
+        import json as _json
+        data = _json.loads(response.content)
+        assert 'wa_url' in data
+        assert 'wa.me' in data['wa_url']
+
+    def test_bank_transfer_notify_requires_login(self, client):
+        response = client.post('/billing/bank-transfer/notify/', {
+            'plan_tier': 'monthly',
+            'amount': '15000',
+        })
+        assert response.status_code == 302
