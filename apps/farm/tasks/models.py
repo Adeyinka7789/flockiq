@@ -37,11 +37,24 @@ class TaskTemplate(models.Model):
         return self.name
 
 
+CATEGORY_CHOICES = [
+    ("medication", "Medication"),
+    ("nutrition", "Nutrition"),
+    ("maintenance", "Maintenance"),
+    ("environmental", "Environmental"),
+    ("health", "Health"),
+    ("production", "Production"),
+    ("finance", "Finance"),
+    ("other", "Other"),
+]
+
+
 class FarmTask(TenantAwareModel):
     """A farm work item — auto-generated daily or created manually."""
 
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
+        IN_PROGRESS = "in_progress", "In Progress"
         COMPLETE = "complete", "Complete"
         OVERDUE = "overdue", "Overdue"
 
@@ -61,6 +74,8 @@ class FarmTask(TenantAwareModel):
         "farms.Farm",
         on_delete=models.CASCADE,
         related_name="tasks",
+        null=True,
+        blank=True,
     )
     template = models.ForeignKey(
         TaskTemplate,
@@ -76,13 +91,26 @@ class FarmTask(TenantAwareModel):
         blank=True,
         related_name="assigned_tasks",
     )
+    created_by = models.ForeignKey(
+        "accounts.CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_tasks",
+    )
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    due_date = models.DateField()
+    due_date = models.DateField(null=True, blank=True)
     status = models.CharField(
-        max_length=10,
+        max_length=15,
         choices=Status.choices,
         default=Status.PENDING,
+    )
+    category = models.CharField(
+        max_length=30,
+        choices=CATEGORY_CHOICES,
+        default="other",
+        blank=True,
     )
     completed_at = models.DateTimeField(null=True, blank=True)
     completed_by = models.ForeignKey(
@@ -111,4 +139,9 @@ class FarmTask(TenantAwareModel):
     @property
     def is_overdue(self):
         import datetime
-        return self.due_date < datetime.date.today() and self.status == self.Status.PENDING
+        if not self.due_date:
+            return False
+        return (
+            self.due_date < datetime.date.today()
+            and self.status in (self.Status.PENDING, self.Status.OVERDUE)
+        )

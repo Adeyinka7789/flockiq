@@ -12,7 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import PaystackWebhookLog
+from .models import PaymentRecord, PaystackWebhookLog
 from .services import BillingService, PaystackService
 
 logger = structlog.get_logger(__name__)
@@ -155,14 +155,74 @@ class BillingPageView(LoginRequiredMixin, View):
         if not request.user.org:
             return render(request, "billing/billing_page.html", {"is_super_admin": True})
 
+        from datetime import timedelta
+        from apps.infrastructure.billing.features import get_plan_features
+        from apps.infrastructure.billing.models import BillingPlan
+        from apps.infrastructure.core.config import PlatformConfig
         from apps.infrastructure.core.rls import set_tenant_context
-        with set_tenant_context(request.user.org):
-            service = BillingService(request.user.org)
+        from apps.farm.farms.models import Farm
+
+        org = request.user.org
+
+        with set_tenant_context(org):
+            service = BillingService(org)
             summary = service.get_billing_summary()
+
+            farm_count = Farm.objects.filter(is_active=True).count()
+
+        team_count = request.user.__class__.objects.filter(
+            org=org, is_active=True
+        ).count()
+
+        current_features = get_plan_features(org.plan_tier)
+        max_farms = current_features.get('max_farms', 1)
+        max_team = current_features.get('team_members', 1)
+
+        farm_usage_pct = min(100, round(farm_count / max(max_farms, 1) * 100))
+        team_usage_pct = min(100, round(team_count / max(max_team, 1) * 100))
+
+        # Next renewal date from last successful payment
+        next_renewal = None
+        last_payment = PaymentRecord.objects.filter(
+            org=org, status='success'
+        ).order_by('-created_at').first()
+
+        if last_payment and last_payment.plan:
+            interval = last_payment.plan.billing_interval
+            if interval == 'monthly':
+                next_renewal = last_payment.created_at.date() + timedelta(days=30)
+            elif interval == 'annually':
+                next_renewal = last_payment.created_at.date() + timedelta(days=365)
+        elif org.trial_ends_at:
+            next_renewal = org.trial_ends_at
+
+        all_plans = BillingPlan.objects.filter(is_active=True).order_by('amount_kobo')
+
+        # Pre-compute amount_naira on each payment record
+        payments = list(
+            PaymentRecord.objects.filter(org=org)
+            .select_related('plan')
+            .order_by('-created_at')[:10]
+        )
+        for payment in payments:
+            payment.amount_naira = payment.amount_kobo // 100
+
+        platform_config = PlatformConfig.get()
 
         return render(request, "billing/billing_page.html", {
             **summary,
             "expired": request.GET.get("expired"),
+            "all_plans": all_plans,
+            "current_features": current_features,
+            "farm_count": farm_count,
+            "team_count": team_count,
+            "max_farms": max_farms,
+            "max_team": max_team,
+            "farm_usage_pct": farm_usage_pct,
+            "team_usage_pct": team_usage_pct,
+            "next_renewal": next_renewal,
+            "payments": payments,
+            "platform_config": platform_config,
         })
 
 
@@ -221,6 +281,71 @@ class PaystackCallbackView(View):
         if success:
             return redirect("/billing/?upgraded=1")
         return redirect("/billing/?error=payment_failed")
+
+
+class BankTransferNotifyView(TenantRequiredMixin, View):
+    """
+    User clicks "I've paid" after a bank transfer.
+    Creates an in-app notification log entry and returns a WhatsApp link.
+    """
+
+    def post(self, request):
+        import urllib.parse
+        from apps.infrastructure.core.config import PlatformConfig
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.infrastructure.notifications.models import NotificationLog
+
+        org = request.user.org
+        plan_tier = request.POST.get('plan_tier', '')
+        amount = request.POST.get('amount', '')
+
+        with set_tenant_context(org):
+            NotificationLog.objects.create(
+                org=org,
+                recipient=request.user,
+                event_type='billing_upgrade_request',
+                title='Bank Transfer Payment Claimed',
+                body=(
+                    f'{org.name} ({request.user.email}) has claimed '
+                    f'a bank transfer payment for the {plan_tier} plan '
+                    f'(₦{amount}). Please verify and activate manually.'
+                ),
+                severity='warning',
+                channel='in_app',
+            )
+
+        config = PlatformConfig.get()
+        wa_message = (
+            f'Hello FlockIQ Support,\n\n'
+            f'I have made a bank transfer payment for the '
+            f'*{plan_tier.title()} Plan* (₦{amount}).\n\n'
+            f'Organisation: *{org.name}*\n'
+            f'Email: *{request.user.email}*\n\n'
+            f'Please verify and activate my subscription.\n\nThank you.'
+        )
+        wa_url = (
+            f'https://wa.me/{config.admin_whatsapp}'
+            f'?text={urllib.parse.quote(wa_message)}'
+        )
+
+        response = HttpResponse(
+            content_type='application/json',
+            status=200,
+        )
+        response.content = json.dumps({
+            'wa_url': wa_url,
+            'message': (
+                'Thank you! Please send us a WhatsApp message '
+                'to confirm your payment.'
+            ),
+        })
+        response['HX-Trigger'] = json.dumps({
+            'showToast': {
+                'message': 'Payment notification sent! Please confirm via WhatsApp.',
+                'type': 'success',
+            }
+        })
+        return response
 
 
 class BillingAPIView(APIView):

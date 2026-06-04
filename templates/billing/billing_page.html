@@ -1,381 +1,747 @@
 {% extends "base.html" %}
-{% block title %}Billing{% endblock %}
-{% block breadcrumb %}Billing & Subscription{% endblock %}
+{% load static %}
+{% block title %}Billing & Subscription{% endblock %}
+{% block breadcrumb %}Billing{% endblock %}
 
 {% block content %}
 <style>
-  .billing-wrap { max-width: 900px; margin: 0 auto; }
+  .bill-wrap { max-width: 1000px; margin: 0 auto; }
 
-  .billing-hero {
-    background: linear-gradient(135deg, #3d5a99, #5b8dd9);
-    border-radius: 16px; padding: 24px 28px;
-    color: white; margin-bottom: 20px;
+  .bill-header { margin-bottom: 24px; }
+  .bill-eyebrow {
+    font-size: 11px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+  .bill-title {
+    font-size: 28px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.5px; margin-bottom: 6px;
+  }
+  .bill-subtitle {
+    font-size: 14px; color: #4a5568; max-width: 560px;
+    line-height: 1.5;
+  }
+
+  .bill-top-grid {
+    display: grid; grid-template-columns: 1fr 300px;
+    gap: 16px; margin-bottom: 24px;
+  }
+
+  .bill-plan-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 16px; padding: 24px;
+  }
+  .bill-plan-eyebrow {
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+  .bill-plan-hd {
+    display: flex; align-items: center;
+    justify-content: space-between; margin-bottom: 16px;
+  }
+  .bill-plan-name {
+    font-size: 28px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.5px; display: flex;
+    align-items: baseline; gap: 10px;
+  }
+  .bill-interval-badge {
+    font-size: 12px; font-weight: 600; color: #4a5568;
+    background: #f4f7fe; padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .bill-active-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #edfae8; color: #166534;
+    padding: 5px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 700;
+  }
+  .bill-active-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #16a34a;
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  .bill-features {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 20px;
+  }
+  .bill-feature-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #f4f7fe; border: 1px solid #e2e8f0;
+    border-radius: 20px; padding: 5px 12px;
+    font-size: 12px; color: #3d5a99; font-weight: 500;
+  }
+  .bill-feature-pill svg { flex-shrink: 0; }
+
+  .bill-plan-footer {
     display: flex; align-items: center;
     justify-content: space-between;
-    position: relative; overflow: hidden;
+    padding-top: 16px; border-top: 1px solid #f1f5f9;
   }
-  .billing-hero::after {
-    content: '';
-    position: absolute;
-    width: 200px; height: 200px; border-radius: 50%;
-    background: rgba(255,255,255,0.05);
-    right: -40px; top: -60px;
+  .bill-renewal { font-size: 12px; color: #8a96a8; }
+  .bill-renewal strong { color: #1a2744; font-weight: 700; }
+  .bill-manage-btn {
+    padding: 9px 18px; background: #f4f7fe;
+    border: 1.5px solid #e2e8f0; border-radius: 9px;
+    font-size: 13px; font-weight: 600; color: #1a2744;
+    cursor: pointer; transition: all 0.15s; text-decoration: none;
+    display: inline-flex; align-items: center; gap: 6px;
   }
-  .billing-plan-name {
-    font-size: 13px; font-weight: 600;
-    opacity: 0.7; text-transform: uppercase;
-    letter-spacing: 0.08em; margin-bottom: 6px;
+  .bill-manage-btn:hover { border-color: #3d5a99; color: #3d5a99; }
+
+  .bill-resource-card {
+    background: linear-gradient(160deg, #1e3a8a, #2d5be3);
+    border-radius: 16px; padding: 22px; color: white;
   }
-  .billing-plan-tier {
-    font-size: 28px; font-weight: 800;
-    letter-spacing: -0.3px; margin-bottom: 4px;
+  .bill-resource-title {
+    font-size: 10px; font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 16px;
   }
-  .billing-plan-sub {
-    font-size: 13px; opacity: 0.7;
+  .bill-resource-item { margin-bottom: 16px; }
+  .bill-resource-hd {
+    display: flex; justify-content: space-between;
+    align-items: baseline; margin-bottom: 6px;
   }
-  .billing-trial-badge {
-    background: rgba(255,255,255,0.15);
+  .bill-resource-label { font-size: 13px; font-weight: 600; color: white; }
+  .bill-resource-count {
+    font-size: 20px; font-weight: 800; color: white;
+    font-variant-numeric: tabular-nums;
+  }
+  .bill-resource-pct {
+    font-size: 11px; font-weight: 700;
+    color: rgba(255,255,255,0.6);
+    background: rgba(255,255,255,0.1);
+    padding: 2px 7px; border-radius: 20px;
+  }
+  .bill-resource-bar {
+    height: 5px; background: rgba(255,255,255,0.15);
+    border-radius: 3px; overflow: hidden;
+  }
+  .bill-resource-fill {
+    height: 100%; border-radius: 3px;
+    background: #8bc87a; transition: width 0.8s ease;
+  }
+  .bill-resource-fill.warning { background: #f59e0b; }
+  .bill-resource-fill.danger  { background: #ef4444; }
+  .bill-contact-btn {
+    width: 100%; padding: 11px; margin-top: 16px;
+    background: rgba(255,255,255,0.1);
     border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 12px; padding: 14px 20px;
-    text-align: center; z-index: 1;
-    min-width: 120px;
+    border-radius: 10px; color: white; font-size: 13px;
+    font-weight: 700; cursor: pointer; transition: all 0.15s;
+    text-decoration: none; display: flex;
+    align-items: center; justify-content: center; gap: 8px;
   }
-  .billing-trial-num {
-    font-size: 36px; font-weight: 800;
-    display: block; line-height: 1;
-  }
-  .billing-trial-lbl {
-    font-size: 11px; opacity: 0.7;
-    text-transform: uppercase; letter-spacing: 0.06em;
+  .bill-contact-btn:hover { background: rgba(255,255,255,0.18); }
+
+  .bill-section-title {
+    font-size: 18px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.3px; margin-bottom: 16px;
   }
 
-  .billing-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px; margin-bottom: 16px;
+  .bill-plans-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px; margin-bottom: 28px;
+  }
+  .bill-plan-option {
+    background: white; border: 1.5px solid #e2e8f0;
+    border-radius: 14px; padding: 22px;
+    position: relative; transition: all 0.2s;
+  }
+  .bill-plan-option:hover {
+    border-color: #3d5a99;
+    box-shadow: 0 4px 16px rgba(61,90,153,0.08);
+  }
+  .bill-plan-option.current {
+    border-color: #3d5a99;
+    box-shadow: 0 4px 20px rgba(61,90,153,0.12);
+  }
+  .bill-current-tag {
+    position: absolute; top: -11px; left: 50%;
+    transform: translateX(-50%);
+    background: #3d5a99; color: white;
+    padding: 3px 14px; border-radius: 20px;
+    font-size: 10px; font-weight: 700; white-space: nowrap;
+  }
+  .bill-plan-opt-name {
+    font-size: 15px; font-weight: 700; color: #1a2744;
+    margin-bottom: 4px;
+  }
+  .bill-plan-opt-desc {
+    font-size: 12px; color: #8a96a8; margin-bottom: 14px;
+  }
+  .bill-plan-opt-price {
+    font-size: 30px; font-weight: 800; color: #3d5a99;
+    line-height: 1; margin-bottom: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .bill-plan-opt-price span {
+    font-size: 13px; font-weight: 500; color: #8a96a8;
+  }
+  .bill-plan-opt-feats { list-style: none; margin-bottom: 18px; }
+  .bill-plan-opt-feats li {
+    font-size: 12px; color: #4a5568;
+    padding: 4px 0; display: flex;
+    align-items: flex-start; gap: 7px;
+  }
+  .bill-plan-opt-feats li::before {
+    content: '✓'; color: #16a34a;
+    font-weight: 700; flex-shrink: 0;
+  }
+  .bill-plan-cta {
+    display: block; width: 100%; padding: 11px;
+    border-radius: 10px; text-align: center;
+    font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+    text-decoration: none; border: none;
+  }
+  .bill-plan-cta.upgrade-cta { background: #3d5a99; color: white; }
+  .bill-plan-cta.upgrade-cta:hover { background: #2d4578; }
+  .bill-plan-cta.downgrade-cta {
+    background: white; color: #4a5568;
+    border: 1.5px solid #e2e8f0;
+  }
+  .bill-plan-cta.downgrade-cta:hover { border-color: #3d5a99; color: #3d5a99; }
+  .bill-plan-cta.contact-cta { background: #0f172a; color: white; }
+  .bill-plan-cta.contact-cta:hover { background: #1e293b; }
+  .bill-plan-cta.disabled-cta {
+    background: #f4f7fe; color: #8a96a8; cursor: default;
   }
 
-  .billing-card {
+  .bill-payment-section {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 16px; margin-bottom: 28px;
+  }
+  .bill-bank-card {
     background: white; border: 1px solid #e2e8f0;
     border-radius: 14px; overflow: hidden;
   }
-  .billing-card-hd {
-    padding: 14px 18px;
-    border-bottom: 1px solid #f1f5f9;
+  .bill-bank-hd {
+    padding: 14px 18px; border-bottom: 1px solid #f1f5f9;
     font-size: 13px; font-weight: 700; color: #1a2744;
+    display: flex; align-items: center; gap: 8px;
   }
-  .billing-card-body { padding: 18px; }
+  .bill-bank-body { padding: 18px; }
+  .bill-bank-row {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: 8px 0;
+    border-bottom: 1px solid #f8faff; font-size: 13px;
+  }
+  .bill-bank-row:last-of-type { border-bottom: none; }
+  .bill-bank-label { color: #8a96a8; font-weight: 500; }
+  .bill-bank-val { color: #1a2744; font-weight: 700; }
+  .bill-bank-copy {
+    font-size: 11px; font-weight: 600; color: #3d5a99;
+    cursor: pointer; background: none; border: none;
+    padding: 2px 6px;
+  }
+  .bill-bank-copy:hover { text-decoration: underline; }
 
-  .usage-row {
-    display: flex; align-items: center;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid #f8faff;
-    font-size: 13px;
-  }
-  .usage-row:last-child { border-bottom: none; }
-  .usage-label { color: #4a5568; }
-  .usage-val { font-weight: 700; color: #1a2744; }
-
-  .plans-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-  }
-  .plan-option {
-    border: 2px solid #e2e8f0;
-    border-radius: 12px; padding: 16px;
-    cursor: pointer; transition: all 0.15s;
-    text-align: center;
-    position: relative;
-  }
-  .plan-option:hover {
-    border-color: #3d5a99;
-    background: #f4f7fe;
-  }
-  .plan-option.current {
-    border-color: #8bc87a;
-    background: #edfae8;
-  }
-  .plan-option-name {
-    font-size: 14px; font-weight: 700;
-    color: #1a2744; margin-bottom: 4px;
-  }
-  .plan-option-price {
-    font-size: 20px; font-weight: 800;
-    color: #3d5a99; margin-bottom: 8px;
-  }
-  .plan-option-desc {
-    font-size: 11px; color: #8a96a8;
-    line-height: 1.5;
-  }
-  .plan-upgrade-btn {
-    width: 100%; margin-top: 12px;
-    padding: 9px; border-radius: 8px;
-    font-size: 12px; font-weight: 700;
-    border: none; cursor: pointer;
-    transition: all 0.15s;
-  }
-  .plan-upgrade-btn.primary {
-    background: #3d5a99; color: white;
-  }
-  .plan-upgrade-btn.primary:hover { background: #2d4578; }
-  .plan-upgrade-btn.current-plan {
-    background: #edfae8; color: #166534;
-    border: 1px solid #8bc87a; cursor: default;
+  .bill-paid-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
   }
 
-  .payment-row {
-    display: flex; align-items: center;
-    justify-content: space-between;
-    padding: 11px 18px;
-    border-bottom: 1px solid #f8faff;
-    font-size: 13px;
+  .bill-invoice-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 24px;
   }
-  .payment-row:last-child { border-bottom: none; }
+  .bill-invoice-hd {
+    display: flex; justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px; border-bottom: 1px solid #f1f5f9;
+  }
+  .bill-invoice-table { width: 100%; border-collapse: collapse; }
+  .bill-invoice-table th {
+    text-align: left; padding: 10px 18px;
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    background: #fafafa; border-bottom: 1px solid #e2e8f0;
+  }
+  .bill-invoice-table td {
+    padding: 13px 18px; font-size: 13px;
+    border-bottom: 1px solid #f8faff; color: #1a2744;
+  }
+  .bill-invoice-table tr:last-child td { border-bottom: none; }
+  .bill-invoice-table tr:hover td { background: #fafbff; }
+  .bill-status-paid {
+    background: #dcfce7; color: #166534;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+  }
+  .bill-status-pending {
+    background: #fef3c7; color: #92400e;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+  }
+  .bill-status-failed {
+    background: #fee2e2; color: #991b1b;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+  }
+  .bill-dl-btn {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: #f4f7fe; border: 1px solid #e2e8f0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #3d5a99; transition: all 0.15s;
+    text-decoration: none;
+  }
+  .bill-dl-btn:hover { background: #e8eef8; }
+
+  @media(max-width:900px){
+    .bill-top-grid { grid-template-columns: 1fr; }
+    .bill-plans-grid { grid-template-columns: 1fr; }
+    .bill-payment-section { grid-template-columns: 1fr; }
+  }
 </style>
 
-<div class="billing-wrap">
+<div class="bill-wrap">
 
-  {% if is_super_admin %}
-  <div style="text-align:center;padding:60px">
-    <h3 style="color:#1a2744;margin-bottom:8px">Super Admin Account</h3>
-    <p style="color:#8a96a8;font-size:13px">
-      Manage tenant billing via
-      <a href="/admin/tenants/organization/" style="color:#3d5a99">Django Admin</a>
-    </p>
-  </div>
-
-  {% else %}
-
-  {% if expired %}
-  <div style="background:#fee2e2;border:1px solid #fecaca;
-              border-radius:12px;padding:16px 20px;margin-bottom:16px">
-    <div style="font-weight:700;color:#dc2626;margin-bottom:4px">
-      Your trial has expired
-    </div>
-    <div style="font-size:13px;color:#dc2626">
-      Upgrade to continue using FlockIQ. Your data is safe.
+  <div class="bill-header">
+    <div class="bill-eyebrow">Account Management</div>
+    <div class="bill-title">Billing &amp; Subscription</div>
+    <div class="bill-subtitle">
+      Manage your subscription, monitor resource usage,
+      and view your transaction history.
     </div>
   </div>
-  {% endif %}
 
-  {% if request.GET.upgraded %}
-  <div style="background:#edfae8;border:1px solid #8bc87a;
-              border-radius:12px;padding:16px 20px;margin-bottom:16px">
-    <div style="font-weight:700;color:#166534;margin-bottom:4px">
-      Plan upgraded successfully!
-    </div>
-    <div style="font-size:13px;color:#166534">
-      Your new plan is now active.
-    </div>
-  </div>
-  {% endif %}
+  <!-- Top grid: current plan + resource usage -->
+  <div class="bill-top-grid">
 
-  <!-- Current plan hero -->
-  <div class="billing-hero">
-    <div style="z-index:1">
-      <div class="billing-plan-name">Current Plan</div>
-      <div class="billing-plan-tier">
-        {{ org.plan_tier|title }}
-        {% if is_active %}
-        <span style="font-size:13px;font-weight:600;
-                     background:rgba(139,200,122,0.2);
-                     padding:3px 10px;border-radius:20px;
-                     margin-left:8px">
-          ● Active
-        </span>
-        {% endif %}
-      </div>
-      <div class="billing-plan-sub">
-        {% if plan %}
-          ₦{{ plan.amount_naira|floatformat:0 }} / {{ plan.billing_interval }}
-        {% elif is_trial %}
-          Free trial — no card required
-        {% endif %}
-      </div>
-    </div>
-    {% if is_trial and days_remaining is not None %}
-    <div class="billing-trial-badge" style="z-index:1">
-      <span class="billing-trial-num">{{ days_remaining }}</span>
-      <span class="billing-trial-lbl">days left</span>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- Usage + Quick actions -->
-  <div class="billing-grid">
-
-    <div class="billing-card">
-      <div class="billing-card-hd">Current Usage</div>
-      <div class="billing-card-body">
-        <div class="usage-row">
-          <span class="usage-label">Farms</span>
-          <span class="usage-val">{{ farm_count }}</span>
-        </div>
-        <div class="usage-row">
-          <span class="usage-label">Active Batches</span>
-          <span class="usage-val">{{ active_batches }}</span>
-        </div>
-        <div class="usage-row">
-          <span class="usage-label">Plan</span>
-          <span class="usage-val">{{ org.plan_tier|title }}</span>
-        </div>
-        <div class="usage-row">
-          <span class="usage-label">Status</span>
-          <span class="usage-val"
-                style="color:{% if is_active %}#166534{% else %}#dc2626{% endif %}">
-            {{ org.subscription_status|title }}
+    <div class="bill-plan-card">
+      <div class="bill-plan-eyebrow">Your Current Plan</div>
+      <div class="bill-plan-hd">
+        <div class="bill-plan-name">
+          {{ plan.name|default:org.plan_tier|title }}
+          {% if plan %}
+          <span class="bill-interval-badge">
+            / {{ plan.get_billing_interval_display }}
           </span>
-        </div>
-      </div>
-    </div>
-
-    <div class="billing-card">
-      <div class="billing-card-hd">Quick Actions</div>
-      <div class="billing-card-body"
-           style="display:flex;flex-direction:column;gap:10px">
-        <a href="mailto:{{ settings.ADMIN_EMAIL }}"
-           style="display:block;padding:11px 14px;
-                  background:#f4f7fe;border:1px solid #e2e8f0;
-                  border-radius:10px;font-size:13px;font-weight:600;
-                  color:#3d5a99;text-decoration:none;text-align:center">
-          Contact Support
-        </a>
-        <a href="https://wa.me/2348000000000"
-           style="display:block;padding:11px 14px;
-                  background:#edfae8;border:1px solid #8bc87a;
-                  border-radius:10px;font-size:13px;font-weight:600;
-                  color:#166534;text-decoration:none;text-align:center">
-          WhatsApp Support
-        </a>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Upgrade plans -->
-  {% if request.user.role == 'owner' %}
-  <div class="billing-card" style="margin-bottom:16px">
-    <div class="billing-card-hd">
-      {% if is_trial %}Upgrade Your Plan{% else %}Change Plan{% endif %}
-    </div>
-    <div class="billing-card-body">
-      <div class="plans-grid">
-
-        <!-- Monthly -->
-        <div class="plan-option {% if org.plan_tier == 'monthly' %}current{% endif %}">
-          <div class="plan-option-name">Monthly</div>
-          <div class="plan-option-price">₦30,000</div>
-          <div class="plan-option-desc">
-            Up to 3 farms · All features · SMS alerts
-          </div>
-          {% if org.plan_tier == 'monthly' %}
-          <button class="plan-upgrade-btn current-plan">✓ Current Plan</button>
-          {% else %}
-          <button class="plan-upgrade-btn primary"
-                  hx-post="{% url 'billing:upgrade_request' %}"
-                  hx-vals='{"plan_tier": "monthly"}'
-                  hx-target="body"
-                  hx-swap="none"
-                  hx-confirm="Upgrade to Monthly plan for ₦30,000/month?">
-            Upgrade →
-          </button>
           {% endif %}
         </div>
-
-        <!-- Cycle -->
-        <div class="plan-option {% if org.plan_tier == 'cycle' %}current{% endif %}">
-          <div class="plan-option-name">Cycle</div>
-          <div class="plan-option-price">₦15,000</div>
-          <div class="plan-option-desc">
-            Per broiler batch · Pay as you go
-          </div>
-          {% if org.plan_tier == 'cycle' %}
-          <button class="plan-upgrade-btn current-plan">✓ Current Plan</button>
-          {% else %}
-          <button class="plan-upgrade-btn primary"
-                  hx-post="{% url 'billing:upgrade_request' %}"
-                  hx-vals='{"plan_tier": "cycle"}'
-                  hx-target="body"
-                  hx-swap="none"
-                  hx-confirm="Switch to Cycle plan?">
-            Select →
-          </button>
-          {% endif %}
-        </div>
-
-        <!-- Yearly -->
-        <div class="plan-option {% if org.plan_tier == 'yearly' %}current{% endif %}">
-          <div class="plan-option-name">Yearly</div>
-          <div class="plan-option-price">₦300,000</div>
-          <div class="plan-option-desc">
-            Unlimited farms · 2 months free · White-label
-          </div>
-          {% if org.plan_tier == 'yearly' %}
-          <button class="plan-upgrade-btn current-plan">✓ Current Plan</button>
-          {% else %}
-          <button class="plan-upgrade-btn primary"
-                  hx-post="{% url 'billing:upgrade_request' %}"
-                  hx-vals='{"plan_tier": "yearly"}'
-                  hx-target="body"
-                  hx-swap="none"
-                  hx-confirm="Upgrade to Yearly plan for ₦300,000/year?">
-            Upgrade →
-          </button>
-          {% endif %}
-        </div>
-
+        <span class="bill-active-badge">
+          <span class="bill-active-dot"></span>
+          {% if is_trial %}Trial Active
+          {% else %}Active Subscription{% endif %}
+        </span>
       </div>
 
-      {% if not settings.PAYSTACK_SECRET_KEY %}
-      <div style="margin-top:16px;padding:12px 16px;
-                  background:#f4f7fe;border-radius:10px;
-                  font-size:12px;color:#4a5568;text-align:center">
-        Clicking upgrade will send a request to our team.
-        We will activate your plan within 24 hours.
+      {% if plan and plan.features %}
+      <div class="bill-features">
+        {% for feat in plan.features|slice:":5" %}
+        <span class="bill-feature-pill">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"
+               stroke="#3d5a99" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+          {{ feat }}
+        </span>
+        {% endfor %}
       </div>
       {% endif %}
+
+      <div class="bill-plan-footer">
+        <div class="bill-renewal">
+          {% if next_renewal %}
+          Next renewal date<br>
+          <strong>{{ next_renewal|date:"F j, Y" }}</strong>
+          {% elif is_trial %}
+          Trial ends<br>
+          <strong>{{ org.trial_ends_at|date:"F j, Y"|default:"—" }}</strong>
+          {% else %}
+          <strong>No active subscription</strong>
+          {% endif %}
+        </div>
+        <a href="{% url 'billing:upgrade_request' %}" class="bill-manage-btn">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Manage Billing
+        </a>
+      </div>
+    </div>
+
+    <!-- Resource usage -->
+    <div class="bill-resource-card">
+      <div class="bill-resource-title">Resource Usage</div>
+
+      <div class="bill-resource-item">
+        <div class="bill-resource-hd">
+          <div>
+            <div class="bill-resource-count">
+              {{ farm_count }} /
+              {% if max_farms == 999 %}∞{% else %}{{ max_farms }}{% endif %}
+            </div>
+            <div class="bill-resource-label" style="font-size:12px;color:rgba(255,255,255,0.6)">
+              Farms Registered
+            </div>
+          </div>
+          <span class="bill-resource-pct">{{ farm_usage_pct }}%</span>
+        </div>
+        <div class="bill-resource-bar">
+          <div class="bill-resource-fill
+               {% if farm_usage_pct >= 90 %}danger
+               {% elif farm_usage_pct >= 70 %}warning{% endif %}"
+               style="width:{{ farm_usage_pct }}%"></div>
+        </div>
+      </div>
+
+      <div class="bill-resource-item">
+        <div class="bill-resource-hd">
+          <div>
+            <div class="bill-resource-count">
+              {{ team_count }} /
+              {% if max_team == 999 %}∞{% else %}{{ max_team }}{% endif %}
+            </div>
+            <div class="bill-resource-label" style="font-size:12px;color:rgba(255,255,255,0.6)">
+              Team Seats
+            </div>
+          </div>
+          <span class="bill-resource-pct">{{ team_usage_pct }}%</span>
+        </div>
+        <div class="bill-resource-bar">
+          <div class="bill-resource-fill
+               {% if team_usage_pct >= 90 %}danger
+               {% elif team_usage_pct >= 70 %}warning{% endif %}"
+               style="width:{{ team_usage_pct }}%"></div>
+        </div>
+      </div>
+
+      <a href="https://wa.me/{{ platform_config.admin_whatsapp }}"
+         target="_blank" class="bill-contact-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+        </svg>
+        Contact Support
+      </a>
     </div>
   </div>
-  {% endif %}
 
-  <!-- Payment history -->
-  <div class="billing-card">
-    <div class="billing-card-hd">Payment History</div>
-    {% if payments %}
-      {% for payment in payments %}
-      <div class="payment-row">
-        <div>
-          <div style="font-weight:600;color:#1a2744;font-size:13px">
-            {{ payment.reference }}
-          </div>
-          <div style="font-size:11px;color:#8a96a8;margin-top:1px">
-            {{ payment.created_at|date:"M d, Y" }}
-          </div>
+  <!-- Available Plans -->
+  <div class="bill-section-title">Available Plans</div>
+  <div class="bill-plans-grid">
+    {% for p in all_plans %}
+    <div class="bill-plan-option {% if p.plan_tier == org.plan_tier %}current{% endif %}">
+      {% if p.plan_tier == org.plan_tier %}
+      <div class="bill-current-tag">Current Plan</div>
+      {% endif %}
+
+      <div class="bill-plan-opt-name">{{ p.name }}</div>
+      <div class="bill-plan-opt-desc">
+        {% if p.plan_tier == 'trial' %}For new farmers getting started.
+        {% elif p.plan_tier == 'cycle' %}Pay only per active broiler cycle.
+        {% elif p.plan_tier == 'monthly' %}For active small-medium farms.
+        {% elif p.plan_tier == 'yearly' %}Large farms &amp; enterprises.
+        {% endif %}
+      </div>
+      <div class="bill-plan-opt-price">
+        {% if p.plan_tier == 'trial' %}₦0
+        {% else %}₦{{ p.amount_naira|floatformat:0 }}{% endif %}
+        <span>
+          {% if p.plan_tier == 'trial' %}/ 14 days
+          {% else %}/ {{ p.get_billing_interval_display }}{% endif %}
+        </span>
+      </div>
+      <ul class="bill-plan-opt-feats">
+        {% for feat in p.features|slice:":5" %}
+        <li>{{ feat }}</li>
+        {% endfor %}
+      </ul>
+
+      {% if p.plan_tier == org.plan_tier %}
+      <button class="bill-plan-cta disabled-cta" disabled>
+        Current Plan Active
+      </button>
+      {% elif p.plan_tier == 'yearly' %}
+      <a href="https://wa.me/{{ platform_config.admin_whatsapp }}"
+         target="_blank" class="bill-plan-cta contact-cta">
+        Contact Sales
+      </a>
+      {% elif p.amount_kobo > plan.amount_kobo|default:0 %}
+      <button class="bill-plan-cta upgrade-cta"
+              onclick="openUpgradeModal('{{ p.plan_tier }}','{{ p.name }}','{{ p.amount_naira|floatformat:0 }}')">
+        Upgrade to {{ p.name }}
+      </button>
+      {% else %}
+      <button class="bill-plan-cta downgrade-cta"
+              onclick="openUpgradeModal('{{ p.plan_tier }}','{{ p.name }}','{{ p.amount_naira|floatformat:0 }}')">
+        Downgrade to {{ p.name }}
+      </button>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Payment Options -->
+  <div class="bill-section-title">Payment Options</div>
+  <div class="bill-payment-section">
+
+    <div class="bill-bank-card">
+      <div class="bill-bank-hd">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+             stroke="#3d5a99" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+        </svg>
+        Bank Transfer Details
+      </div>
+      <div class="bill-bank-body">
+        {% if platform_config.bank_account_number %}
+        <div class="bill-bank-row">
+          <span class="bill-bank-label">Bank</span>
+          <span class="bill-bank-val">{{ platform_config.bank_name|default:"—" }}</span>
         </div>
-        <div style="text-align:right">
-          <div style="font-weight:700;color:#1a2744;font-size:13px">
-            ₦{{ payment.amount_kobo|floatformat:0 }}
-          </div>
-          <span style="font-size:11px;font-weight:600;padding:2px 8px;
-                       border-radius:20px;
-                       {% if payment.status == 'success' %}
-                       background:#dcfce7;color:#166534
-                       {% else %}background:#fee2e2;color:#dc2626{% endif %}">
-            {{ payment.status|title }}
+        <div class="bill-bank-row">
+          <span class="bill-bank-label">Account Number</span>
+          <span style="display:flex;align-items:center;gap:8px">
+            <span class="bill-bank-val">{{ platform_config.bank_account_number }}</span>
+            <button class="bill-bank-copy"
+                    onclick="navigator.clipboard.writeText('{{ platform_config.bank_account_number }}').then(()=>this.textContent='Copied!').then(()=>setTimeout(()=>this.textContent='Copy',1500))">
+              Copy
+            </button>
           </span>
         </div>
+        <div class="bill-bank-row">
+          <span class="bill-bank-label">Account Name</span>
+          <span class="bill-bank-val">{{ platform_config.bank_account_name|default:"—" }}</span>
+        </div>
+        <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:9px;
+                    padding:10px 14px;margin-top:12px;font-size:12px;color:#92400e">
+          <strong>Important:</strong> Use your registered email as the payment
+          reference. After payment, click "I've Paid" on the right to notify our team.
+        </div>
+        {% else %}
+        <div style="text-align:center;padding:24px;color:#8a96a8;font-size:13px">
+          Bank transfer details not configured yet.
+          <a href="https://wa.me/{{ platform_config.admin_whatsapp }}"
+             style="color:#3d5a99;font-weight:600">
+            Contact us on WhatsApp →
+          </a>
+        </div>
+        {% endif %}
       </div>
-      {% endfor %}
+    </div>
+
+    <div class="bill-paid-card">
+      <div class="bill-bank-hd" style="border-bottom:1px solid #f1f5f9">
+        ✅ I've Already Paid
+      </div>
+      <div style="padding:18px">
+        <p style="font-size:13px;color:#4a5568;line-height:1.6;margin-bottom:16px">
+          After completing your bank transfer, click below.
+          We'll receive a notification and activate your account within
+          <strong>2–4 hours</strong> on business days.
+        </p>
+
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                        margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+            Plan you paid for
+          </label>
+          <select id="paid-plan-select"
+                  style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
+                         border-radius:9px;font-size:13px;background:white;outline:none"
+                  onfocus="this.style.borderColor='#3d5a99'"
+                  onblur="this.style.borderColor='#e2e8f0'">
+            {% for p in all_plans %}
+            {% if p.plan_tier != 'trial' %}
+            <option value="{{ p.plan_tier }}" data-amount="{{ p.amount_naira|floatformat:0 }}">
+              {{ p.name }} — ₦{{ p.amount_naira|floatformat:0 }}
+            </option>
+            {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+
+        <button id="paid-btn"
+                onclick="handlePaid()"
+                style="width:100%;padding:12px;background:#16a34a;color:white;
+                       border:none;border-radius:10px;font-size:13px;font-weight:700;
+                       cursor:pointer;transition:all 0.15s;display:flex;
+                       align-items:center;justify-content:center;gap:8px"
+                onmouseover="this.style.background='#15803d'"
+                onmouseout="this.style.background='#16a34a'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+          I've Paid — Notify Team via WhatsApp
+        </button>
+
+        <p style="font-size:11px;color:#8a96a8;margin-top:10px;text-align:center">
+          This will open WhatsApp with a pre-filled message to our support team.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invoice History -->
+  <div class="bill-invoice-card">
+    <div class="bill-invoice-hd">
+      <span class="bill-section-title" style="margin-bottom:0;font-size:16px">
+        Invoice History
+      </span>
+    </div>
+    {% if payments %}
+    <table class="bill-invoice-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Plan</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>Reference</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for payment in payments %}
+        <tr>
+          <td>{{ payment.created_at|date:"M d, Y" }}</td>
+          <td>{{ payment.plan.name|default:"—" }}</td>
+          <td style="font-weight:700">₦{{ payment.amount_naira|floatformat:0 }}</td>
+          <td>
+            {% if payment.status == 'success' %}
+            <span class="bill-status-paid">Paid</span>
+            {% elif payment.status == 'pending' %}
+            <span class="bill-status-pending">Pending</span>
+            {% else %}
+            <span class="bill-status-failed">Failed</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12px;color:#8a96a8">{{ payment.reference|truncatechars:20 }}</td>
+          <td>
+            <a href="#" class="bill-dl-btn" title="Download invoice"
+               onclick="alert('Invoice download coming soon'); return false;">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+                   stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
     {% else %}
-      <div style="padding:32px;text-align:center;
-                  color:#8a96a8;font-size:13px">
-        No payment records yet
-      </div>
+    <div style="padding:40px;text-align:center;color:#8a96a8;font-size:13px">
+      No payment history yet.
+    </div>
     {% endif %}
   </div>
 
-  {% endif %}
 </div>
+
+<!-- Upgrade modal -->
+<div id="upgrade-modal-overlay"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);
+            z-index:200;align-items:center;justify-content:center;padding:20px"
+     onclick="if(event.target===this)closeUpgradeModal()">
+  <div style="background:white;border-radius:16px;padding:28px;max-width:440px;
+              width:100%;position:relative" id="upgrade-modal-box">
+    <button onclick="closeUpgradeModal()"
+            style="position:absolute;top:12px;right:12px;width:28px;height:28px;
+                   border-radius:8px;border:none;background:#f4f7fe;cursor:pointer;
+                   font-size:14px;color:#4a5568">✕</button>
+
+    <div style="font-size:16px;font-weight:800;color:#1a2744;margin-bottom:4px"
+         id="upgrade-modal-title">Upgrade Plan</div>
+    <div style="font-size:12px;color:#8a96a8;margin-bottom:20px"
+         id="upgrade-modal-sub">Choose how to proceed</div>
+
+    <div style="border:1.5px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:4px">
+        💳 Pay with Card (Paystack)
+      </div>
+      <div style="font-size:12px;color:#8a96a8;margin-bottom:12px">
+        Instant activation. Secure card payment via Paystack.
+      </div>
+      <form method="POST" action="{% url 'billing:upgrade_request' %}">
+        {% csrf_token %}
+        <input type="hidden" name="plan_tier" id="upgrade-plan-input">
+        <button type="submit"
+                style="width:100%;padding:11px;background:#3d5a99;color:white;
+                       border:none;border-radius:10px;font-size:13px;font-weight:700;
+                       cursor:pointer">
+          Pay ₦<span id="upgrade-amount-display">0</span> via Paystack →
+        </button>
+      </form>
+    </div>
+
+    <div style="border:1.5px solid #e2e8f0;border-radius:12px;padding:16px">
+      <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:4px">
+        🏦 Pay via Bank Transfer
+      </div>
+      <div style="font-size:12px;color:#8a96a8;margin-bottom:12px">
+        Transfer to our account, then notify us. Activated within 2–4 hours.
+      </div>
+      <button onclick="scrollToBankDetails()"
+              style="width:100%;padding:11px;background:#f4f7fe;color:#1a2744;
+                     border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;
+                     font-weight:600;cursor:pointer">
+        View Bank Details ↓
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openUpgradeModal(tier, name, amount) {
+  document.getElementById('upgrade-modal-title').textContent =
+    (amount > 0 ? 'Upgrade' : 'Change') + ' to ' + name;
+  document.getElementById('upgrade-modal-sub').textContent =
+    'Choose how you want to pay for the ' + name + ' plan.';
+  document.getElementById('upgrade-plan-input').value = tier;
+  document.getElementById('upgrade-amount-display').textContent =
+    parseInt(amount).toLocaleString();
+  const overlay = document.getElementById('upgrade-modal-overlay');
+  overlay.style.display = 'flex';
+}
+function closeUpgradeModal() {
+  document.getElementById('upgrade-modal-overlay').style.display = 'none';
+}
+function scrollToBankDetails() {
+  closeUpgradeModal();
+  document.querySelector('.bill-bank-card')?.scrollIntoView({behavior:'smooth'});
+}
+function handlePaid() {
+  const select = document.getElementById('paid-plan-select');
+  const tier = select.value;
+  const amount = select.options[select.selectedIndex].dataset.amount;
+  const orgName = '{{ org.name|escapejs }}';
+  const email = '{{ request.user.email|escapejs }}';
+  const waNumber = '{{ platform_config.admin_whatsapp }}';
+
+  const msg = encodeURIComponent(
+    'Hello FlockIQ Support,\n\n' +
+    'I have made a bank transfer payment for the ' +
+    '*' + select.options[select.selectedIndex].text + '*.\n\n' +
+    'Organisation: *' + orgName + '*\n' +
+    'Email: *' + email + '*\n\n' +
+    'Please verify and activate my subscription.\n\nThank you.'
+  );
+
+  fetch('{% url "billing:bank_transfer_notify" %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken': '{{ csrf_token }}',
+    },
+    body: 'plan_tier=' + tier + '&amount=' + amount,
+  });
+
+  window.open('https://wa.me/' + waNumber + '?text=' + msg, '_blank');
+}
+</script>
+
 {% endblock %}

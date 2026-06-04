@@ -3,12 +3,13 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
-from apps.infrastructure.core.views import TenantRequiredMixin
-from django.http import Http404
-from django.shortcuts import render
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404, render
 from django.views import View
+from django.utils import timezone
 
 from apps.infrastructure.core.rls import set_tenant_context
+from apps.infrastructure.core.views import TenantRequiredMixin
 
 from .services import TaskService
 
@@ -23,82 +24,170 @@ def _get_org(request):
 
 
 class TaskListView(TenantRequiredMixin, View):
-    """GET /tasks/ → Full task list page with farm/status filtering."""
+    """GET /tasks/ — Kanban board with To Do / In Progress / Completed columns."""
 
     def get(self, request):
-        from apps.farm.tasks.models import FarmTask
-        from apps.farm.farms.models import Farm
+        from apps.farm.tasks.models import FarmTask, TaskTemplate
 
         org = _get_org(request)
         today = datetime.date.today()
-        is_htmx = request.headers.get("HX-Request") == "true"
-
-        farm_id = request.GET.get("farm", "")
-        status_filter = request.GET.get("status", "")
+        tab = request.GET.get("tab", "all")
 
         with set_tenant_context(org):
-            service = TaskService(org)
-            farms = list(Farm.objects.filter(is_active=True))
+            base_qs = FarmTask.objects.filter(org=org).select_related(
+                "farm", "batch", "assigned_to", "completed_by"
+            ).order_by("due_date", "-priority")
 
-            overdue_qs = service.get_overdue_tasks()
-            pending_qs = service.get_todays_tasks(farm_id=farm_id or None).filter(
-                status=FarmTask.Status.PENDING
+            if tab == "high_priority":
+                base_qs = base_qs.filter(priority="high")
+            elif tab == "my_assignments":
+                base_qs = base_qs.filter(assigned_to=request.user)
+
+            # Include legacy 'overdue' status in the To Do column
+            todo = list(base_qs.filter(status__in=["pending", "overdue"]))
+            in_progress = list(base_qs.filter(status="in_progress"))
+            completed = list(
+                base_qs.filter(status="complete").order_by("-completed_at")[:20]
             )
-            completed_qs = FarmTask.objects.filter(
-                org=org,
-                status=FarmTask.Status.COMPLETE,
-                completed_at__date=today,
-            ).select_related("farm", "batch", "completed_by")
 
-            if farm_id:
-                overdue_qs = overdue_qs.filter(farm_id=farm_id)
-                completed_qs = completed_qs.filter(farm_id=farm_id)
-
-            if status_filter == "overdue":
-                overdue_tasks = list(overdue_qs)
-                pending_tasks = []
-                completed_tasks = []
-            elif status_filter == "pending":
-                overdue_tasks = []
-                pending_tasks = list(pending_qs)
-                completed_tasks = []
-            elif status_filter == "complete":
-                overdue_tasks = []
-                pending_tasks = []
-                completed_tasks = list(completed_qs)
-            else:
-                overdue_tasks = list(overdue_qs)
-                pending_tasks = list(pending_qs)
-                completed_tasks = list(completed_qs)
-
-            summary = service.get_task_summary()
-
-        STATUS_TABS = [
-            ("", "All", "#6b7280"),
-            ("pending", "Pending", "#5b8dd9"),
-            ("overdue", "Overdue", "#f87171"),
-            ("complete", "Done", "#8bc87a"),
-        ]
+            cycles = list(TaskTemplate.objects.filter(is_active=True)[:6])
 
         context = {
+            "todo": todo,
+            "in_progress": in_progress,
+            "completed": completed,
+            "todo_count": len(todo),
+            "in_progress_count": len(in_progress),
+            "completed_count": len(completed),
+            "active_tab": tab,
+            "cycles": cycles,
             "today": today,
-            "pending_tasks": pending_tasks,
-            "overdue_tasks": overdue_tasks,
-            "completed_tasks": completed_tasks,
-            "summary": summary,
-            "farms": farms,
-            "active_farm": farm_id,
-            "active_status": status_filter,
-            "status_tabs": STATUS_TABS,
         }
-
-        if is_htmx:
-            return render(request, "tasks/_task_sections.html", context)
         return render(request, "tasks/task_list.html", context)
 
 
+class TaskCreateView(TenantRequiredMixin, View):
+    """GET → form fragment; POST → create task and refresh."""
+
+    def get(self, request):
+        from apps.farm.farms.models import Farm
+        from apps.farm.flocks.models import Batch
+
+        org = _get_org(request)
+        with set_tenant_context(org):
+            farms = list(Farm.objects.filter(is_active=True))
+            batches = list(Batch.objects.filter(status="active").select_related("farm"))
+            team = list(
+                request.user.__class__.objects.filter(org=org, is_active=True)
+            )
+
+        return render(request, "tasks/_task_create_form.html", {
+            "farms": farms,
+            "batches": batches,
+            "team": team,
+            "today": datetime.date.today(),
+        })
+
+    def post(self, request):
+        from apps.farm.tasks.models import FarmTask
+
+        org = _get_org(request)
+        title = request.POST.get("title", "").strip()
+        description = request.POST.get("description", "").strip()
+        due_date_str = request.POST.get("due_date", "")
+        priority = request.POST.get("priority", "medium")
+        category = request.POST.get("category", "other")
+        assigned_to_id = request.POST.get("assigned_to")
+        farm_id = request.POST.get("farm")
+        batch_id = request.POST.get("batch")
+
+        if not title:
+            return render(request, "tasks/_task_create_form.html", {
+                "error": "Title is required.",
+                "today": datetime.date.today(),
+            })
+
+        with set_tenant_context(org):
+            task = FarmTask(
+                org=org,
+                title=title,
+                description=description,
+                priority=priority,
+                category=category,
+                status="pending",
+                created_by=request.user,
+            )
+            if due_date_str:
+                try:
+                    task.due_date = datetime.datetime.strptime(due_date_str, "%Y-%m-%d").date()
+                except ValueError:
+                    pass
+            if assigned_to_id:
+                task.assigned_to_id = assigned_to_id
+            if farm_id:
+                task.farm_id = farm_id
+            if batch_id:
+                task.batch_id = batch_id
+            task.save()
+
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = json.dumps({
+            "showToast": {"message": f'Task "{title}" created', "type": "success"},
+            "close-modal": True,
+        })
+        response["HX-Refresh"] = "true"
+        return response
+
+
+class TaskStatusView(TenantRequiredMixin, View):
+    """POST /tasks/<pk>/status/ — move task between Kanban columns."""
+
+    def post(self, request, pk):
+        from apps.farm.tasks.models import FarmTask
+
+        new_status = request.POST.get("status")
+        if new_status not in ("pending", "in_progress", "complete"):
+            return HttpResponse(status=400)
+
+        org = _get_org(request)
+        with set_tenant_context(org):
+            task = get_object_or_404(FarmTask, pk=pk, org=org)
+            task.status = new_status
+            if new_status == "complete":
+                task.completed_at = timezone.now()
+                task.completed_by = request.user
+            task.save()
+
+        label = new_status.replace("_", " ").title()
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = json.dumps({
+            "showToast": {"message": f"Task moved to {label}", "type": "success"},
+        })
+        response["HX-Refresh"] = "true"
+        return response
+
+
+class TaskDeleteView(TenantRequiredMixin, View):
+    """POST /tasks/<pk>/delete/ — permanently remove a task."""
+
+    def post(self, request, pk):
+        from apps.farm.tasks.models import FarmTask
+
+        org = _get_org(request)
+        with set_tenant_context(org):
+            task = get_object_or_404(FarmTask, pk=pk, org=org)
+            task.delete()
+
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = json.dumps({
+            "showToast": {"message": "Task deleted", "type": "success"},
+        })
+        response["HX-Refresh"] = "true"
+        return response
+
+
 class TaskCompleteView(LoginRequiredMixin, View):
-    """POST /tasks/<uuid>/complete/ → Mark task done, return updated row fragment."""
+    """POST /tasks/<uuid>/complete/ — mark task done, refresh Kanban."""
 
     def post(self, request, pk):
         org = _get_org(request)
@@ -113,11 +202,12 @@ class TaskCompleteView(LoginRequiredMixin, View):
         response["HX-Trigger"] = json.dumps(
             {"showToast": {"message": "Task completed", "type": "success"}}
         )
+        response["HX-Refresh"] = "true"
         return response
 
 
 class TaskSummaryWidget(LoginRequiredMixin, View):
-    """GET /tasks/summary/ → HTMX dashboard widget fragment."""
+    """GET /tasks/summary/ — HTMX dashboard widget fragment."""
 
     EMPTY = {"pending_count": 0, "overdue_count": 0, "completed_today": 0}
 
