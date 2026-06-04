@@ -228,10 +228,20 @@ class DashboardView(TemplateView):
                     pass
 
         daily_brief = {}
+        today_brief = None
+        has_patterns = False
         if org:
             try:
                 from apps.health.analytics.daily_brief import DailyBriefService
                 daily_brief = DailyBriefService(org).get_cached()
+            except Exception:
+                pass
+            try:
+                from apps.health.analytics.models import AIDailyBrief
+                today_brief = AIDailyBrief.objects.filter(
+                    org=org, brief_date=today).first()
+                has_patterns = bool(
+                    today_brief and today_brief.patterns_detected)
             except Exception:
                 pass
 
@@ -260,6 +270,8 @@ class DashboardView(TemplateView):
                 "upcoming_vaccinations": upcoming_vaccinations,
                 "task_summary": task_summary,
                 "daily_brief": daily_brief,
+                "today_brief": today_brief,
+                "has_patterns": has_patterns,
                 "time_greeting": time_greeting,
                 "time_emoji": time_emoji,
             }

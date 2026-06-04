@@ -236,6 +236,24 @@
     </div>
     {% endfor %}
 
+    {% if has_patterns %}
+    <div style="display:flex;align-items:center;gap:8px;
+                margin-top:10px;padding:10px 14px;
+                background:rgba(255,255,255,0.08);
+                border-radius:10px;font-size:12px;color:#1e293b">
+      <span>🧠</span>
+      <span>
+        Farm memory detected
+        <strong>{{ today_brief.patterns_detected|length }}
+        pattern{{ today_brief.patterns_detected|length|pluralize }}</strong> —
+        <a href="{% url 'analytics:analytics' %}"
+           style="color:#3d5a99;font-weight:700">
+          View patterns →
+        </a>
+      </span>
+    </div>
+    {% endif %}
+
   </div>
   {% endif %}
   {% endif %}

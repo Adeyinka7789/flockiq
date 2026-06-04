@@ -190,6 +190,76 @@ class DailyBriefService(BaseService):
             # Create in-app notifications for alerts (dedup by batch+day)
             self._create_alert_notifications(alerts, today)
 
+            # Save to AIDailyBrief for farm memory
+            try:
+                from apps.health.analytics.models import AIDailyBrief
+                from apps.health.analytics.farm_memory import FarmMemoryService
+
+                critical_count = sum(
+                    1 for a in alerts if a.get('severity') == 'critical')
+                warning_count = sum(
+                    1 for a in alerts if a.get('severity') == 'warning')
+
+                if critical_count > 0:
+                    overall_status = 'critical'
+                elif warning_count > 0:
+                    overall_status = 'warning'
+                elif len(alerts) + len(recommendations) > 0:
+                    overall_status = 'attention'
+                else:
+                    overall_status = 'optimal'
+
+                if len(alerts) == 0:
+                    headline = (
+                        f'All {len(active_batches)} '
+                        f'batch{"es" if len(active_batches) != 1 else ""} normal'
+                    )
+                elif len(alerts) == 1:
+                    headline = alerts[0]['title']
+                else:
+                    headline = f'{len(alerts)} issues need attention'
+
+                # Strip non-serializable batch objects
+                alerts_list = [
+                    {k: v for k, v in a.items() if k != 'batch'}
+                    for a in alerts
+                ]
+                recs_list = [
+                    {k: v for k, v in r.items() if k != 'batch'}
+                    for r in recommendations
+                ]
+
+                all_patterns = []
+                for _batch in active_batches[:3]:
+                    try:
+                        memory = FarmMemoryService(self.org, _batch)
+                        all_patterns += memory.get_all_patterns()
+                    except Exception:
+                        pass
+
+                total_birds = sum(
+                    getattr(b, 'current_count', 0) for b in active_batches)
+
+                AIDailyBrief.objects.update_or_create(
+                    org=self.org,
+                    brief_date=today,
+                    defaults={
+                        'overall_status': overall_status,
+                        'headline': headline[:200],
+                        'alerts': alerts_list,
+                        'recommendations': recs_list,
+                        'patterns_detected': all_patterns[:5],
+                        'critical_count': critical_count,
+                        'warning_count': warning_count,
+                        'metrics_snapshot': {
+                            'active_batches': len(active_batches),
+                            'total_birds': total_birds,
+                        },
+                    }
+                )
+            except Exception:
+                pass  # Never break the brief generation
+
         brief = {
             "generated_at": today.isoformat(),
             "active_batches": len(active_batches),

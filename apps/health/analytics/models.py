@@ -101,6 +101,50 @@ class SaleTimingRecommendation(TenantAwareModel):
         return f"{self.urgency} recommendation for batch"
 
 
+class AIDailyBrief(TenantAwareModel):
+    """
+    Persisted daily AI brief per org.
+    Replaces cache-only storage so we can
+    build farm memory from historical briefs.
+    """
+    org = models.ForeignKey(
+        'tenants.Organization',
+        on_delete=models.CASCADE,
+        related_name='daily_briefs')
+    generated_at = models.DateTimeField(auto_now_add=True)
+    brief_date = models.DateField()
+
+    overall_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('optimal', 'Optimal'),
+            ('attention', 'Needs Attention'),
+            ('critical', 'Critical'),
+            ('warning', 'Warning'),
+        ],
+        default='optimal')
+    headline = models.CharField(max_length=200)
+    summary = models.TextField(blank=True)
+
+    alerts = models.JSONField(default=list)
+    recommendations = models.JSONField(default=list)
+    patterns_detected = models.JSONField(default=list)
+    metrics_snapshot = models.JSONField(default=dict)
+
+    critical_count = models.IntegerField(default=0)
+    warning_count = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['-brief_date']
+        unique_together = [['org', 'brief_date']]
+        indexes = [
+            models.Index(fields=['org', 'brief_date']),
+        ]
+
+    def __str__(self):
+        return f'Brief {self.brief_date} — {self.overall_status}'
+
+
 class TheftFlag(TenantAwareModel):
     batch = models.ForeignKey(
         "flocks.Batch", on_delete=models.CASCADE, related_name="theft_flags"

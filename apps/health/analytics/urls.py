@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .ai_insights_view import AIInsightsDeepDiveView
 from .views import (
     AIAnalyticsPageView,
     AlertAcknowledgeAPIView,
@@ -20,6 +21,7 @@ app_name = "analytics"
 urlpatterns = [
     # AI Analytics dashboard page
     path("analytics/", AIAnalyticsPageView.as_view(), name="analytics"),
+    path("ai/insights/<uuid:batch_pk>/", AIInsightsDeepDiveView.as_view(), name="deep_dive"),
     # HTMX partials
     path("analytics/forecast/<uuid:batch_pk>/", ForecastChartView.as_view(), name="forecast"),
     path("analytics/anomalies/<uuid:batch_pk>/", AnomalyFeedView.as_view(), name="anomalies"),

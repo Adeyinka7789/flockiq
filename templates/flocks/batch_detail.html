@@ -678,6 +678,16 @@
 </style>
 
 <div class="ai-wrap">
+  <a href="{% url 'analytics:deep_dive' batch.pk %}"
+     style="display:inline-flex;align-items:center;gap:6px;
+            padding:8px 16px;background:#1a2744;color:white;
+            border-radius:10px;font-size:12px;font-weight:700;
+            text-decoration:none;margin-bottom:16px;
+            transition:all 0.15s"
+     onmouseover="this.style.background='#2d4578'"
+     onmouseout="this.style.background='#1a2744'">
+    🤖 Full AI Deep Dive →
+  </a>
   <div class="ai-header-bar">
     <h2 style="font-size:16px;font-weight:800;color:#1a2744">
       AI Insights

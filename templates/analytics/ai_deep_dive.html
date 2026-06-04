@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}AI Insights — {{ batch.batch_name }}{% endblock %}
+{% block breadcrumb %}AI Deep Dive{% endblock %}
+
+{% block content %}
+<style>
+  .ai-wrap { max-width: 1100px; margin: 0 auto; }
+
+  .ai-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; margin-bottom: 24px;
+  }
+  .ai-back {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: #8a96a8;
+    text-decoration: none; margin-bottom: 8px;
+    transition: color 0.15s;
+  }
+  .ai-back:hover { color: #3d5a99; }
+  .ai-title {
+    font-size: 24px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.4px; margin-bottom: 4px;
+  }
+  .ai-sub { font-size: 13px; color: #8a96a8; }
+
+  .ai-grade-card {
+    background: linear-gradient(135deg, #1a2744, #2d5be3);
+    border-radius: 16px; padding: 24px; color: white;
+    margin-bottom: 20px; display: flex;
+    align-items: center; gap: 24px;
+  }
+  .ai-grade-circle {
+    width: 80px; height: 80px; border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.3);
+    display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0;
+  }
+  .ai-grade-letter {
+    font-size: 36px; font-weight: 800; color: white;
+  }
+  .ai-grade-info { flex: 1; }
+  .ai-grade-label {
+    font-size: 18px; font-weight: 800; color: white;
+    margin-bottom: 4px;
+  }
+  .ai-grade-sub {
+    font-size: 13px; color: rgba(255,255,255,0.6);
+    margin-bottom: 12px;
+  }
+  .ai-grade-score { display: flex; gap: 16px; }
+  .ai-grade-score-val {
+    font-size: 20px; font-weight: 800; color: white;
+    font-variant-numeric: tabular-nums;
+  }
+  .ai-grade-score-lbl {
+    font-size: 10px; color: rgba(255,255,255,0.5);
+    text-transform: uppercase; letter-spacing: 0.07em;
+  }
+
+  .ai-layout {
+    display: grid; grid-template-columns: 1fr 320px;
+    gap: 20px; margin-bottom: 20px;
+  }
+  .ai-main { min-width: 0; }
+
+  .ai-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .ai-card-hd {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px; border-bottom: 1px solid #f1f5f9;
+  }
+  .ai-card-icon {
+    width: 32px; height: 32px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+  }
+  .ai-card-title {
+    font-size: 14px; font-weight: 700; color: #1a2744;
+  }
+  .ai-card-sub {
+    font-size: 12px; color: #8a96a8; margin-top: 1px;
+  }
+  .ai-card-body { padding: 16px 18px; }
+
+  .ai-bench-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid #f8faff;
+  }
+  .ai-bench-row:last-child { border-bottom: none; }
+  .ai-bench-metric {
+    font-size: 12px; font-weight: 600; color: #4a5568;
+    min-width: 100px;
+  }
+  .ai-bench-actual {
+    font-size: 15px; font-weight: 800; color: #1a2744;
+    min-width: 60px; font-variant-numeric: tabular-nums;
+  }
+  .ai-bench-vs { font-size: 11px; color: #8a96a8; flex: 1; }
+  .ai-bench-status {
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+  }
+  .ai-bench-status.good     { background:#edfae8;color:#166534; }
+  .ai-bench-status.warning  { background:#fef3c7;color:#92400e; }
+  .ai-bench-status.critical { background:#fee2e2;color:#991b1b; }
+
+  .ai-pattern {
+    border-left: 4px solid transparent; padding: 14px 16px;
+    margin-bottom: 10px; border-radius: 0 10px 10px 0;
+    background: #fafbff;
+  }
+  .ai-pattern.critical { border-color: #ef4444; background: #fff5f5; }
+  .ai-pattern.warning  { border-color: #f59e0b; background: #fffbeb; }
+  .ai-pattern.info     { border-color: #3d5a99; background: #f0f4ff; }
+  .ai-pattern-title {
+    font-size: 13px; font-weight: 700; color: #1a2744;
+    margin-bottom: 4px;
+  }
+  .ai-pattern-detail {
+    font-size: 12px; color: #4a5568; line-height: 1.6;
+    margin-bottom: 6px;
+  }
+  .ai-pattern-action {
+    font-size: 11px; font-weight: 700; color: #3d5a99;
+  }
+  .ai-pattern-confidence {
+    font-size: 10px; color: #8a96a8; margin-top: 4px;
+  }
+
+  .ai-brief-item {
+    padding: 10px 0; border-bottom: 1px solid #f8faff;
+    font-size: 12px;
+  }
+  .ai-brief-item:last-child { border-bottom: none; }
+  .ai-brief-date { font-size: 10px; color: #8a96a8; margin-bottom: 3px; }
+  .ai-brief-status {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700; margin-bottom: 4px;
+  }
+  .ai-brief-status.optimal  { color: #16a34a; }
+  .ai-brief-status.warning  { color: #d97706; }
+  .ai-brief-status.critical { color: #dc2626; }
+  .ai-brief-status.attention{ color: #3d5a99; }
+  .ai-brief-headline {
+    font-size: 12px; color: #4a5568; line-height: 1.4;
+  }
+
+  @media(max-width:900px){
+    .ai-layout{grid-template-columns:1fr}
+    .ai-grade-card{flex-direction:column}
+  }
+</style>
+
+<div class="ai-wrap">
+
+  <!-- Header -->
+  <div class="ai-header">
+    <div>
+      <a href="{% url 'flocks:detail' batch.pk %}" class="ai-back">← Back to Batch</a>
+      <div class="ai-title">🤖 AI Intelligence — {{ batch.batch_name }}</div>
+      <div class="ai-sub">
+        {{ batch.farm.name }} · Day {{ batch.cycle_day }} ·
+        {{ batch.breed_name|default:batch.bird_type|title }}
+        · {{ batch.current_count }} birds
+      </div>
+    </div>
+  </div>
+
+  <!-- Performance Grade -->
+  {% if performance_grade %}
+  <div class="ai-grade-card">
+    <div class="ai-grade-circle">
+      <span class="ai-grade-letter" style="color:{{ performance_grade.color }}">
+        {{ performance_grade.grade }}
+      </span>
+    </div>
+    <div class="ai-grade-info">
+      <div class="ai-grade-label">{{ performance_grade.label }} Performance</div>
+      <div class="ai-grade-sub">
+        Compared to {{ performance_grade.benchmark.breed_name }} benchmarks
+      </div>
+      <div class="ai-grade-score">
+        <div>
+          <div class="ai-grade-score-val">{{ performance_grade.score }}</div>
+          <div class="ai-grade-score-lbl">Score</div>
+        </div>
+        {% if fcr %}
+        <div>
+          <div class="ai-grade-score-val">{{ fcr }}</div>
+          <div class="ai-grade-score-lbl">FCR</div>
+        </div>
+        {% endif %}
+        <div>
+          <div class="ai-grade-score-val">{{ mortality_rate }}%</div>
+          <div class="ai-grade-score-lbl">Mortality</div>
+        </div>
+        {% if hen_day_pct %}
+        <div>
+          <div class="ai-grade-score-val">{{ hen_day_pct }}%</div>
+          <div class="ai-grade-score-lbl">Hen-Day</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="ai-layout">
+    <!-- LEFT: Main content -->
+    <div class="ai-main">
+
+      <!-- Breed Benchmark Comparison -->
+      {% if benchmark_result.comparisons %}
+      <div class="ai-card">
+        <div class="ai-card-hd">
+          <div class="ai-card-icon" style="background:#e8eef8">📊</div>
+          <div>
+            <div class="ai-card-title">Breed Benchmark Comparison</div>
+            <div class="ai-card-sub">vs {{ benchmark_result.breed_name }} targets</div>
+          </div>
+        </div>
+        <div class="ai-card-body">
+          {% for comp in benchmark_result.comparisons %}
+          <div class="ai-bench-row">
+            <span class="ai-bench-metric">{{ comp.metric }}</span>
+            <span class="ai-bench-actual">{{ comp.actual }}</span>
+            <span class="ai-bench-vs">
+              Target: {{ comp.target }}
+              ({{ comp.diff|floatformat:2 }}
+              {% if comp.diff > 0 %}↑{% else %}↓{% endif %})
+            </span>
+            <span class="ai-bench-status {{ comp.status }}">
+              {% if comp.status == 'good' %}✓ On Target
+              {% elif comp.status == 'warning' %}⚠ Review
+              {% else %}✗ Off Target{% endif %}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Farm Memory Patterns -->
+      <div class="ai-card">
+        <div class="ai-card-hd">
+          <div class="ai-card-icon" style="background:#fef3c7">🧠</div>
+          <div>
+            <div class="ai-card-title">Farm Memory &amp; Pattern Analysis</div>
+            <div class="ai-card-sub">Based on your farm's historical data</div>
+          </div>
+        </div>
+        <div class="ai-card-body">
+          {% if all_patterns %}
+          {% for pattern in all_patterns %}
+          <div class="ai-pattern {{ pattern.severity }}">
+            <div class="ai-pattern-title">{{ pattern.title }}</div>
+            <div class="ai-pattern-detail">{{ pattern.detail }}</div>
+            {% if pattern.action %}
+            <div class="ai-pattern-action">→ {{ pattern.action }}</div>
+            {% endif %}
+            <div class="ai-pattern-confidence">Confidence: {{ pattern.confidence }}%</div>
+          </div>
+          {% endfor %}
+          {% else %}
+          <div style="text-align:center;padding:32px;color:#8a96a8;font-size:13px">
+            <div style="font-size:28px;margin-bottom:10px">🧠</div>
+            <div style="font-weight:600;color:#1a2744;margin-bottom:4px">
+              Building Farm Memory
+            </div>
+            No recurring patterns detected yet.
+            Patterns emerge after 2+ completed batches.
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Mortality Trend Chart -->
+      {% if mort_trend %}
+      <div class="ai-card">
+        <div class="ai-card-hd">
+          <div class="ai-card-icon" style="background:#fee2e2">📈</div>
+          <div>
+            <div class="ai-card-title">14-Day Mortality Trend</div>
+            <div class="ai-card-sub">Daily mortality count</div>
+          </div>
+        </div>
+        <div style="padding:16px;height:160px">
+          <canvas id="mortTrendChart"></canvas>
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- RIGHT: Sidebar -->
+    <div class="ai-sidebar">
+
+      <!-- AI Brief History -->
+      {% if recent_briefs %}
+      <div class="ai-card">
+        <div class="ai-card-hd">
+          <div class="ai-card-icon" style="background:#edfae8">📋</div>
+          <div>
+            <div class="ai-card-title">Recent AI Briefs</div>
+            <div class="ai-card-sub">Last 7 days</div>
+          </div>
+        </div>
+        <div class="ai-card-body" style="padding:14px 18px">
+          {% for brief in recent_briefs %}
+          <div class="ai-brief-item">
+            <div class="ai-brief-date">{{ brief.brief_date|date:"M d" }}</div>
+            <div class="ai-brief-status {{ brief.overall_status }}">
+              {% if brief.overall_status == 'optimal' %}✅ Optimal
+              {% elif brief.overall_status == 'warning' %}⚠️ Warning
+              {% elif brief.overall_status == 'critical' %}🔴 Critical
+              {% else %}🔵 Attention{% endif %}
+            </div>
+            <div class="ai-brief-headline">
+              {{ brief.headline|truncatechars:60 }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Similar historical batches -->
+      {% if similar_batches %}
+      <div class="ai-card">
+        <div class="ai-card-hd">
+          <div class="ai-card-icon" style="background:#e8eef8">🔄</div>
+          <div>
+            <div class="ai-card-title">Similar Past Batches</div>
+            <div class="ai-card-sub">Same bird type on this farm</div>
+          </div>
+        </div>
+        <div class="ai-card-body" style="padding:14px 18px">
+          {% for sb in similar_batches %}
+          <div style="padding:8px 0;border-bottom:1px solid #f8faff">
+            <div style="font-size:12px;font-weight:700;color:#1a2744;margin-bottom:2px">
+              {{ sb.batch_name }}
+            </div>
+            <div style="font-size:11px;color:#8a96a8">
+              {{ sb.placement_date|date:"M Y" }} ·
+              {{ sb.initial_count }} birds ·
+              {{ sb.breed_name|default:"Standard" }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+
+</div>
+
+{% if mort_trend %}
+{{ mort_trend|json_script:"mort-trend-data" }}
+<script>
+(function() {
+  const data = JSON.parse(
+    document.getElementById('mort-trend-data').textContent);
+  const canvas = document.getElementById('mortTrendChart');
+  if (!canvas || !data.length) return;
+
+  new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.date),
+      datasets: [{
+        data: data.map(d => d.count),
+        backgroundColor: data.map(d => d.count > 5 ? '#ef4444' : '#3d5a99'),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid:{display:false}, ticks:{font:{size:10},color:'#94a3b8'} },
+        y: { grid:{color:'#f3f4f6'}, ticks:{font:{size:10},color:'#94a3b8'}, beginAtZero: true }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+
+{% endblock %}
