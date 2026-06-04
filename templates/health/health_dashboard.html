@@ -1,0 +1,589 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Health Command Center{% endblock %}
+{% block breadcrumb %}Health{% endblock %}
+
+{% block content %}
+<style>
+  .hc-wrap { max-width: 1100px; margin: 0 auto; }
+
+  .hc-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; margin-bottom: 20px;
+  }
+  .hc-live-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #edfae8; color: #166534;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .hc-live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #16a34a;
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  .hc-title {
+    font-size: 24px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.4px;
+  }
+  .hc-header-actions {
+    display: flex; gap: 8px;
+  }
+  .hc-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 16px; border-radius: 10px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: all 0.15s; text-decoration: none;
+    border: none;
+  }
+  .hc-btn.danger {
+    background: #dc2626; color: white;
+  }
+  .hc-btn.danger:hover { background: #b91c1c; }
+  .hc-btn.outline {
+    background: white; color: #1a2744;
+    border: 1.5px solid #e2e8f0;
+  }
+  .hc-btn.outline:hover { border-color: #3d5a99; color: #3d5a99; }
+
+  .hc-metrics {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px; margin-bottom: 24px;
+  }
+  .hc-metric {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 18px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .hc-metric-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 22px;
+  }
+  .hc-metric-lbl {
+    font-size: 11px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+  .hc-metric-val {
+    font-size: 28px; font-weight: 800; color: #1a2744;
+    line-height: 1; font-variant-numeric: tabular-nums;
+  }
+  .hc-metric-val.red   { color: #dc2626; }
+  .hc-metric-val.green { color: #16a34a; }
+  .hc-metric-val.amber { color: #d97706; }
+
+  .hc-layout {
+    display: grid; grid-template-columns: 1fr 320px;
+    gap: 16px; margin-bottom: 20px;
+  }
+  .hc-main { min-width: 0; }
+
+  .hc-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .hc-card-hd {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid #f1f5f9;
+  }
+  .hc-card-title {
+    font-size: 14px; font-weight: 700; color: #1a2744;
+  }
+  .hc-card-link {
+    font-size: 12px; font-weight: 600; color: #3d5a99;
+    text-decoration: none;
+  }
+  .hc-card-link:hover { text-decoration: underline; }
+
+  .hc-alert-item {
+    padding: 16px 18px;
+    border-bottom: 1px solid #f8faff;
+    border-left: 4px solid transparent;
+    transition: background 0.1s;
+  }
+  .hc-alert-item:last-child { border-bottom: none; }
+  .hc-alert-item:hover { background: #fafbff; }
+  .hc-alert-item.critical { border-left-color: #ef4444; }
+  .hc-alert-item.warning  { border-left-color: #f59e0b; }
+  .hc-alert-item.info     { border-left-color: #3d5a99; }
+
+  .hc-alert-top {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 6px;
+  }
+  .hc-severity-badge {
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 10px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    flex-shrink: 0;
+  }
+  .hc-severity-badge.critical { background: #fee2e2; color: #991b1b; }
+  .hc-severity-badge.warning  { background: #fef3c7; color: #92400e; }
+  .hc-severity-badge.info     { background: #e8eef8; color: #2d4578; }
+
+  .hc-alert-title {
+    font-size: 13px; font-weight: 700; color: #1a2744;
+    flex: 1;
+  }
+  .hc-alert-time {
+    font-size: 11px; color: #8a96a8; flex-shrink: 0;
+  }
+  .hc-alert-body {
+    font-size: 12px; color: #4a5568; line-height: 1.6;
+    margin-bottom: 10px;
+  }
+  .hc-ai-recs {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .hc-ai-rec {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #f4f7fe; border: 1px solid #e2e8f0;
+    border-radius: 20px; padding: 4px 12px;
+    font-size: 11px; font-weight: 600; color: #3d5a99;
+  }
+
+  .hc-risk-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+  }
+  .hc-risk-list { padding: 14px; }
+  .hc-risk-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .hc-risk-row:last-child { margin-bottom: 0; }
+  .hc-risk-state {
+    font-size: 13px; font-weight: 600; color: #1a2744;
+    min-width: 100px;
+  }
+  .hc-risk-bar {
+    flex: 1; height: 6px; background: #f0f4ff;
+    border-radius: 3px; overflow: hidden;
+  }
+  .hc-risk-fill {
+    height: 100%; border-radius: 3px; transition: width 0.6s ease;
+  }
+  .hc-risk-fill.high     { background: #ef4444; }
+  .hc-risk-fill.moderate { background: #f59e0b; }
+  .hc-risk-fill.low      { background: #8bc87a; }
+  .hc-risk-label {
+    font-size: 11px; font-weight: 700; min-width: 70px;
+    text-align: right;
+  }
+  .hc-risk-label.high     { color: #dc2626; }
+  .hc-risk-label.moderate { color: #d97706; }
+  .hc-risk-label.low      { color: #16a34a; }
+
+  .hc-map-placeholder {
+    background: linear-gradient(135deg, #1a2744, #2d5be3);
+    height: 140px; margin: 14px;
+    border-radius: 10px;
+    display: flex; align-items: center;
+    justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  .hc-map-risk-badge {
+    position: absolute; top: 10px; left: 10px;
+    background: rgba(239,68,68,0.9);
+    color: white; padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  .hc-table { width: 100%; border-collapse: collapse; }
+  .hc-table th {
+    text-align: left; padding: 9px 16px;
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    background: #fafafa; border-bottom: 1px solid #e2e8f0;
+  }
+  .hc-table td {
+    padding: 12px 16px; font-size: 12px;
+    border-bottom: 1px solid #f8faff; color: #1a2744;
+  }
+  .hc-table tr:last-child td { border-bottom: none; }
+  .hc-table tr:hover td { background: #fafbff; }
+  .hc-obs-status {
+    padding: 3px 9px; border-radius: 20px;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase;
+  }
+  .hc-obs-status.pending   { background: #fef3c7; color: #92400e; }
+  .hc-obs-status.processed { background: #dcfce7; color: #166534; }
+  .hc-obs-status.reviewed  { background: #e8eef8; color: #2d4578; }
+
+  .hc-action-card {
+    background: #1a2744; border-radius: 14px;
+    padding: 18px; margin-bottom: 14px;
+  }
+  .hc-action-title {
+    font-size: 13px; font-weight: 800; color: white;
+    margin-bottom: 14px;
+  }
+  .hc-action-item {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: rgba(255,255,255,0.07);
+    border-radius: 10px; padding: 12px;
+    margin-bottom: 8px; transition: all 0.15s;
+  }
+  .hc-action-item:last-of-type { margin-bottom: 12px; }
+  .hc-action-item:hover { background: rgba(255,255,255,0.12); }
+  .hc-action-icon {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 14px;
+  }
+  .hc-action-name {
+    font-size: 13px; font-weight: 700; color: white;
+    margin-bottom: 2px; line-height: 1.3;
+  }
+  .hc-action-sub {
+    font-size: 11px; color: rgba(255,255,255,0.5);
+    line-height: 1.4;
+  }
+  .hc-update-btn {
+    width: 100%; padding: 12px; background: #8bc87a;
+    border: none; border-radius: 10px; color: #0f172a;
+    font-size: 13px; font-weight: 800; cursor: pointer;
+    transition: all 0.15s; text-align: center;
+    text-decoration: none; display: block;
+  }
+  .hc-update-btn:hover { background: #6aaa57; }
+
+  .hc-ai-card { margin-bottom: 14px; }
+  .hc-ai-item {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 12px; padding: 14px;
+    margin-bottom: 10px;
+    border-left: 4px solid transparent;
+    transition: all 0.15s;
+  }
+  .hc-ai-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .hc-ai-item.critical { border-left-color: #ef4444; }
+  .hc-ai-item.warning  { border-left-color: #f59e0b; }
+  .hc-ai-item.good     { border-left-color: #8bc87a; }
+  .hc-ai-item-title {
+    font-size: 13px; font-weight: 700; color: #1a2744;
+    margin-bottom: 4px;
+  }
+  .hc-ai-item-text {
+    font-size: 12px; color: #4a5568; line-height: 1.6;
+    margin-bottom: 8px;
+  }
+  .hc-ai-item-action {
+    font-size: 11px; font-weight: 700; color: #3d5a99;
+    text-decoration: none;
+  }
+  .hc-ai-item-action:hover { text-decoration: underline; }
+
+  @media(max-width:900px){
+    .hc-layout { grid-template-columns: 1fr; }
+    .hc-metrics { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="hc-wrap">
+
+  <!-- Header -->
+  <div class="hc-header">
+    <div>
+      <div class="hc-live-badge">
+        <span class="hc-live-dot"></span>
+        LIVE MONITORING
+      </div>
+      <div class="hc-title">Health Command Center</div>
+    </div>
+    <div class="hc-header-actions">
+      <a href="{% url 'health:calendar' %}" class="hc-btn outline">
+        📅 Vaccinations
+      </a>
+      <a href="{% url 'health:outbreaks' %}" class="hc-btn outline">
+        ⚠️ Outbreaks
+      </a>
+      <button class="hc-btn danger"
+              hx-get="{% url 'health:report_outbreak' %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML">
+        🚨 Report Outbreak
+      </button>
+    </div>
+  </div>
+
+  <!-- Metric cards -->
+  <div class="hc-metrics">
+    <div class="hc-metric">
+      <div class="hc-metric-icon" style="background:#fee2e2">⚠️</div>
+      <div>
+        <div class="hc-metric-lbl">Active Alerts</div>
+        <div class="hc-metric-val {% if active_alerts > 0 %}red{% endif %}">
+          {% if active_alerts < 10 %}0{% endif %}{{ active_alerts }}
+        </div>
+      </div>
+    </div>
+    <div class="hc-metric">
+      <div class="hc-metric-icon" style="background:#edfae8">🛡️</div>
+      <div>
+        <div class="hc-metric-lbl">Biosecurity Score</div>
+        <div class="hc-metric-val
+             {% if biosecurity_score >= 85 %}green
+             {% elif biosecurity_score >= 70 %}amber
+             {% else %}red{% endif %}">
+          {{ biosecurity_score }}%
+        </div>
+      </div>
+    </div>
+    <div class="hc-metric">
+      <div class="hc-metric-icon" style="background:#e8eef8">📋</div>
+      <div>
+        <div class="hc-metric-lbl">Compliance</div>
+        <div class="hc-metric-val
+             {% if compliance_pct >= 85 %}green
+             {% elif compliance_pct >= 70 %}amber
+             {% else %}red{% endif %}">
+          {{ compliance_pct }}%
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two column layout -->
+  <div class="hc-layout">
+
+    <!-- LEFT: Alerts + Symptom log -->
+    <div class="hc-main">
+
+      <!-- Disease Alert Feed -->
+      <div class="hc-card">
+        <div class="hc-card-hd">
+          <span class="hc-card-title">Disease Alert Feed</span>
+          <a href="{% url 'notifications:notifications_page' %}"
+             class="hc-card-link">View History →</a>
+        </div>
+
+        {% for alert in disease_alerts %}
+        <div class="hc-alert-item {{ alert.severity }}">
+          <div class="hc-alert-top">
+            <span class="hc-severity-badge {{ alert.severity }}">
+              {{ alert.severity|upper }}
+            </span>
+            <span class="hc-alert-title">{{ alert.title }}</span>
+            <span class="hc-alert-time">
+              {{ alert.created_at|timesince }} ago
+            </span>
+          </div>
+          <div class="hc-alert-body">
+            {{ alert.body|truncatechars:120 }}
+          </div>
+          {% if alert.severity == 'critical' %}
+          <div class="hc-ai-recs">
+            <span class="hc-ai-rec">🤖 AI Rec: Check mortality logs</span>
+            <span class="hc-ai-rec">💉 Review vaccination schedule</span>
+          </div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div style="padding:40px;text-align:center;
+                    color:#8a96a8;font-size:13px">
+          <div style="font-size:28px;margin-bottom:10px">✅</div>
+          No active health alerts. All systems normal.
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Symptom Observation Log -->
+      {% if symptom_logs %}
+      <div class="hc-card">
+        <div class="hc-card-hd">
+          <span class="hc-card-title">Symptom Observation Log</span>
+          <a href="{% url 'health:calendar' %}"
+             class="hc-card-link">View All →</a>
+        </div>
+        <table class="hc-table">
+          <thead>
+            <tr>
+              <th>Field Note</th>
+              <th>Location</th>
+              <th>Observer</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in symptom_logs %}
+            <tr>
+              <td>
+                <div style="font-size:12px;font-weight:600;
+                            color:#1a2744;margin-bottom:2px">
+                  {{ log.symptoms|join:", "|truncatechars:50 }}
+                </div>
+                <div style="font-size:11px;color:#8a96a8">
+                  Logged {{ log.record_date|date:"g:i A" }}
+                </div>
+              </td>
+              <td style="font-size:12px;color:#4a5568">
+                {{ log.batch.farm.name|default:"—" }}
+              </td>
+              <td style="font-size:12px;color:#4a5568">
+                {{ log.recorded_by.first_name|default:"—" }}
+                {{ log.recorded_by.last_name|first|default:"" }}.
+              </td>
+              <td>
+                <span class="hc-obs-status
+                     {% if log.severity == 'severe' %}pending
+                     {% else %}processed{% endif %}">
+                  {% if log.severity == 'severe' %}Pending Review
+                  {% else %}Processed{% endif %}
+                </span>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- RIGHT: Sidebar -->
+    <div>
+
+      <!-- Regional Risk Map -->
+      <div class="hc-risk-card" style="margin-bottom:14px">
+        <div class="hc-card-hd">
+          <div>
+            <div class="hc-card-title">Regional Risk Map</div>
+            <div style="font-size:10px;font-weight:700;
+                        color:#8a96a8;text-transform:uppercase;
+                        letter-spacing:0.08em;margin-top:2px">
+              Real-Time Epidemiological Data
+            </div>
+          </div>
+        </div>
+
+        <div class="hc-map-placeholder">
+          {% if state_risk_list %}
+          {% with top=state_risk_list.0 %}
+          <div class="hc-map-risk-badge">
+            <span style="width:6px;height:6px;border-radius:50%;
+                         background:white;display:inline-block"></span>
+            {{ top.state }} Risk: {{ top.risk|title }}
+          </div>
+          {% endwith %}
+          {% endif %}
+          <svg width="80" height="100" viewBox="0 0 80 100"
+               fill="none" opacity="0.3">
+            <path d="M20 10 L60 8 L72 25 L70 50 L60 70
+                     L50 85 L35 90 L20 80 L10 60 L8 35
+                     L20 10Z"
+                  fill="rgba(255,255,255,0.2)"
+                  stroke="rgba(255,255,255,0.5)"
+                  stroke-width="1.5"/>
+          </svg>
+          <div style="position:absolute;bottom:10px;right:10px;
+                      font-size:10px;color:rgba(255,255,255,0.5)">
+            Based on farm locations
+          </div>
+        </div>
+
+        <div class="hc-risk-list">
+          {% for item in state_risk_list|slice:":5" %}
+          <div class="hc-risk-row">
+            <span class="hc-risk-state">{{ item.state }}</span>
+            <div class="hc-risk-bar">
+              <div class="hc-risk-fill {{ item.risk }}"
+                   style="width:{% if item.risk == 'high' %}85
+                          {% elif item.risk == 'moderate' %}50
+                          {% else %}20{% endif %}%">
+              </div>
+            </div>
+            <span class="hc-risk-label {{ item.risk }}">
+              {% if item.risk == 'high' %}High Alert
+              {% elif item.risk == 'moderate' %}Moderate
+              {% else %}Low Risk{% endif %}
+            </span>
+          </div>
+          {% empty %}
+          <div style="font-size:12px;color:#8a96a8;
+                      text-align:center;padding:12px">
+            Add GPS or location to farms to enable risk mapping.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- AI Health Advice -->
+      {% if ai_advice %}
+      <div class="hc-ai-card">
+        <div style="font-size:12px;font-weight:700;
+                    color:#8a96a8;text-transform:uppercase;
+                    letter-spacing:0.08em;margin-bottom:10px;
+                    display:flex;align-items:center;gap:6px">
+          <span>🤖</span> AI Health Advisory
+        </div>
+        {% for advice in ai_advice %}
+        <div class="hc-ai-item {{ advice.severity }}">
+          <div class="hc-ai-item-title">{{ advice.title }}</div>
+          <div class="hc-ai-item-text">{{ advice.text }}</div>
+          {% if advice.action %}
+          <a href="{{ advice.action_url }}" class="hc-ai-item-action">
+            {{ advice.action }} →
+          </a>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Clinical Action Items -->
+      <div class="hc-action-card">
+        <div class="hc-action-title">Clinical Action Items</div>
+
+        {% for vacc in overdue_vaccs %}
+        <div class="hc-action-item">
+          <div class="hc-action-icon">💉</div>
+          <div>
+            <div class="hc-action-name">{{ vacc.vaccine_name }}</div>
+            <div class="hc-action-sub">
+              {{ vacc.batch.batch_name }} · Due {{ vacc.due_date|date:"M d" }}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+
+        {% for med in active_meds %}
+        <div class="hc-action-item">
+          <div class="hc-action-icon">🔬</div>
+          <div>
+            <div class="hc-action-name">
+              {{ med.drug_name|truncatechars:25 }}
+            </div>
+            <div class="hc-action-sub">
+              Withdrawal ends {{ med.withdrawal_cleared_date|date:"M d" }}
+              — {{ med.batch.farm.name }}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+
+        {% if not overdue_vaccs and not active_meds %}
+        <div style="text-align:center;padding:16px;
+                    color:rgba(255,255,255,0.4);font-size:12px">
+          No urgent clinical actions.
+        </div>
+        {% endif %}
+
+        <a href="{% url 'tasks:list' %}" class="hc-update-btn">
+          Update Tasks
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

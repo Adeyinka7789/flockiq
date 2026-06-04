@@ -7,6 +7,21 @@ app_name = "health"
 
 urlpatterns = [
     path(
+        "health/",
+        views.HealthDashboardView.as_view(),
+        name="dashboard",
+    ),
+    path(
+        "health/outbreaks/report/",
+        views.OutbreakReportView.as_view(),
+        name="report_outbreak",
+    ),
+    path(
+        "health/outbreaks/<uuid:pk>/resolve/",
+        views.OutbreakResolveView.as_view(),
+        name="resolve_outbreak",
+    ),
+    path(
         "health/vaccinations/",
         views.VaccinationCalendarView.as_view(),
         name="calendar",

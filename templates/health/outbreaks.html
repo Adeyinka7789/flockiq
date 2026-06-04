@@ -3,76 +3,205 @@
 {% block breadcrumb %}Disease Alerts{% endblock %}
 
 {% block content %}
-<div style="max-width:800px;margin:0 auto">
-  <div style="display:flex;align-items:center;justify-content:space-between;
-              margin-bottom:24px">
+<style>
+  .ob-wrap { max-width: 900px; margin: 0 auto; }
+
+  .ob-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; margin-bottom: 24px;
+  }
+  .ob-title {
+    font-size: 22px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.3px; margin-bottom: 4px;
+  }
+  .ob-sub { font-size: 13px; color: #8a96a8; }
+
+  .ob-report-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 18px; background: #dc2626; color: white;
+    border: none; border-radius: 10px; font-size: 13px;
+    font-weight: 700; cursor: pointer; transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .ob-report-btn:hover { background: #b91c1c; }
+
+  .ob-stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 12px; margin-bottom: 20px;
+  }
+  .ob-stat {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 12px; padding: 16px;
+    text-align: center;
+  }
+  .ob-stat-val {
+    font-size: 28px; font-weight: 800; color: #1a2744;
+    line-height: 1; margin-bottom: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .ob-stat-val.red   { color: #dc2626; }
+  .ob-stat-val.amber { color: #d97706; }
+  .ob-stat-val.green { color: #16a34a; }
+  .ob-stat-lbl {
+    font-size: 11px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+  }
+
+  .ob-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 12px; transition: all 0.2s;
+    border-left: 4px solid transparent;
+  }
+  .ob-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    transform: translateY(-1px);
+  }
+  .ob-card.critical { border-left-color: #ef4444; }
+  .ob-card.warning  { border-left-color: #f59e0b; }
+  .ob-card.info     { border-left-color: #3d5a99; }
+
+  .ob-card-body { padding: 18px 20px; }
+  .ob-card-top {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; margin-bottom: 10px;
+    gap: 12px;
+  }
+  .ob-severity {
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 10px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    flex-shrink: 0;
+  }
+  .ob-severity.critical { background:#fee2e2;color:#991b1b; }
+  .ob-severity.warning  { background:#fef3c7;color:#92400e; }
+  .ob-severity.info     { background:#e8eef8;color:#2d4578; }
+
+  .ob-disease-name {
+    font-size: 16px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.2px; flex: 1;
+  }
+  .ob-time {
+    font-size: 11px; color: #8a96a8; flex-shrink: 0;
+  }
+  .ob-desc {
+    font-size: 13px; color: #4a5568; line-height: 1.6;
+    margin-bottom: 12px;
+  }
+  .ob-meta {
+    display: flex; align-items: center; gap: 16px;
+    font-size: 12px; color: #8a96a8;
+    flex-wrap: wrap;
+  }
+  .ob-meta-item {
+    display: flex; align-items: center; gap: 5px;
+  }
+  .ob-resolve-btn {
+    padding: 6px 14px; background: white;
+    border: 1.5px solid #8bc87a; border-radius: 8px;
+    font-size: 11px; font-weight: 700; color: #166534;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .ob-resolve-btn:hover { background: #edfae8; }
+
+  .ob-empty {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 16px; padding: 64px;
+    text-align: center;
+  }
+  .ob-empty-icon {
+    width: 64px; height: 64px; border-radius: 18px;
+    background: #e8eef8; display: flex;
+    align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 16px;
+  }
+  .ob-empty-title {
+    font-size: 16px; font-weight: 700; color: #1a2744;
+    margin-bottom: 6px;
+  }
+  .ob-empty-sub { font-size: 13px; color: #8a96a8; }
+</style>
+
+<div class="ob-wrap">
+
+  <div class="ob-header">
     <div>
-      <h1 style="font-size:20px;font-weight:700;color:#1a2744">
-        Disease Alerts
-      </h1>
-      <p style="font-size:13px;color:#8a96a8;margin-top:3px">
-        Active outbreak alerts for your farm locations
-      </p>
+      <div class="ob-title">Disease Alerts</div>
+      <div class="ob-sub">Active outbreak alerts for your farm locations</div>
+    </div>
+    <button class="ob-report-btn"
+            hx-get="{% url 'health:report_outbreak' %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML">
+      🚨 Report Outbreak
+    </button>
+  </div>
+
+  <!-- Stats -->
+  <div class="ob-stats">
+    <div class="ob-stat">
+      <div class="ob-stat-val red">{{ alerts|length }}</div>
+      <div class="ob-stat-lbl">Active Alerts</div>
+    </div>
+    <div class="ob-stat">
+      <div class="ob-stat-val amber">{{ alerts|length }}</div>
+      <div class="ob-stat-lbl">Farms Affected</div>
+    </div>
+    <div class="ob-stat">
+      <div class="ob-stat-val green">{{ resolved_count|default:0 }}</div>
+      <div class="ob-stat-lbl">Resolved This Month</div>
     </div>
   </div>
 
   {% if alerts %}
-    {% for alert in alerts %}
-    <div style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;
-                padding:18px;margin-bottom:12px;display:flex;
-                align-items:flex-start;gap:14px">
-      <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;
-                  display:flex;align-items:center;justify-content:center;
-                  background:{% if alert.severity == 'critical' %}#fee2e2{% elif alert.severity == 'warning' %}#fef3c7{% else %}#e8eef8{% endif %}">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
-             stroke="{% if alert.severity == 'critical' %}#dc2626{% elif alert.severity == 'warning' %}#d97706{% else %}#3d5a99{% endif %}"
-             stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667
-                   1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464
-                   0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-        </svg>
+  {% for alert in alerts %}
+  <div class="ob-card {{ alert.severity }}" id="ob-{{ alert.pk }}">
+    <div class="ob-card-body">
+      <div class="ob-card-top">
+        <span class="ob-severity {{ alert.severity }}">
+          {{ alert.severity|upper }}
+        </span>
+        <div class="ob-disease-name">{{ alert.disease_name }}</div>
+        <span class="ob-time">{{ alert.created_at|timesince }} ago</span>
       </div>
-      <div style="flex:1">
-        <div style="font-weight:700;color:#1a2744;font-size:14px">
-          {{ alert.disease_name }}
-        </div>
-        <div style="font-size:12px;color:#8a96a8;margin-top:3px">
-          {{ alert.farm.name }} · {{ alert.created_at|date:"M d, Y" }}
-        </div>
-        {% if alert.description %}
-        <div style="font-size:13px;color:#4a5568;margin-top:8px">
-          {{ alert.description }}
-        </div>
+      <div class="ob-desc">
+        {{ alert.description|default:"No description provided." }}
+      </div>
+      <div class="ob-meta">
+        {% if alert.farm %}
+        <span class="ob-meta-item">
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+          </svg>
+          {{ alert.farm.name }}
+        </span>
+        {% endif %}
+        <span class="ob-meta-item">
+          {{ alert.created_at|date:"M d, Y" }}
+        </span>
+        {% if request.user.role == 'owner' or request.user.role == 'manager' %}
+        <button class="ob-resolve-btn"
+                hx-post="{% url 'health:resolve_outbreak' alert.pk %}"
+                hx-confirm="Mark {{ alert.disease_name }} as resolved?"
+                hx-swap="none"
+                hx-on::after-request="document.getElementById('ob-{{ alert.pk }}').remove()">
+          ✓ Mark Resolved
+        </button>
         {% endif %}
       </div>
-      <span style="padding:3px 10px;border-radius:20px;font-size:11px;
-                   font-weight:600;white-space:nowrap;
-                   background:{% if alert.severity == 'critical' %}#fee2e2{% elif alert.severity == 'warning' %}#fef3c7{% else %}#e8eef8{% endif %};
-                   color:{% if alert.severity == 'critical' %}#991b1b{% elif alert.severity == 'warning' %}#92400e{% else %}#3d5a99{% endif %}">
-        {{ alert.severity|title }}
-      </span>
     </div>
-    {% endfor %}
+  </div>
+  {% endfor %}
+
   {% else %}
-  <div style="background:#fff;border-radius:14px;border:1px solid #e2e8f0;
-              padding:48px;text-align:center">
-    <div style="width:48px;height:48px;border-radius:12px;background:#e8eef8;
-                display:flex;align-items:center;justify-content:center;
-                margin:0 auto 16px">
-      <svg width="22" height="22" fill="none" viewBox="0 0 24 24"
-           stroke="#3d5a99" stroke-width="1.5">
-        <path stroke-linecap="round" stroke-linejoin="round"
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-      </svg>
-    </div>
-    <h3 style="font-weight:600;color:#1a2744;margin-bottom:6px">
-      All Clear
-    </h3>
-    <p style="font-size:13px;color:#8a96a8">
-      No active outbreak alerts for your farms
-    </p>
+  <div class="ob-empty">
+    <div class="ob-empty-icon">✅</div>
+    <div class="ob-empty-title">All Clear</div>
+    <div class="ob-empty-sub">No active outbreak alerts for your farms</div>
   </div>
   {% endif %}
+
 </div>
 {% endblock %}

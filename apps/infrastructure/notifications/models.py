@@ -186,6 +186,6 @@ DEFAULT_ALERT_RULES = [
     {"event_type": "sale_timing",           "notify_roles": ["owner", "manager"],                    "channels": ["sms", "in_app"],   "min_severity": "info",     "cooldown_minutes": 1440},
     {"event_type": "weekly_summary",        "notify_roles": ["owner"],                               "channels": ["email", "in_app"], "min_severity": "info",     "cooldown_minutes": 0},
     {"event_type": "incomplete_tasks",      "notify_roles": ["owner", "manager"],                    "channels": ["in_app"],          "min_severity": "info",     "cooldown_minutes": 0},
-    {"event_type": "disease_outbreak",      "notify_roles": ["owner", "manager"],                    "channels": ["sms", "in_app"],   "min_severity": "critical", "cooldown_minutes": 720},
+    {"event_type": "disease_outbreak",      "notify_roles": ["owner", "manager"],                    "channels": ["sms", "in_app", "email"], "min_severity": "critical", "cooldown_minutes": 720},
     {"event_type": "medication_withdrawal", "notify_roles": ["owner", "manager"],                    "channels": ["in_app"],          "min_severity": "warning",  "cooldown_minutes": 1440},
 ]
