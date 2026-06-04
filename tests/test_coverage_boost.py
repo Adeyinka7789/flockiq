@@ -1175,3 +1175,159 @@ class TestBankTransferNotifyView:
             'amount': '15000',
         })
         assert response.status_code == 302
+
+
+# ── Health Dashboard & Outbreak views ────────────────────────────────────────
+
+class TestHealthDashboardCoverage:
+
+    def test_health_dashboard_200(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/health/')
+        assert response.status_code == 200
+
+    def test_health_dashboard_context(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/health/')
+        assert 'biosecurity_score' in response.context
+        assert 'ai_advice' in response.context
+
+    def test_outbreak_report_get(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get(
+            '/health/outbreaks/report/',
+            HTTP_HX_REQUEST='true',
+        )
+        assert response.status_code == 200
+
+    def test_outbreak_report_post(self, client, tenant_user, test_farm):
+        client.force_login(tenant_user)
+        response = client.post('/health/outbreaks/report/', {
+            'disease_name': 'Newcastle Disease',
+            'farm': str(test_farm.pk),
+            'severity': 'warning',
+            'description': 'Test outbreak',
+        })
+        assert response.status_code in [200, 204]
+
+    def test_outbreak_report_post_missing_disease(
+            self, client, tenant_user, test_farm):
+        client.force_login(tenant_user)
+        response = client.post('/health/outbreaks/report/', {
+            'disease_name': '',
+            'farm': str(test_farm.pk),
+            'severity': 'warning',
+        })
+        assert response.status_code == 200
+        assert b'required' in response.content.lower()
+
+    def test_outbreak_report_post_missing_farm(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.post('/health/outbreaks/report/', {
+            'disease_name': 'Gumboro',
+            'farm': '',
+            'severity': 'warning',
+        })
+        assert response.status_code == 200
+        assert b'farm' in response.content.lower()
+
+    def test_outbreaks_page_200(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/health/outbreaks/')
+        assert response.status_code == 200
+
+    def test_outbreaks_page_context(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/health/outbreaks/')
+        assert 'alerts' in response.context
+        assert 'resolved_count' in response.context
+
+    def test_extract_state_function(self):
+        from apps.health.health.views import extract_state
+        assert extract_state('Osogbo, Osun State') == 'Osun'
+        assert extract_state('Lagos Island') == 'Lagos'
+        assert extract_state('') == 'Unknown'
+        assert extract_state('Kano, Kano State') == 'Kano'
+        assert extract_state('Port Harcourt, Rivers') == 'Rivers'
+
+    def test_generate_health_advice_warning(self):
+        from unittest.mock import MagicMock
+        from apps.health.health.views import generate_health_advice
+        org = MagicMock()
+        advice = generate_health_advice(org, 80, 80, 0, [], date.today())
+        severities = [a['severity'] for a in advice]
+        assert 'warning' in severities
+
+    def test_outbreak_resolve_post(self, client, tenant_user, test_farm):
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.health.health.models import OutbreakAlert
+        org = tenant_user.org
+        with set_tenant_context(org):
+            alert = OutbreakAlert.objects.create(
+                org=org,
+                farm=test_farm,
+                disease_name='Test Disease',
+                severity='warning',
+                is_active=True,
+            )
+        client.force_login(tenant_user)
+        response = client.post(f'/health/outbreaks/{alert.pk}/resolve/')
+        assert response.status_code == 204
+
+
+# ── SuperAdmin views ─────────────────────────────────────────────────────────
+
+class TestSuperAdminCoverage:
+
+    def test_superadmin_dashboard_200(self, client, super_admin_user):
+        client.force_login(super_admin_user)
+        response = client.get('/superadmin/')
+        assert response.status_code == 200
+
+    def test_superadmin_analytics_200(self, client, super_admin_user):
+        client.force_login(super_admin_user)
+        response = client.get('/superadmin/analytics/')
+        assert response.status_code == 200
+
+    def test_superadmin_tenants_200(self, client, super_admin_user):
+        client.force_login(super_admin_user)
+        response = client.get('/superadmin/tenants/')
+        assert response.status_code == 200
+
+    def test_broadcast_history_200(self, client, super_admin_user):
+        client.force_login(super_admin_user)
+        response = client.get('/superadmin/broadcasts/')
+        assert response.status_code == 200
+
+    def test_superadmin_requires_staff(self, client, tenant_user):
+        client.force_login(tenant_user)
+        response = client.get('/superadmin/')
+        assert response.status_code in [302, 403]
+
+
+# ── seed_alert_rules command ──────────────────────────────────────────────────
+
+class TestAlertRuleSeedCommand:
+
+    def test_seed_alert_rules_command_runs(self):
+        from io import StringIO
+        from django.core.management import call_command
+        out = StringIO()
+        call_command('seed_alert_rules', stdout=out)
+        assert 'AlertRule' in out.getvalue()
+
+    def test_seed_creates_disease_outbreak_rule(self, test_org):
+        from io import StringIO
+        from django.core.management import call_command
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.infrastructure.notifications.models import AlertRule
+        call_command('seed_alert_rules', stdout=StringIO())
+        with set_tenant_context(test_org):
+            rule = AlertRule.objects.filter(
+                org=test_org,
+                event_type='disease_outbreak',
+            ).first()
+        assert rule is not None
+        assert 'sms' in rule.channels
+        assert 'in_app' in rule.channels
+        assert 'email' in rule.channels

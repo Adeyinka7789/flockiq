@@ -18,9 +18,9 @@ class TestCoreViews:
     def test_super_admin_sees_platform_dashboard(self, client, super_admin_user):
         client.force_login(super_admin_user)
         response = client.get("/")
-        assert response.status_code == 200
-        content = response.content.lower()
-        assert b"tenant" in content or b"platform" in content or b"organisation" in content
+        # Super admin is redirected to /superadmin/
+        assert response.status_code == 302
+        assert "/superadmin/" in response["Location"]
 
     def test_login_page_returns_200(self, client):
         response = client.get("/login/")
