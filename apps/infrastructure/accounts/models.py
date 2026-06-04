@@ -3,6 +3,8 @@ import uuid
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 
+from apps.infrastructure.accounts.impersonation import ImpersonationLog  # noqa: F401
+
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):

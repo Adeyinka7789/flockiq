@@ -8,3 +8,6 @@ class ProductionConfig(AppConfig):
 
     def ready(self):
         import apps.production.production.signals  # noqa: F401
+        from auditlog.registry import auditlog
+        from apps.production.production.models import EggProductionLog
+        auditlog.register(EggProductionLog)

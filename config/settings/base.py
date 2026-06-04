@@ -76,6 +76,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.infrastructure.core.middleware.ImpersonationMiddleware",
+    "apps.infrastructure.core.middleware.HtmxSessionExpiredMiddleware",
     "apps.infrastructure.core.middleware.TenantMiddleware",  # Phase 1C — RLS live
     "apps.infrastructure.tenants.middleware.TrialEnforcementMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",

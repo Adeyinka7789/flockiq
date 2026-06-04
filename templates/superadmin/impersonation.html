@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+{% block title %}User Impersonation{% endblock %}
+{% block breadcrumb %}Impersonation{% endblock %}
+
+{% block content %}
+<style>
+  .imp-wrap { max-width: 1000px; margin: 0 auto; }
+
+  .imp-header { margin-bottom: 20px; }
+  .imp-eyebrow {
+    font-size: 11px; font-weight: 700; color: #3d5a99;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+  .imp-title {
+    font-size: 22px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.4px; margin-bottom: 4px;
+  }
+  .imp-sub { font-size: 13px; color: #8a96a8; }
+
+  .imp-filters {
+    display: flex; gap: 10px; margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .imp-search {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px; background: white;
+    border: 1.5px solid #e2e8f0; border-radius: 10px;
+    flex: 1; min-width: 200px;
+  }
+  .imp-search input {
+    border: none; outline: none; font-size: 13px;
+    color: #1a2744; background: transparent; width: 100%;
+  }
+  .imp-select {
+    padding: 9px 14px; border: 1.5px solid #e2e8f0;
+    border-radius: 10px; font-size: 12px; color: #1a2744;
+    background: white; outline: none; cursor: pointer;
+  }
+
+  .imp-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .imp-table { width: 100%; border-collapse: collapse; }
+  .imp-table th {
+    text-align: left; padding: 10px 18px;
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    background: #fafafa; border-bottom: 1px solid #e2e8f0;
+  }
+  .imp-table td {
+    padding: 14px 18px; font-size: 13px;
+    border-bottom: 1px solid #f8faff; color: #1a2744;
+    vertical-align: middle;
+  }
+  .imp-table tr:last-child td { border-bottom: none; }
+  .imp-table tr:hover td { background: #fafbff; }
+
+  .imp-avatar {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: white;
+    flex-shrink: 0;
+  }
+  .imp-role {
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase;
+  }
+  .imp-role.owner   { background:#edfae8;color:#166534; }
+  .imp-role.manager { background:#e8eef8;color:#2d4578; }
+  .imp-role.supervisor { background:#fef3c7;color:#92400e; }
+
+  .imp-btn {
+    padding: 7px 18px; background: #1a2744; color: white;
+    border: none; border-radius: 9px; font-size: 12px;
+    font-weight: 700; cursor: pointer; transition: all 0.15s;
+  }
+  .imp-btn:hover { background: #2d4578; }
+
+  .imp-bottom {
+    display: grid; grid-template-columns: 1fr 280px;
+    gap: 16px;
+  }
+  .imp-compliance-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 20px;
+  }
+  .imp-compliance-title {
+    font-size: 14px; font-weight: 700; color: #3d5a99;
+    margin-bottom: 8px;
+  }
+  .imp-compliance-text {
+    font-size: 12px; color: #4a5568; line-height: 1.7;
+    margin-bottom: 14px;
+  }
+  .imp-compliance-links { display: flex; gap: 10px; }
+  .imp-compliance-link {
+    padding: 7px 14px; border-radius: 8px;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+    text-decoration: none;
+  }
+  .imp-compliance-link.outline {
+    border: 1.5px solid #e2e8f0; color: #4a5568;
+    background: white;
+  }
+  .imp-compliance-link.outline:hover {
+    border-color: #3d5a99; color: #3d5a99;
+  }
+
+  .imp-shield-card {
+    background: #1a2744; border-radius: 14px;
+    padding: 20px; text-align: center;
+  }
+  .imp-shield-icon { font-size: 32px; margin-bottom: 10px; }
+  .imp-shield-title {
+    font-size: 14px; font-weight: 700; color: white;
+    margin-bottom: 6px;
+  }
+  .imp-shield-sub {
+    font-size: 11px; color: rgba(255,255,255,0.5);
+    line-height: 1.6;
+  }
+</style>
+
+<div class="imp-wrap">
+
+  <div class="imp-header">
+    <div class="imp-eyebrow">Security &amp; Support</div>
+    <div class="imp-title">User Impersonation</div>
+    <div class="imp-sub">
+      Safely access user accounts to troubleshoot issues.
+      Every session is logged for audit compliance.
+    </div>
+  </div>
+
+  <div class="imp-filters">
+    <div class="imp-search">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+           stroke="#8a96a8" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input type="text"
+             placeholder="Search across all tenants..."
+             value="{{ search_query|default:'' }}"
+             hx-get="{% url 'superadmin:impersonation' %}"
+             hx-trigger="keyup changed delay:300ms"
+             hx-target="#imp-table"
+             name="q">
+    </div>
+    <select class="imp-select" name="role"
+            hx-get="{% url 'superadmin:impersonation' %}"
+            hx-trigger="change"
+            hx-target="#imp-table"
+            hx-include="[name='q']">
+      <option value="">All Roles</option>
+      <option value="owner" {% if role_filter == 'owner' %}selected{% endif %}>Owners</option>
+      <option value="manager" {% if role_filter == 'manager' %}selected{% endif %}>Managers</option>
+      <option value="supervisor" {% if role_filter == 'supervisor' %}selected{% endif %}>Supervisors</option>
+    </select>
+  </div>
+
+  <div class="imp-card">
+    <div id="imp-table">
+      <table class="imp-table">
+        <thead>
+          <tr>
+            <th>User Name</th>
+            <th>Role</th>
+            <th>Tenant</th>
+            <th>Last Active</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for user in users %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:12px">
+                <div class="imp-avatar"
+                     style="background:{% cycle '#3d5a99' '#16a34a' '#d97706' '#8b5cf6' '#dc2626' %}">
+                  {{ user.first_name|first|default:user.email|first|upper }}{{ user.last_name|first|default:""|upper }}
+                </div>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#1a2744">
+                    {{ user.get_full_name|default:user.email }}
+                  </div>
+                  <div style="font-size:11px;color:#8a96a8">{{ user.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="imp-role {{ user.role }}">{{ user.role|title }}</span>
+            </td>
+            <td>
+              {% if user.org %}
+              <span style="background:#e8eef8;color:#2d4578;padding:3px 10px;
+                           border-radius:20px;font-size:11px;font-weight:600">
+                {{ user.org.name|truncatechars:20 }}
+              </span>
+              {% else %}—{% endif %}
+            </td>
+            <td style="font-size:12px;color:#8a96a8">
+              {% if user.last_login %}{{ user.last_login|timesince }} ago
+              {% else %}Never{% endif %}
+            </td>
+            <td>
+              <form method="POST"
+                    action="{% url 'superadmin:impersonate_start' user.pk %}"
+                    style="display:inline">
+                {% csrf_token %}
+                <input type="hidden" name="reason" value="Support session">
+                <button type="submit" class="imp-btn"
+                        onclick="return confirm('Impersonate {{ user.email }}?\nThis action will be logged.')">
+                  Impersonate
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5"
+                style="text-align:center;padding:40px;color:#8a96a8;font-size:13px">
+              No users found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="imp-bottom">
+    <div class="imp-compliance-card">
+      <div class="imp-compliance-title">Compliance &amp; Ethics</div>
+      <div class="imp-compliance-text">
+        All impersonation activities are recorded including page views,
+        data modifications, and session duration. Misuse of this tool is
+        grounds for immediate credential revocation. Ensure you have verbal
+        or written consent from the user before initiating a session.
+      </div>
+      <div class="imp-compliance-links">
+        <a href="{% url 'superadmin:audit_trail' %}" class="imp-compliance-link outline">
+          📋 View Audit Log Registry
+        </a>
+      </div>
+    </div>
+    <div class="imp-shield-card">
+      <div class="imp-shield-icon">🛡️</div>
+      <div class="imp-shield-title">Secure Shield</div>
+      <div class="imp-shield-sub">
+        End-to-end encrypted sessions ensuring that your impersonation
+        activity never exposes sensitive user passwords.
+      </div>
+    </div>
+  </div>
+
+  {% if recent_logs %}
+  <div class="imp-card" style="margin-top:16px">
+    <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;
+                font-size:14px;font-weight:700;color:#1a2744">
+      Recent Impersonation Sessions
+    </div>
+    <table class="imp-table">
+      <thead>
+        <tr>
+          <th>Admin</th>
+          <th>Target User</th>
+          <th>Tenant</th>
+          <th>Started</th>
+          <th>Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in recent_logs %}
+        <tr>
+          <td style="font-size:12px;color:#4a5568">
+            {{ log.impersonator.email|default:"—" }}
+          </td>
+          <td style="font-size:12px;color:#1a2744;font-weight:600">
+            {{ log.target_user.email|default:"—" }}
+          </td>
+          <td style="font-size:12px;color:#4a5568">
+            {{ log.target_org.name|default:"—" }}
+          </td>
+          <td style="font-size:11px;color:#8a96a8">
+            {{ log.started_at|timesince }} ago
+          </td>
+          <td style="font-size:11px;color:#8a96a8">
+            {% if log.duration_minutes %}{{ log.duration_minutes }}m
+            {% else %}<span style="color:#16a34a">Active</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

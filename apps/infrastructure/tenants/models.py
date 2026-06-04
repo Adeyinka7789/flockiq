@@ -44,10 +44,16 @@ class Organization(models.Model):
             ("suspended", "Suspended"),
             ("cancelled", "Cancelled"),
             ("trial", "Trial"),
+            ("past_due", "Past Due"),
         ],
         default="trial",
     )
     trial_ends_at = models.DateTimeField(null=True, blank=True)
+    max_users = models.PositiveIntegerField(default=5)
+    storage_quota_gb = models.PositiveIntegerField(default=5)
+    grace_period_ends_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text='If set, org has billing grace period until this date')
 
     # Contact
     owner_name = models.CharField(max_length=200, blank=True)

@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block title %}Tenant Quotas{% endblock %}
+{% block breadcrumb %}Tenant Quotas{% endblock %}
+
+{% block content %}
+<style>
+  .tq-wrap { max-width: 1100px; margin: 0 auto; }
+
+  .tq-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; margin-bottom: 20px;
+  }
+  .tq-eyebrow {
+    font-size: 11px; font-weight: 700; color: #3d5a99;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+  .tq-title {
+    font-size: 28px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.5px; margin-bottom: 6px;
+  }
+  .tq-sub {
+    font-size: 13px; color: #4a5568;
+    max-width: 500px; line-height: 1.5;
+  }
+
+  .tq-stats {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px; margin-bottom: 24px;
+  }
+  .tq-stat {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 20px;
+    position: relative; overflow: hidden;
+  }
+  .tq-stat.green-card { background: #edfae8; border-color: #bbf7d0; }
+  .tq-stat-lbl {
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .tq-stat.green-card .tq-stat-lbl { color: #166534; }
+  .tq-stat-val {
+    font-size: 32px; font-weight: 800; color: #1a2744;
+    line-height: 1; font-variant-numeric: tabular-nums;
+    margin-bottom: 6px;
+  }
+  .tq-stat-sub { font-size: 12px; color: #8a96a8; }
+  .tq-stat.green-card .tq-stat-sub { color: #166534; }
+  .tq-health-pills { display: flex; gap: 6px; margin-top: 10px; }
+  .tq-health-pill {
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 10px; font-weight: 700;
+    background: rgba(255,255,255,0.6);
+    color: #166534; border: 1px solid #bbf7d0;
+  }
+
+  .tq-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+  }
+  .tq-card-hd {
+    padding: 14px 20px; border-bottom: 1px solid #f1f5f9;
+    display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .tq-card-title { font-size: 16px; font-weight: 700; color: #3d5a99; }
+  .tq-table { width: 100%; border-collapse: collapse; }
+  .tq-table th {
+    text-align: left; padding: 10px 18px;
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    background: #fafafa; border-bottom: 1px solid #e2e8f0;
+  }
+  .tq-table td {
+    padding: 16px 18px; border-bottom: 1px solid #f8faff;
+    vertical-align: middle;
+  }
+  .tq-table tr:last-child td { border-bottom: none; }
+  .tq-table tr:hover td { background: #fafbff; }
+
+  .tq-progress { display: flex; align-items: center; gap: 10px; }
+  .tq-progress-label {
+    font-size: 12px; font-weight: 600; color: #1a2744;
+    white-space: nowrap; min-width: 40px;
+  }
+  .tq-progress-bar {
+    flex: 1; height: 6px; background: #f0f4ff;
+    border-radius: 3px; overflow: hidden;
+  }
+  .tq-progress-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.6s ease;
+  }
+  .tq-progress-fill.green { background: #3d5a99; }
+  .tq-progress-fill.amber { background: #f59e0b; }
+  .tq-progress-fill.red   { background: #ef4444; }
+  .tq-progress-pct {
+    font-size: 11px; font-weight: 700; color: #8a96a8;
+    min-width: 35px; text-align: right;
+  }
+  .tq-progress-pct.amber { color: #d97706; }
+  .tq-progress-pct.red   { color: #dc2626; }
+
+  .tq-feature-pill {
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase;
+  }
+  .tq-feature-pill.enterprise { background:#edfae8;color:#166534; }
+  .tq-feature-pill.monthly    { background:#e8eef8;color:#2d4578; }
+  .tq-feature-pill.cycle      { background:#fef3c7;color:#92400e; }
+  .tq-feature-pill.trial      { background:#f1f5f9;color:#475569; }
+  .tq-feature-pill.yearly     { background:#edfae8;color:#166534; }
+
+  .tq-edit-btn {
+    padding: 6px 16px; background: white;
+    border: 1.5px solid #e2e8f0; border-radius: 8px;
+    font-size: 12px; font-weight: 700; color: #3d5a99;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .tq-edit-btn:hover { border-color: #3d5a99; background: #e8eef8; }
+
+  .tq-panel-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.3); z-index: 100;
+  }
+  .tq-panel {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 340px; background: white;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    overflow-y: auto; z-index: 101;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  }
+  .tq-panel.open { transform: translateX(0); }
+</style>
+
+<div class="tq-wrap">
+  <div class="tq-header">
+    <div>
+      <div class="tq-eyebrow">Platform Governance</div>
+      <div class="tq-title">Tenant Quotas</div>
+      <div class="tq-sub">
+        Manage resource allocation and feature entitlement
+        for your global farming clusters. All updates propagate in real-time.
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <a href="{% url 'superadmin:analytics' %}"
+         style="display:inline-flex;align-items:center;gap:7px;
+                padding:10px 18px;background:white;
+                border:1.5px solid #e2e8f0;border-radius:10px;
+                font-size:13px;font-weight:600;color:#4a5568;
+                text-decoration:none">
+        ↓ Usage Report
+      </a>
+      <a href="/admin/tenants/organization/add/"
+         style="display:inline-flex;align-items:center;gap:7px;
+                padding:10px 18px;background:#3d5a99;color:white;
+                border-radius:10px;font-size:13px;font-weight:700;
+                text-decoration:none">
+        + New Tenant
+      </a>
+    </div>
+  </div>
+
+  <div class="tq-stats">
+    <div class="tq-stat">
+      <div class="tq-stat-lbl">Global Active Tenants</div>
+      <div class="tq-stat-val">{{ active_orgs }}</div>
+      <div class="tq-progress" style="margin-top:8px">
+        <div class="tq-progress-bar">
+          <div class="tq-progress-fill green"
+               style="width:{% if total_orgs %}{% widthratio active_orgs total_orgs 100 %}{% else %}0{% endif %}%">
+          </div>
+        </div>
+      </div>
+      <div class="tq-stat-sub" style="margin-top:6px">
+        of {{ total_orgs }} total registered
+      </div>
+    </div>
+    <div class="tq-stat">
+      <div class="tq-stat-lbl">Active Tenants</div>
+      <div class="tq-stat-val">{{ active_orgs }}</div>
+      <div class="tq-stat-sub">{{ org_list|length }} active clusters</div>
+    </div>
+    <div class="tq-stat green-card">
+      <div class="tq-stat-lbl">System Health</div>
+      <div class="tq-stat-val">Optimal</div>
+      <div class="tq-health-pills">
+        <span class="tq-health-pill">API</span>
+        <span class="tq-health-pill">DB</span>
+        <span class="tq-health-pill">AI</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tq-card">
+    <div class="tq-card-hd">
+      <div class="tq-card-title">Active Managed Clusters</div>
+    </div>
+    <table class="tq-table">
+      <thead>
+        <tr>
+          <th>Tenant Name</th>
+          <th>Active Users</th>
+          <th>Storage Used</th>
+          <th>Feature Set</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in org_list %}
+        {% with org=item.org %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:36px;height:36px;border-radius:10px;
+                          background:#e8eef8;display:flex;align-items:center;
+                          justify-content:center;font-size:13px;
+                          font-weight:800;color:#3d5a99">
+                {{ org.name|first|upper }}{{ org.name|slice:"1:2"|upper }}
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#1a2744">
+                  {{ org.name }}
+                </div>
+                <div style="font-size:11px;color:#8a96a8">{{ org.owner_email }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="tq-progress">
+              <span class="tq-progress-label">
+                {{ item.user_count }}/{{ org.max_users }}
+              </span>
+              <div class="tq-progress-bar">
+                <div class="tq-progress-fill
+                     {% if item.user_pct >= 90 %}red
+                     {% elif item.user_pct >= 70 %}amber
+                     {% else %}green{% endif %}"
+                     style="width:{{ item.user_pct }}%">
+                </div>
+              </div>
+              <span class="tq-progress-pct
+                   {% if item.user_pct >= 90 %}red
+                   {% elif item.user_pct >= 70 %}amber{% endif %}">
+                {{ item.user_pct }}%
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="tq-progress">
+              <span class="tq-progress-label">
+                1/{{ org.storage_quota_gb }}GB
+              </span>
+              <div class="tq-progress-bar">
+                <div class="tq-progress-fill
+                     {% if item.storage_pct >= 90 %}red
+                     {% elif item.storage_pct >= 70 %}amber
+                     {% else %}green{% endif %}"
+                     style="width:{{ item.storage_pct }}%">
+                </div>
+              </div>
+              <span class="tq-progress-pct">{{ item.storage_pct }}%</span>
+            </div>
+          </td>
+          <td>
+            <span class="tq-feature-pill {{ org.plan_tier }}">
+              {{ org.plan_tier|title }}
+            </span>
+          </td>
+          <td>
+            <button class="tq-edit-btn"
+                    hx-get="{% url 'superadmin:quota_edit' org.pk %}"
+                    hx-target="#tq-panel-content"
+                    hx-swap="innerHTML"
+                    onclick="openQuotaPanel()">
+              Edit Quotas
+            </button>
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr>
+          <td colspan="5"
+              style="text-align:center;padding:40px;color:#8a96a8;font-size:13px">
+            No active tenants found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="tq-panel-overlay" id="tq-overlay" onclick="closeQuotaPanel()"></div>
+<div class="tq-panel" id="tq-panel">
+  <div id="tq-panel-content"></div>
+</div>
+
+<script>
+function openQuotaPanel() {
+  document.getElementById('tq-overlay').style.display = 'block';
+  document.getElementById('tq-panel').classList.add('open');
+}
+function closeQuotaPanel() {
+  document.getElementById('tq-overlay').style.display = 'none';
+  document.getElementById('tq-panel').classList.remove('open');
+}
+document.addEventListener('htmx:afterRequest', function(e) {
+  const trigger = e.detail.xhr.getResponseHeader('HX-Trigger');
+  if (trigger && trigger.includes('showToast')) {
+    closeQuotaPanel();
+  }
+});
+</script>
+{% endblock %}

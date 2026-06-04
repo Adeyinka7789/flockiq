@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% block title %}System Health{% endblock %}
+{% block breadcrumb %}System Health{% endblock %}
+
+{% block content %}
+<style>
+  .sh-wrap { max-width: 1100px; margin: 0 auto; }
+
+  .sh-title {
+    font-size: 22px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.4px; margin-bottom: 20px;
+  }
+
+  .sh-metrics {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px; margin-bottom: 24px;
+  }
+  .sh-metric {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 20px;
+  }
+  .sh-metric-lbl {
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .sh-metric-val {
+    font-size: 36px; font-weight: 800; color: #1a2744;
+    line-height: 1; font-variant-numeric: tabular-nums;
+    margin-bottom: 6px;
+  }
+  .sh-metric-sub {
+    font-size: 12px; color: #8a96a8;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .sh-metric-sub .dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+  .sh-metric-bar {
+    height: 4px; background: #f0f4ff; border-radius: 2px;
+    overflow: hidden; margin-top: 8px;
+  }
+  .sh-metric-fill {
+    height: 100%; border-radius: 2px; background: #8bc87a;
+    transition: width 0.6s ease;
+  }
+
+  .sh-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .sh-card-hd {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid #f1f5f9;
+  }
+  .sh-card-title { font-size:14px;font-weight:700;color:#1a2744; }
+  .sh-card-sub   { font-size:12px;color:#8a96a8;margin-top:2px; }
+
+  .sh-refresh-btn {
+    padding: 7px 16px; background: #3d5a99; color: white;
+    border: none; border-radius: 9px; font-size: 12px;
+    font-weight: 700; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sh-refresh-btn:hover { background: #2d4578; }
+
+  .sh-table { width: 100%; border-collapse: collapse; }
+  .sh-table th {
+    text-align: left; padding: 10px 16px;
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    background: #fafafa; border-bottom: 1px solid #e2e8f0;
+  }
+  .sh-table td {
+    padding: 14px 16px; font-size: 13px;
+    border-bottom: 1px solid #f8faff; color: #1a2744;
+    vertical-align: middle;
+  }
+  .sh-table tr:last-child td { border-bottom: none; }
+  .sh-table tr:hover td { background: #fafbff; }
+
+  .sh-task-id { font-family: monospace; font-size: 11px; color: #8a96a8; }
+  .sh-status {
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .sh-status-dot { width:6px;height:6px;border-radius:50%; }
+  .sh-status.success { background:#edfae8;color:#166534; }
+  .sh-status.success .sh-status-dot { background:#16a34a; }
+  .sh-status.failure { background:#fee2e2;color:#991b1b; }
+  .sh-status.failure .sh-status-dot { background:#ef4444; }
+  .sh-status.pending { background:#e8eef8;color:#2d4578; }
+  .sh-status.pending .sh-status-dot {
+    background:#3d5a99;
+    animation:blink 1.5s infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+  .sh-error-btn {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: #fee2e2; border: none; cursor: pointer;
+    color: #dc2626; font-size: 12px; transition: all 0.15s;
+  }
+  .sh-error-btn:hover { background: #fecaca; }
+
+  @media(max-width:900px){
+    .sh-metrics{grid-template-columns:1fr 1fr}
+  }
+</style>
+
+<div class="sh-wrap">
+  <div class="sh-title">System Health</div>
+
+  <div class="sh-metrics">
+    <div class="sh-metric">
+      <div class="sh-metric-lbl">Workers Running</div>
+      <div class="sh-metric-val">{{ workers_running|default:0 }}</div>
+      <div class="sh-metric-sub">
+        <span class="dot"
+              style="background:{% if workers_running > 0 %}#16a34a{% else %}#ef4444{% endif %}">
+        </span>
+        {% if workers_running > 0 %}Celery/Redis Active
+        {% else %}No workers detected{% endif %}
+      </div>
+      <div class="sh-metric-bar">
+        <div class="sh-metric-fill"
+             style="width:{% if workers_running > 0 %}100{% else %}0{% endif %}%">
+        </div>
+      </div>
+    </div>
+    <div class="sh-metric">
+      <div class="sh-metric-lbl">Queue Size</div>
+      <div class="sh-metric-val">{{ queue_size }}</div>
+      <div class="sh-metric-sub">
+        {% if queue_size > 50 %}
+        <span class="dot" style="background:#f59e0b"></span>
+        Moderate Load
+        {% elif queue_size > 0 %}
+        <span class="dot" style="background:#16a34a"></span>
+        Normal
+        {% else %}
+        <span class="dot" style="background:#16a34a"></span>
+        Empty — idle
+        {% endif %}
+      </div>
+    </div>
+    <div class="sh-metric">
+      <div class="sh-metric-lbl">Success Rate (7 days)</div>
+      <div class="sh-metric-val"
+           style="font-size:28px;color:
+                  {% if success_rate >= 95 %}#16a34a
+                  {% elif success_rate >= 80 %}#d97706
+                  {% else %}#dc2626{% endif %}">
+        {{ success_rate }}%
+      </div>
+      <div class="sh-metric-sub">{{ failed_today }} failed today</div>
+      <div class="sh-metric-bar">
+        <div class="sh-metric-fill"
+             style="width:{{ success_rate }}%;
+                    background:{% if success_rate >= 95 %}#8bc87a
+                    {% elif success_rate >= 80 %}#f59e0b
+                    {% else %}#ef4444{% endif %}">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sh-card">
+    <div class="sh-card-hd">
+      <div>
+        <div class="sh-card-title">Background Job Log</div>
+        <div class="sh-card-sub">Real-time status of all dispatched worker tasks</div>
+      </div>
+      <button class="sh-refresh-btn"
+              hx-get="{% url 'superadmin:system_health' %}"
+              hx-target="#sh-task-table"
+              hx-select="#sh-task-table"
+              hx-swap="outerHTML">
+        ↻ Refresh Log
+      </button>
+    </div>
+    <div id="sh-task-table">
+      <table class="sh-table">
+        <thead>
+          <tr>
+            <th>Task ID</th>
+            <th>Task Name</th>
+            <th>Execution Time</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in recent_tasks %}
+          <tr>
+            <td>
+              <span class="sh-task-id">#{{ task.task_id|slice:":12" }}</span>
+            </td>
+            <td style="font-size:13px;font-weight:600;color:#1a2744">
+              {{ task.task_name|default:"Unknown" }}
+            </td>
+            <td style="font-size:13px;color:#4a5568;font-variant-numeric:tabular-nums">
+              {% if task.date_done and task.date_created %}
+              {{ task.date_done|timeuntil:task.date_created }}
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <span class="sh-status
+                   {% if task.status == 'SUCCESS' %}success
+                   {% elif task.status == 'FAILURE' %}failure
+                   {% else %}pending{% endif %}">
+                <span class="sh-status-dot"></span>
+                {{ task.status|title }}
+              </span>
+            </td>
+            <td>
+              {% if task.status == 'FAILURE' %}
+              <button class="sh-error-btn"
+                      title="View error"
+                      onclick="showError('{{ task.task_id|escapejs }}', '{{ task.result|default:''|escapejs }}')">
+                ⚠
+              </button>
+              {% else %}
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+                   stroke="#e2e8f0" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5"
+                style="text-align:center;padding:48px;color:#8a96a8;font-size:13px">
+              <div style="font-size:28px;margin-bottom:10px">⚙️</div>
+              No task history yet. Tasks will appear here once
+              Celery workers run in production.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if periodic_tasks %}
+  <div class="sh-card">
+    <div class="sh-card-hd">
+      <div class="sh-card-title">Scheduled Beat Tasks</div>
+    </div>
+    <table class="sh-table">
+      <thead>
+        <tr>
+          <th>Task Name</th>
+          <th>Schedule</th>
+          <th>Last Run</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in periodic_tasks %}
+        <tr>
+          <td style="font-size:13px;font-weight:600;color:#1a2744">
+            {{ task.name }}
+          </td>
+          <td style="font-size:12px;color:#4a5568;font-family:monospace">
+            {% if task.crontab %}{{ task.crontab }}
+            {% elif task.interval %}Every {{ task.interval }}
+            {% endif %}
+          </td>
+          <td style="font-size:12px;color:#8a96a8">
+            {% if task.last_run_at %}{{ task.last_run_at|timesince }} ago
+            {% else %}Never{% endif %}
+          </td>
+          <td>
+            <span class="sh-status {% if task.enabled %}success{% else %}pending{% endif %}">
+              <span class="sh-status-dot"></span>
+              {% if task.enabled %}Active{% else %}Disabled{% endif %}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<div id="sh-error-overlay"
+     style="display:none;position:fixed;inset:0;
+            background:rgba(0,0,0,0.5);z-index:200;
+            align-items:center;justify-content:center"
+     onclick="if(event.target===this)closeError()">
+  <div style="background:white;border-radius:16px;
+              max-width:600px;width:90%;overflow:hidden">
+    <div style="padding:16px 20px;border-bottom:1px solid #f1f5f9;
+                display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#dc2626">
+          Task Failure Detail
+        </div>
+        <div id="sh-error-id"
+             style="font-size:11px;color:#8a96a8;font-family:monospace"></div>
+      </div>
+      <button onclick="closeError()"
+              style="width:28px;height:28px;border-radius:8px;
+                     border:none;background:#f4f7fe;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:16px 20px">
+      <div style="font-size:11px;font-weight:700;color:#8a96a8;
+                  text-transform:uppercase;letter-spacing:0.07em;
+                  margin-bottom:8px">Error Traceback</div>
+      <pre id="sh-error-trace"
+           style="background:#1a2744;color:#8bc87a;
+                  border-radius:10px;padding:16px;
+                  font-size:11px;line-height:1.6;
+                  overflow-x:auto;max-height:300px;
+                  overflow-y:auto;white-space:pre-wrap;
+                  word-break:break-all"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+function showError(taskId, trace) {
+  document.getElementById('sh-error-id').textContent = 'ID: #' + taskId;
+  document.getElementById('sh-error-trace').textContent = trace || 'No traceback available';
+  const overlay = document.getElementById('sh-error-overlay');
+  overlay.style.display = 'flex';
+}
+function closeError() {
+  document.getElementById('sh-error-overlay').style.display = 'none';
+}
+</script>
+{% endblock %}

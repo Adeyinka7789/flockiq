@@ -8,3 +8,6 @@ class TenantsConfig(AppConfig):
 
     def ready(self):
         import apps.infrastructure.tenants.signals  # noqa: F401
+        from auditlog.registry import auditlog
+        from apps.infrastructure.tenants.models import Organization
+        auditlog.register(Organization)

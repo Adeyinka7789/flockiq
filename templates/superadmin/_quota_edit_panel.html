@@ -1,0 +1,67 @@
+<div style="padding:20px;border-bottom:1px solid #f1f5f9;
+            display:flex;align-items:center;justify-content:space-between">
+  <div>
+    <div style="font-size:15px;font-weight:800;color:#1a2744;margin-bottom:2px">
+      Edit Quotas
+    </div>
+    <div style="font-size:12px;color:#8a96a8">{{ org.name }}</div>
+  </div>
+  <button onclick="closeQuotaPanel()"
+          style="width:28px;height:28px;border-radius:8px;
+                 border:none;background:#f4f7fe;cursor:pointer;
+                 font-size:14px;color:#4a5568">✕</button>
+</div>
+
+<div style="padding:20px">
+  <form hx-post="{% url 'superadmin:quota_edit' org.pk %}" hx-swap="none">
+    {% csrf_token %}
+
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:700;
+                    color:#4a5568;margin-bottom:5px;
+                    text-transform:uppercase;letter-spacing:0.05em">
+        Max Users
+      </label>
+      <input type="number" name="max_users"
+             value="{{ org.max_users }}" min="1" max="999"
+             style="width:100%;padding:9px 12px;
+                    border:1.5px solid #e2e8f0;border-radius:9px;
+                    font-size:13px;box-sizing:border-box;outline:none"
+             onfocus="this.style.borderColor='#3d5a99'"
+             onblur="this.style.borderColor='#e2e8f0'">
+    </div>
+
+    <div style="margin-bottom:20px">
+      <label style="display:block;font-size:11px;font-weight:700;
+                    color:#4a5568;margin-bottom:5px;
+                    text-transform:uppercase;letter-spacing:0.05em">
+        Storage Quota (GB)
+      </label>
+      <input type="number" name="storage_quota_gb"
+             value="{{ org.storage_quota_gb }}" min="1" max="999"
+             style="width:100%;padding:9px 12px;
+                    border:1.5px solid #e2e8f0;border-radius:9px;
+                    font-size:13px;box-sizing:border-box;outline:none"
+             onfocus="this.style.borderColor='#3d5a99'"
+             onblur="this.style.borderColor='#e2e8f0'">
+    </div>
+
+    <div style="background:#f4f7fe;border-radius:9px;
+                padding:12px 14px;margin-bottom:16px;
+                font-size:12px;color:#4a5568">
+      <strong>Current usage:</strong>
+      Max users: {{ org.max_users }} ·
+      Storage: {{ org.storage_quota_gb }}GB
+    </div>
+
+    <button type="submit"
+            style="width:100%;padding:11px;background:#3d5a99;
+                   color:white;border:none;border-radius:10px;
+                   font-size:13px;font-weight:700;cursor:pointer;
+                   transition:background 0.15s"
+            onmouseover="this.style.background='#2d4578'"
+            onmouseout="this.style.background='#3d5a99'">
+      Save Quota Changes
+    </button>
+  </form>
+</div>

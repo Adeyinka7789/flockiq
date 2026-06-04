@@ -10,13 +10,14 @@ from rest_framework_simplejwt.views import (
 )
 
 from apps.infrastructure.accounts.views import WebLoginView, WebLogoutView, SignupView
-from apps.infrastructure.core.views import DashboardView
+from apps.infrastructure.core.views import DashboardView, SessionCheckView
 from apps.infrastructure.core.search import GlobalSearchView
 from apps.infrastructure.superadmin import urls as superadmin_urls
 
 urlpatterns = [
     # ── Web app shell (must be first) ────────────────────────────────────────
     path("", DashboardView.as_view(), name="dashboard"),
+    path("api/session/check/", SessionCheckView.as_view(), name="session_check"),
     path("search/", GlobalSearchView.as_view(), name="global_search"),
     path("login/", WebLoginView.as_view(), name="login"),
     path("logout/", WebLogoutView.as_view(), name="logout"),

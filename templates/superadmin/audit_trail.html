@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Audit Trail{% endblock %}
+{% block breadcrumb %}Audit Trail{% endblock %}
+
+{% block content %}
+<style>
+  .at-wrap { max-width: 1100px; margin: 0 auto; }
+
+  .at-title {
+    font-size: 24px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.5px; margin-bottom: 4px;
+  }
+  .at-sub { font-size: 13px; color: #8a96a8; margin-bottom: 20px; }
+
+  .at-filters {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr auto;
+    gap: 10px; margin-bottom: 16px; align-items: end;
+  }
+  .at-filter-lbl {
+    display: block; font-size: 10px; font-weight: 700;
+    color: #8a96a8; text-transform: uppercase;
+    letter-spacing: 0.07em; margin-bottom: 5px;
+  }
+  .at-select, .at-input {
+    width: 100%; padding: 8px 12px;
+    border: 1.5px solid #e2e8f0; border-radius: 9px;
+    font-size: 12px; color: #1a2744; background: white;
+    outline: none; box-sizing: border-box;
+  }
+  .at-select:focus, .at-input:focus { border-color: #3d5a99; }
+  .at-apply-btn {
+    padding: 8px 18px; background: #3d5a99; color: white;
+    border: none; border-radius: 9px; font-size: 12px;
+    font-weight: 700; cursor: pointer; white-space: nowrap;
+    transition: all 0.15s;
+  }
+  .at-apply-btn:hover { background: #2d4578; }
+
+  .at-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .at-table { width: 100%; border-collapse: collapse; }
+  .at-table th {
+    text-align: left; padding: 10px 16px;
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    background: #fafafa; border-bottom: 1px solid #e2e8f0;
+  }
+  .at-table td {
+    padding: 13px 16px; font-size: 12px;
+    border-bottom: 1px solid #f8faff; color: #1a2744;
+    vertical-align: middle;
+  }
+  .at-table tr:last-child td { border-bottom: none; }
+  .at-table tr:hover td { background: #fafbff; }
+
+  .at-timestamp { font-size: 12px; color: #4a5568; font-variant-numeric: tabular-nums; }
+  .at-timestamp-sub { font-size: 10px; color: #8a96a8; }
+
+  .at-actor { display: flex; align-items: center; gap: 8px; }
+  .at-actor-avatar {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; color: white; flex-shrink: 0;
+  }
+  .at-actor-email { font-size: 12px; color: #1a2744; font-weight: 500; }
+
+  .at-action-sig {
+    padding: 3px 10px; border-radius: 6px;
+    font-size: 10px; font-weight: 700;
+    font-family: monospace; letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .at-action-sig.create { background:#edfae8;color:#166534; }
+  .at-action-sig.update { background:#e8eef8;color:#2d4578; }
+  .at-action-sig.delete { background:#fee2e2;color:#991b1b; }
+  .at-action-sig.access { background:#fef3c7;color:#92400e; }
+
+  .at-resource { font-size: 12px; color: #4a5568; font-family: monospace; }
+
+  .at-stats-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  }
+  .at-stat-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 20px;
+  }
+  .at-stat-title {
+    font-size: 14px; font-weight: 700; color: #1a2744;
+    margin-bottom: 4px; display: flex; align-items: center; gap: 8px;
+  }
+  .at-stat-val {
+    font-size: 32px; font-weight: 800; color: #1a2744;
+    line-height: 1; font-variant-numeric: tabular-nums; margin-bottom: 4px;
+  }
+  .at-stat-change { font-size: 11px; font-weight: 700; color: #16a34a; }
+  .at-stat-sub { font-size: 12px; color: #8a96a8; margin-top: 6px; }
+
+  .at-security-row { display: flex; gap: 20px; margin-top: 12px; flex-wrap: wrap; }
+  .at-security-lbl {
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px;
+  }
+  .at-security-val {
+    font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums;
+  }
+  .at-security-val.red   { color: #dc2626; }
+  .at-security-val.amber { color: #d97706; }
+  .at-security-val.green { color: #16a34a; }
+
+  @media(max-width:900px){
+    .at-filters{grid-template-columns:1fr 1fr}
+    .at-stats-grid{grid-template-columns:1fr}
+  }
+</style>
+
+<div class="at-wrap">
+  <div class="at-title">Audit Trail</div>
+  <div class="at-sub">Complete log of all platform actions and data changes</div>
+
+  <!-- Filters -->
+  <form method="GET">
+  <div class="at-filters" id="at-filters">
+    <div>
+      <label class="at-filter-lbl">Tenant</label>
+      <select name="tenant" class="at-select"
+              hx-get="{% url 'superadmin:audit_trail' %}"
+              hx-target="#at-table-wrap"
+              hx-include="#at-filters"
+              hx-trigger="change">
+        <option value="">All Tenants</option>
+        {% for org in all_orgs %}
+        <option value="{{ org.pk }}"
+                {% if active_tenant == org.pk|stringformat:'s' %}selected{% endif %}>
+          {{ org.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="at-filter-lbl">Action Type</label>
+      <select name="action" class="at-select"
+              hx-get="{% url 'superadmin:audit_trail' %}"
+              hx-target="#at-table-wrap"
+              hx-include="#at-filters"
+              hx-trigger="change">
+        <option value="">All Actions</option>
+        <option value="create" {% if active_action == 'create' %}selected{% endif %}>Create</option>
+        <option value="update" {% if active_action == 'update' %}selected{% endif %}>Update</option>
+        <option value="delete" {% if active_action == 'delete' %}selected{% endif %}>Delete</option>
+      </select>
+    </div>
+    <div>
+      <label class="at-filter-lbl">Search</label>
+      <input type="text" name="q" class="at-input"
+             placeholder="Search logs, users..."
+             value="{{ search_query|default:'' }}"
+             hx-get="{% url 'superadmin:audit_trail' %}"
+             hx-trigger="keyup changed delay:300ms"
+             hx-target="#at-table-wrap"
+             hx-include="#at-filters">
+    </div>
+    <div>
+      <label class="at-filter-lbl">Date From</label>
+      <input type="date" name="date_from" class="at-input"
+             value="{{ date_from }}"
+             hx-get="{% url 'superadmin:audit_trail' %}"
+             hx-trigger="change"
+             hx-target="#at-table-wrap"
+             hx-include="#at-filters">
+    </div>
+    <button type="submit" class="at-apply-btn">Apply Filters</button>
+  </div>
+  </form>
+
+  <!-- Table -->
+  <div id="at-table-wrap">
+    {% include 'superadmin/_audit_table.html' %}
+  </div>
+
+  <!-- Bottom stats -->
+  <div class="at-stats-grid">
+    <div class="at-stat-card">
+      <div class="at-stat-title">📈 Activity Velocity</div>
+      <div class="at-stat-val">{{ this_week_count }}</div>
+      <div class="at-stat-change">
+        {% if last_week_count > 0 %}
+        {% widthratio this_week_count last_week_count 100 as pct %}
+        +{{ pct|add:"-100" }}% vs last week
+        {% endif %}
+      </div>
+      <div class="at-stat-sub">System operations this week</div>
+    </div>
+    <div class="at-stat-card">
+      <div class="at-stat-title">🛡️ Security Health</div>
+      <div class="at-security-row">
+        <div>
+          <div class="at-security-lbl">Total Logs</div>
+          <div class="at-security-val">{{ total_count }}</div>
+        </div>
+        <div>
+          <div class="at-security-lbl">This Week</div>
+          <div class="at-security-val green">{{ this_week_count }}</div>
+        </div>
+        <div>
+          <div class="at-security-lbl">On Page</div>
+          <div class="at-security-val amber">{{ page_obj.object_list|length }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

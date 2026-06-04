@@ -3,6 +3,13 @@ from django.contrib.auth.admin import UserAdmin
 from unfold.admin import ModelAdmin
 
 from .models import CustomUser
+from apps.infrastructure.accounts.impersonation import ImpersonationLog
+
+
+@admin.register(ImpersonationLog)
+class ImpersonationLogAdmin(ModelAdmin):
+    list_display = ['impersonator', 'target_org', 'started_at', 'ended_at']
+    readonly_fields = ['started_at']
 
 
 @admin.register(CustomUser)

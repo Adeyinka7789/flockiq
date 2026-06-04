@@ -1,9 +1,56 @@
 import structlog
-from django.http import Http404
+from django.http import Http404, HttpResponse
 
 from .rls import set_tenant_context
 
 logger = structlog.get_logger(__name__)
+
+
+class ImpersonationMiddleware:
+    """
+    If _impersonated_user_id is in session, swap request.user to the
+    impersonated user for this request. Original admin identity preserved.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        impersonated_user_id = request.session.get('_impersonated_user_id')
+
+        if impersonated_user_id and request.user.is_authenticated:
+            try:
+                from apps.infrastructure.accounts.models import CustomUser
+                impersonated = CustomUser.objects.get(
+                    pk=impersonated_user_id, is_active=True)
+                request.impersonator = request.user
+                request.user = impersonated
+                request.is_impersonating = True
+            except CustomUser.DoesNotExist:
+                del request.session['_impersonated_user_id']
+                request.is_impersonating = False
+        else:
+            request.is_impersonating = False
+            request.impersonator = None
+
+        return self.get_response(request)
+
+
+class HtmxSessionExpiredMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        if (
+            response.status_code == 302
+            and request.headers.get("HX-Request")
+            and "/login/" in response.get("Location", "")
+        ):
+            new_response = HttpResponse(status=204)
+            new_response["HX-Redirect"] = response["Location"]
+            return new_response
+        return response
 
 
 class TenantMiddleware:

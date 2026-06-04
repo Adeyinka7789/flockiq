@@ -8,3 +8,7 @@ class FlocksConfig(AppConfig):
 
     def ready(self):
         import apps.farm.flocks.signals  # noqa: F401
+        from auditlog.registry import auditlog
+        from apps.farm.flocks.models import Batch, MortalityLog
+        auditlog.register(Batch)
+        auditlog.register(MortalityLog)

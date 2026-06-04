@@ -155,7 +155,7 @@ class BillingPageView(LoginRequiredMixin, View):
         # Super admins have no org — redirect to admin dashboard
         if request.user.is_superuser or \
            getattr(request.user, 'role', '') == 'super_admin':
-            return redirect('superadmin:dashboard')
+            return redirect('superadmin:billing')
 
         from datetime import timedelta
         from apps.infrastructure.billing.features import get_plan_features

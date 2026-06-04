@@ -1,0 +1,108 @@
+<div class="at-card">
+  <table class="at-table">
+    <thead>
+      <tr>
+        <th>Timestamp</th>
+        <th>Admin / User</th>
+        <th>Action</th>
+        <th>Target Resource</th>
+        <th>Changes</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in page_obj %}
+      <tr>
+        <td>
+          <div class="at-timestamp">{{ log.timestamp|date:"Y-m-d" }}</div>
+          <div class="at-timestamp-sub">{{ log.timestamp|date:"H:i:s" }}</div>
+        </td>
+        <td>
+          {% if log.actor %}
+          <div class="at-actor">
+            <div class="at-actor-avatar" style="background:#3d5a99">
+              {{ log.actor.email|first|upper }}{{ log.actor.email|slice:"1:2"|upper }}
+            </div>
+            <div class="at-actor-email">{{ log.actor.email|truncatechars:25 }}</div>
+          </div>
+          {% else %}
+          <span style="color:#8a96a8;font-size:12px">System</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if log.action == 0 %}
+          <span class="at-action-sig create">CREATE</span>
+          {% elif log.action == 1 %}
+          <span class="at-action-sig update">UPDATE</span>
+          {% elif log.action == 2 %}
+          <span class="at-action-sig delete">DELETE</span>
+          {% else %}
+          <span class="at-action-sig access">ACCESS</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="at-resource">{{ log.content_type.model|upper }}_{{ log.object_id|slice:":8" }}</div>
+          <div style="font-size:11px;color:#8a96a8;margin-top:2px">
+            {{ log.object_repr|truncatechars:30 }}
+          </div>
+        </td>
+        <td style="font-size:11px;color:#4a5568;max-width:200px">
+          {% if log.changes %}
+          <span style="font-family:monospace;background:#f4f7fe;padding:2px 6px;
+                       border-radius:4px;font-size:10px">
+            {{ log.changes|truncatechars:60 }}
+          </span>
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+               stroke="#8a96a8" stroke-width="2" style="cursor:pointer">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6"
+            style="text-align:center;padding:48px;color:#8a96a8;font-size:13px">
+          <div style="font-size:28px;margin-bottom:10px">📋</div>
+          No audit log entries yet.
+          <div style="font-size:11px;margin-top:6px">
+            Actions on registered models will appear here.
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div style="display:flex;align-items:center;justify-content:space-between;
+              padding:14px 18px;border-top:1px solid #f1f5f9;
+              font-size:12px;color:#4a5568">
+    <span>
+      Showing <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong>
+      of <strong>{{ total_count }}</strong> entries
+    </span>
+    <div style="display:flex;gap:4px">
+      {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}"
+         style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;
+                background:white;display:flex;align-items:center;
+                justify-content:center;text-decoration:none;color:#4a5568">←</a>
+      {% endif %}
+      <span style="width:30px;height:30px;border-radius:8px;background:#3d5a99;
+                   color:white;display:flex;align-items:center;
+                   justify-content:center;font-size:12px;font-weight:700">
+        {{ page_obj.number }}
+      </span>
+      {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}"
+         style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;
+                background:white;display:flex;align-items:center;
+                justify-content:center;text-decoration:none;color:#4a5568">→</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>

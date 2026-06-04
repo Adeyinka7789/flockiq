@@ -4,11 +4,19 @@ from datetime import date, datetime, timedelta
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import redirect_to_login
 from django.db.models import Sum
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.views import View
 from django.views.generic import TemplateView
 
 from apps.infrastructure.core.rls import set_tenant_context
+
+
+class SessionCheckView(View):
+    def get(self, request):
+        if request.user.is_authenticated:
+            return JsonResponse({"authenticated": True})
+        return JsonResponse({"authenticated": False}, status=401)
 
 
 class TenantRequiredMixin:

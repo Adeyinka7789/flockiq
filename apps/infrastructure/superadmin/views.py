@@ -308,3 +308,446 @@ class SuperAdminAnalyticsView(SuperAdminMixin, View):
             'today': today,
         }
         return render(request, 'superadmin/analytics.html', context)
+
+
+class BillingControlView(SuperAdminMixin, View):
+    def get(self, request):
+        from apps.infrastructure.billing.models import PaymentRecord, BillingPlan
+        from django.db.models import Sum, Count, Q
+        from datetime import date, timedelta
+
+        today = date.today()
+        this_month = today.replace(day=1)
+
+        mrr = PaymentRecord.objects.unscoped().filter(
+            status='success',
+            paid_at__gte=this_month,
+        ).aggregate(total=Sum('amount_kobo'))['total'] or 0
+        mrr_naira = mrr // 100
+
+        active_trials = Organization.objects.filter(
+            subscription_status='trial',
+            is_active=True,
+        ).count()
+
+        past_due = Organization.objects.filter(
+            subscription_status__in=['past_due', 'suspended'],
+        ).count()
+
+        grace_period = Organization.objects.filter(
+            grace_period_ends_at__gte=today,
+        ).count()
+
+        q = request.GET.get('q', '').strip()
+        status_filter = request.GET.get('status', 'all')
+
+        orgs = Organization.objects.order_by('-created_at')
+        if status_filter != 'all':
+            orgs = orgs.filter(subscription_status=status_filter)
+        if q:
+            orgs = orgs.filter(
+                Q(name__icontains=q) |
+                Q(owner_email__icontains=q))
+
+        org_list = []
+        for org in orgs[:50]:
+            last_payment = PaymentRecord.objects.unscoped().filter(
+                org=org, status='success'
+            ).order_by('-paid_at').first()
+
+            next_invoice = None
+            if last_payment and last_payment.plan:
+                interval = last_payment.plan.billing_interval
+                if last_payment.paid_at:
+                    if interval == 'monthly':
+                        next_invoice = (
+                            last_payment.paid_at.date() + timedelta(days=30))
+                    elif interval == 'annually':
+                        next_invoice = (
+                            last_payment.paid_at.date() + timedelta(days=365))
+
+            org_list.append({
+                'org': org,
+                'last_payment': last_payment,
+                'next_invoice': next_invoice,
+            })
+
+        context = {
+            'mrr_naira': mrr_naira,
+            'active_trials': active_trials,
+            'past_due': past_due,
+            'grace_period': grace_period,
+            'org_list': org_list,
+            'status_filter': status_filter,
+            'search_query': q,
+        }
+        return render(request, 'superadmin/billing.html', context)
+
+
+class BillingManageOrgView(SuperAdminMixin, View):
+    def get(self, request, pk):
+        from datetime import date
+        org = get_object_or_404(Organization, pk=pk)
+        return render(request,
+            'superadmin/_billing_manage_panel.html',
+            {'org': org, 'today': date.today()})
+
+    def post(self, request, pk):
+        from datetime import datetime, timedelta
+        org = get_object_or_404(Organization, pk=pk)
+        action = request.POST.get('action')
+
+        if action == 'grace_period':
+            end_date = request.POST.get('grace_end_date')
+            if end_date:
+                from django.utils import timezone
+                naive = datetime.strptime(end_date, '%Y-%m-%d')
+                org.grace_period_ends_at = timezone.make_aware(naive)
+                org.subscription_status = 'active'
+                org.is_active = True
+                org.save()
+                msg = f'Grace period set for {org.name}'
+            else:
+                msg = 'End date required'
+
+        elif action == 'extend_trial':
+            days = int(request.POST.get('days', 7))
+            if org.trial_ends_at:
+                org.trial_ends_at += timedelta(days=days)
+            else:
+                from django.utils import timezone
+                org.trial_ends_at = timezone.now() + timedelta(days=days)
+            org.subscription_status = 'trial'
+            org.save()
+            msg = f'Trial extended by {days} days for {org.name}'
+
+        elif action == 'change_status':
+            new_status = request.POST.get('status')
+            if new_status in ['active', 'trial', 'suspended', 'past_due', 'cancelled']:
+                org.subscription_status = new_status
+                org.is_active = new_status == 'active'
+                org.save()
+                msg = f'{org.name} status → {new_status}'
+            else:
+                msg = 'Invalid status'
+
+        else:
+            msg = 'Unknown action'
+
+        response = HttpResponse(status=204)
+        response['HX-Trigger'] = json.dumps({
+            'showToast': {'message': msg, 'type': 'success'},
+        })
+        response['HX-Refresh'] = 'true'
+        return response
+
+
+class ImpersonationView(SuperAdminMixin, View):
+    def get(self, request):
+        from apps.infrastructure.accounts.models import CustomUser
+        from apps.infrastructure.accounts.impersonation import ImpersonationLog
+
+        q = request.GET.get('q', '').strip()
+        role_filter = request.GET.get('role', '')
+
+        users = CustomUser.objects.filter(
+            is_active=True
+        ).exclude(
+            role='super_admin'
+        ).select_related('org').order_by('-last_login')
+
+        if q:
+            users = users.filter(
+                Q(email__icontains=q) |
+                Q(org__name__icontains=q) |
+                Q(first_name__icontains=q) |
+                Q(last_name__icontains=q))
+
+        if role_filter:
+            users = users.filter(role=role_filter)
+
+        recent_logs = ImpersonationLog.objects.select_related(
+            'impersonator', 'target_user', 'target_org'
+        ).order_by('-started_at')[:10]
+
+        context = {
+            'users': users[:50],
+            'recent_logs': recent_logs,
+            'search_query': q,
+            'role_filter': role_filter,
+        }
+        return render(request, 'superadmin/impersonation.html', context)
+
+
+class ImpersonateStartView(SuperAdminMixin, View):
+    """Start impersonating a user."""
+
+    def post(self, request, user_pk):
+        from apps.infrastructure.accounts.models import CustomUser
+        from apps.infrastructure.accounts.impersonation import ImpersonationLog
+
+        target = get_object_or_404(CustomUser, pk=user_pk, is_active=True)
+
+        if target.role == 'super_admin' or target.is_superuser:
+            response = HttpResponse(status=400)
+            response['HX-Trigger'] = json.dumps({
+                'showToast': {
+                    'message': 'Cannot impersonate super admin.',
+                    'type': 'error'
+                }
+            })
+            return response
+
+        x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+        ip = (x_forwarded.split(',')[0]
+              if x_forwarded
+              else request.META.get('REMOTE_ADDR'))
+
+        request.session['_impersonator_id'] = str(request.user.pk)
+        request.session['_impersonated_user_id'] = str(target.pk)
+        request.session.modified = True
+
+        ImpersonationLog.objects.create(
+            impersonator=request.user,
+            target_user=target,
+            target_org=target.org,
+            reason=request.POST.get('reason', ''),
+            ip_address=ip,
+        )
+
+        from django.shortcuts import redirect
+        return redirect('dashboard')
+
+
+class ImpersonateStopView(View):
+    """Stop impersonation and return to super admin."""
+
+    def post(self, request):
+        from django.utils import timezone
+        from apps.infrastructure.accounts.impersonation import ImpersonationLog
+
+        impersonated_id = request.session.get('_impersonated_user_id')
+
+        if impersonated_id:
+            try:
+                from apps.infrastructure.accounts.models import CustomUser
+                target = CustomUser.objects.get(pk=impersonated_id)
+                log = ImpersonationLog.objects.filter(
+                    target_user=target,
+                    ended_at__isnull=True,
+                ).order_by('-started_at').first()
+                if log:
+                    log.ended_at = timezone.now()
+                    log.save()
+            except Exception:
+                pass
+
+        request.session.pop('_impersonated_user_id', None)
+        request.session.pop('_impersonator_id', None)
+        request.session.modified = True
+
+        from django.shortcuts import redirect
+        return redirect('superadmin:impersonation')
+
+
+class TenantQuotasView(SuperAdminMixin, View):
+    def get(self, request):
+        from apps.infrastructure.accounts.models import CustomUser
+        from apps.infrastructure.core.rls import no_tenant_context
+        from apps.farm.flocks.models import Batch
+
+        total_orgs = Organization.objects.count()
+        active_orgs = Organization.objects.filter(is_active=True).count()
+
+        org_list = []
+        for org in Organization.objects.filter(is_active=True).order_by('name'):
+            user_count = CustomUser.objects.filter(
+                org=org, is_active=True).count()
+
+            with no_tenant_context():
+                bird_count = Batch.objects.filter(
+                    org=org, status='active'
+                ).aggregate(total=Sum('current_count'))['total'] or 0
+
+            user_pct = min(100, round(
+                user_count / max(org.max_users, 1) * 100))
+            storage_pct = min(100, round(
+                1 / max(org.storage_quota_gb, 1) * 100))
+
+            org_list.append({
+                'org': org,
+                'user_count': user_count,
+                'user_pct': user_pct,
+                'storage_pct': storage_pct,
+                'bird_count': bird_count,
+            })
+
+        context = {
+            'total_orgs': total_orgs,
+            'active_orgs': active_orgs,
+            'org_list': org_list,
+        }
+        return render(request, 'superadmin/tenant_quotas.html', context)
+
+
+class TenantQuotaEditView(SuperAdminMixin, View):
+    """HTMX panel to edit quota limits for a tenant."""
+
+    def get(self, request, pk):
+        org = get_object_or_404(Organization, pk=pk)
+        return render(request, 'superadmin/_quota_edit_panel.html', {'org': org})
+
+    def post(self, request, pk):
+        org = get_object_or_404(Organization, pk=pk)
+
+        try:
+            max_users = int(request.POST.get('max_users', 5))
+            storage_gb = int(request.POST.get('storage_quota_gb', 5))
+            org.max_users = max(1, max_users)
+            org.storage_quota_gb = max(1, storage_gb)
+            org.save()
+            msg = f'Quotas updated for {org.name}'
+        except (ValueError, TypeError):
+            msg = 'Invalid quota values'
+
+        response = HttpResponse(status=204)
+        response['HX-Trigger'] = json.dumps({
+            'showToast': {'message': msg, 'type': 'success'},
+        })
+        response['HX-Refresh'] = 'true'
+        return response
+
+
+class SystemHealthView(SuperAdminMixin, View):
+    def get(self, request):
+        from django_celery_results.models import TaskResult
+        from django_celery_beat.models import PeriodicTask
+        from datetime import date, timedelta
+        from django.db.models import Avg
+
+        today = date.today()
+
+        redis_info = {}
+        workers_running = 0
+        queue_size = 0
+        try:
+            from django_redis import get_redis_connection
+            redis_conn = get_redis_connection('default')
+            info = redis_conn.info()
+            redis_info = {
+                'connected_clients': info.get('connected_clients', 0),
+                'used_memory_human': info.get('used_memory_human', '—'),
+                'uptime_days': info.get('uptime_in_days', 0),
+            }
+            queue_size = redis_conn.llen('celery') or 0
+            workers_running = info.get('connected_clients', 1)
+        except Exception:
+            pass
+
+        recent_tasks = TaskResult.objects.order_by('-date_done')[:20]
+
+        failed_today = TaskResult.objects.filter(
+            status='FAILURE',
+            date_done__date=today,
+        ).count()
+
+        total_recent = TaskResult.objects.filter(
+            date_done__date__gte=today - timedelta(days=7)
+        ).count()
+        success_recent = TaskResult.objects.filter(
+            status='SUCCESS',
+            date_done__date__gte=today - timedelta(days=7)
+        ).count()
+        success_rate = round(success_recent / max(total_recent, 1) * 100, 1)
+
+        periodic_tasks = PeriodicTask.objects.filter(
+            enabled=True).order_by('name')[:10]
+
+        context = {
+            'redis_info': redis_info,
+            'workers_running': workers_running,
+            'queue_size': queue_size,
+            'recent_tasks': recent_tasks,
+            'failed_today': failed_today,
+            'success_rate': success_rate,
+            'periodic_tasks': periodic_tasks,
+            'today': today,
+        }
+        return render(request, 'superadmin/system_health.html', context)
+
+
+class AuditTrailView(SuperAdminMixin, View):
+    def get(self, request):
+        from auditlog.models import LogEntry
+        from django.core.paginator import Paginator
+        from django.db.models import Q
+        from datetime import date, timedelta
+
+        today = date.today()
+
+        tenant_id = request.GET.get('tenant', '')
+        action_filter = request.GET.get('action', '')
+        q = request.GET.get('q', '').strip()
+        date_from = request.GET.get('date_from', '')
+        date_to = request.GET.get('date_to', '')
+
+        logs = LogEntry.objects.select_related(
+            'actor', 'content_type'
+        ).order_by('-timestamp')
+
+        if tenant_id:
+            logs = logs.filter(actor__org_id=tenant_id)
+
+        if action_filter == 'create':
+            logs = logs.filter(action=LogEntry.Action.CREATE)
+        elif action_filter == 'update':
+            logs = logs.filter(action=LogEntry.Action.UPDATE)
+        elif action_filter == 'delete':
+            logs = logs.filter(action=LogEntry.Action.DELETE)
+
+        if q:
+            logs = logs.filter(
+                Q(actor__email__icontains=q) |
+                Q(object_repr__icontains=q) |
+                Q(changes__icontains=q))
+
+        if date_from:
+            from datetime import datetime
+            logs = logs.filter(
+                timestamp__date__gte=datetime.strptime(date_from, '%Y-%m-%d').date())
+        if date_to:
+            from datetime import datetime
+            logs = logs.filter(
+                timestamp__date__lte=datetime.strptime(date_to, '%Y-%m-%d').date())
+
+        paginator = Paginator(logs, 20)
+        page_obj = paginator.get_page(request.GET.get('page', 1))
+
+        this_week = today - timedelta(days=7)
+        last_week = today - timedelta(days=14)
+        this_week_count = LogEntry.objects.filter(
+            timestamp__date__gte=this_week).count()
+        last_week_count = LogEntry.objects.filter(
+            timestamp__date__gte=last_week,
+            timestamp__date__lt=this_week).count()
+
+        all_orgs = Organization.objects.filter(is_active=True).order_by('name')
+
+        context = {
+            'page_obj': page_obj,
+            'total_count': paginator.count,
+            'all_orgs': all_orgs,
+            'active_tenant': tenant_id,
+            'active_action': action_filter,
+            'search_query': q,
+            'date_from': date_from,
+            'date_to': date_to,
+            'this_week_count': this_week_count,
+            'last_week_count': last_week_count,
+            'today': today,
+            'LogEntry': LogEntry,
+        }
+
+        if request.headers.get('HX-Request'):
+            return render(request, 'superadmin/_audit_table.html', context)
+        return render(request, 'superadmin/audit_trail.html', context)

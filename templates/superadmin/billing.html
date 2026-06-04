@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+{% block title %}Billing Control Center{% endblock %}
+{% block breadcrumb %}Billing Control{% endblock %}
+
+{% block content %}
+<style>
+  .bc-wrap { max-width: 1100px; margin: 0 auto; }
+
+  .bc-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; margin-bottom: 24px;
+  }
+  .bc-title {
+    font-size: 24px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.5px; margin-bottom: 2px;
+  }
+  .bc-sub { font-size: 13px; color: #8a96a8; }
+
+  .bc-metrics {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 14px; margin-bottom: 24px;
+  }
+  .bc-metric {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 18px;
+    position: relative;
+  }
+  .bc-metric-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; margin-bottom: 10px;
+  }
+  .bc-metric-lbl {
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .bc-metric-val {
+    font-size: 28px; font-weight: 800; color: #1a2744;
+    line-height: 1; font-variant-numeric: tabular-nums;
+    margin-bottom: 4px;
+  }
+  .bc-metric-val.green { color: #16a34a; }
+  .bc-metric-val.amber { color: #d97706; }
+  .bc-metric-val.red   { color: #dc2626; }
+  .bc-metric-sub { font-size: 11px; color: #8a96a8; }
+
+  .bc-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+  }
+  .bc-card-hd {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid #f1f5f9;
+    flex-wrap: wrap; gap: 10px;
+  }
+  .bc-card-title {
+    font-size: 14px; font-weight: 700; color: #1a2744;
+    margin-bottom: 2px;
+  }
+  .bc-card-sub { font-size: 12px; color: #8a96a8; }
+
+  .bc-filters {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .bc-select {
+    padding: 6px 12px; border: 1.5px solid #e2e8f0;
+    border-radius: 9px; font-size: 12px; color: #1a2744;
+    background: white; outline: none; cursor: pointer;
+  }
+  .bc-search {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border: 1.5px solid #e2e8f0;
+    border-radius: 9px; background: white;
+  }
+  .bc-search input {
+    border: none; outline: none; font-size: 12px;
+    color: #1a2744; width: 160px; background: transparent;
+  }
+
+  .bc-table { width: 100%; border-collapse: collapse; }
+  .bc-table th {
+    text-align: left; padding: 10px 16px;
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    background: #fafafa; border-bottom: 1px solid #e2e8f0;
+  }
+  .bc-table td {
+    padding: 14px 16px; font-size: 13px;
+    border-bottom: 1px solid #f8faff; color: #1a2744;
+    vertical-align: middle;
+  }
+  .bc-table tr:last-child td { border-bottom: none; }
+  .bc-table tr:hover td { background: #fafbff; }
+
+  .bc-status {
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .bc-status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+  .bc-status.active     { background:#edfae8;color:#166534; }
+  .bc-status.active .bc-status-dot { background:#16a34a; }
+  .bc-status.trial      { background:#e8eef8;color:#2d4578; }
+  .bc-status.trial .bc-status-dot { background:#3d5a99; }
+  .bc-status.past_due   { background:#fee2e2;color:#991b1b; }
+  .bc-status.past_due .bc-status-dot { background:#ef4444; }
+  .bc-status.suspended  { background:#f1f5f9;color:#475569; }
+  .bc-status.suspended .bc-status-dot { background:#94a3b8; }
+  .bc-status.grace_period { background:#fef3c7;color:#92400e; }
+  .bc-status.grace_period .bc-status-dot { background:#f59e0b; }
+  .bc-status.cancelled  { background:#f1f5f9;color:#475569; }
+
+  .bc-manage-btn {
+    padding: 5px 14px; background: white;
+    border: 1.5px solid #e2e8f0; border-radius: 8px;
+    font-size: 12px; font-weight: 600; color: #3d5a99;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .bc-manage-btn:hover { border-color: #3d5a99; background: #e8eef8; }
+
+  .bc-panel-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.3); z-index: 100;
+  }
+  .bc-panel {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 380px; background: white;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    overflow-y: auto; z-index: 101;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  }
+  .bc-panel.open { transform: translateX(0); }
+  .bc-panel-hd {
+    padding: 20px; border-bottom: 1px solid #f1f5f9;
+    display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .bc-panel-title {
+    font-size: 16px; font-weight: 800; color: #1a2744;
+  }
+  .bc-panel-close {
+    width: 28px; height: 28px; border-radius: 8px;
+    border: none; background: #f4f7fe; cursor: pointer;
+    font-size: 14px; color: #4a5568;
+  }
+  .bc-panel-body { padding: 20px; }
+  .bc-panel-section {
+    margin-bottom: 20px; padding-bottom: 20px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  .bc-panel-section:last-child { border-bottom: none; }
+  .bc-panel-section-title {
+    font-size: 13px; font-weight: 700; color: #1a2744;
+    margin-bottom: 4px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .bc-panel-section-sub {
+    font-size: 12px; color: #8a96a8; margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .bc-field-lbl {
+    display: block; font-size: 11px; font-weight: 700;
+    color: #4a5568; margin-bottom: 5px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .bc-input {
+    width: 100%; padding: 9px 12px;
+    border: 1.5px solid #e2e8f0; border-radius: 9px;
+    font-size: 13px; box-sizing: border-box; outline: none;
+    margin-bottom: 10px; background: white;
+  }
+  .bc-input:focus { border-color: #3d5a99; }
+  .bc-btn-primary {
+    width: 100%; padding: 11px; background: #3d5a99;
+    color: white; border: none; border-radius: 10px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    transition: all 0.15s; margin-bottom: 8px;
+  }
+  .bc-btn-primary:hover { background: #2d4578; }
+  .bc-btn-primary.green { background: #16a34a; }
+  .bc-btn-primary.green:hover { background: #15803d; }
+  .bc-audit-note {
+    background: #fff5f5; border: 1px solid #fecaca;
+    border-radius: 9px; padding: 10px 12px;
+    font-size: 11px; color: #991b1b; margin-top: 16px;
+    line-height: 1.5;
+  }
+
+  @media(max-width:900px){
+    .bc-metrics{grid-template-columns:1fr 1fr}
+    .bc-panel{width:100%}
+  }
+</style>
+
+<div class="bc-wrap">
+  <div class="bc-header">
+    <div>
+      <div class="bc-title">Billing Control Center</div>
+      <div class="bc-sub">
+        Real-time status of all active and trialing organizations
+      </div>
+    </div>
+  </div>
+
+  <!-- Metric cards -->
+  <div class="bc-metrics">
+    <div class="bc-metric">
+      <div class="bc-metric-icon" style="background:#e8eef8">💳</div>
+      <div class="bc-metric-lbl">Total MRR</div>
+      <div class="bc-metric-val green">₦{{ mrr_naira|floatformat:0 }}</div>
+      <div class="bc-metric-sub">This month</div>
+    </div>
+    <div class="bc-metric">
+      <div class="bc-metric-icon" style="background:#e8eef8">🚀</div>
+      <div class="bc-metric-lbl">Active Trials</div>
+      <div class="bc-metric-val">{{ active_trials }}</div>
+      <div class="bc-metric-sub">In trial period</div>
+    </div>
+    <div class="bc-metric">
+      <div class="bc-metric-icon" style="background:#fee2e2">⚠️</div>
+      <div class="bc-metric-lbl">Past Due</div>
+      <div class="bc-metric-val {% if past_due > 0 %}red{% endif %}">{{ past_due }}</div>
+      <div class="bc-metric-sub {% if past_due > 0 %}" style="color:#dc2626">Action Req.{% else %}">All clear{% endif %}</div>
+    </div>
+    <div class="bc-metric">
+      <div class="bc-metric-icon" style="background:#fef3c7">⏳</div>
+      <div class="bc-metric-lbl">Grace Period</div>
+      <div class="bc-metric-val amber">{{ grace_period }}</div>
+      <div class="bc-metric-sub">Temporary extensions</div>
+    </div>
+  </div>
+
+  <!-- Subscription accounts table -->
+  <div class="bc-card">
+    <div class="bc-card-hd">
+      <div>
+        <div class="bc-card-title">Subscription Accounts</div>
+        <div class="bc-card-sub">All active and trialing organizations</div>
+      </div>
+      <div class="bc-filters">
+        <select class="bc-select" name="status"
+                hx-get="{% url 'superadmin:billing' %}"
+                hx-target="#bc-table"
+                hx-include="[name='status'],[name='q']"
+                hx-trigger="change">
+          <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Status</option>
+          <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+          <option value="trial" {% if status_filter == 'trial' %}selected{% endif %}>Trial</option>
+          <option value="past_due" {% if status_filter == 'past_due' %}selected{% endif %}>Past Due</option>
+          <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>Suspended</option>
+        </select>
+        <div class="bc-search">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+               stroke="#8a96a8" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="text" name="q"
+                 placeholder="Search accounts..."
+                 value="{{ search_query|default:'' }}"
+                 hx-get="{% url 'superadmin:billing' %}"
+                 hx-trigger="keyup changed delay:300ms"
+                 hx-target="#bc-table"
+                 hx-include="[name='status'],[name='q']">
+        </div>
+      </div>
+    </div>
+
+    <div id="bc-table">
+      <table class="bc-table">
+        <thead>
+          <tr>
+            <th>Account / Org</th>
+            <th>Current Plan</th>
+            <th>Billing Cycle</th>
+            <th>Next Invoice</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in org_list %}
+          {% with org=item.org %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:34px;height:34px;border-radius:10px;
+                            background:#e8eef8;display:flex;align-items:center;
+                            justify-content:center;font-size:12px;font-weight:800;
+                            color:#3d5a99">
+                  {{ org.name|first|upper }}{{ org.name|slice:"1:2"|upper }}
+                </div>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#1a2744">{{ org.name }}</div>
+                  <div style="font-size:11px;color:#8a96a8">ID: #{{ org.pk|stringformat:"s"|slice:":8"|upper }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span style="background:#f4f7fe;color:#3d5a99;padding:4px 10px;
+                           border-radius:8px;font-size:12px;font-weight:600">
+                {{ org.plan_tier|title }}
+              </span>
+            </td>
+            <td style="font-size:12px;color:#4a5568">
+              {% if item.last_payment and item.last_payment.plan %}
+                {{ item.last_payment.plan.get_billing_interval_display }}
+              {% else %}—{% endif %}
+            </td>
+            <td style="font-size:12px;color:#4a5568">
+              {% if item.next_invoice %}{{ item.next_invoice|date:"M d, Y" }}{% else %}—{% endif %}
+            </td>
+            <td>
+              <span class="bc-status {{ org.subscription_status|default:'active' }}">
+                <span class="bc-status-dot"></span>
+                {{ org.subscription_status|default:'Active'|title }}
+              </span>
+            </td>
+            <td>
+              <button class="bc-manage-btn"
+                      hx-get="{% url 'superadmin:billing_manage' org.pk %}"
+                      hx-target="#bc-panel-content"
+                      hx-swap="innerHTML"
+                      onclick="openBillingPanel()">
+                Manage Plan
+              </button>
+            </td>
+          </tr>
+          {% endwith %}
+          {% empty %}
+          <tr>
+            <td colspan="6"
+                style="text-align:center;padding:40px;color:#8a96a8;font-size:13px">
+              No accounts found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Slide-out panel -->
+<div class="bc-panel-overlay" id="bc-overlay" onclick="closeBillingPanel()"></div>
+<div class="bc-panel" id="bc-panel">
+  <div id="bc-panel-content"></div>
+</div>
+
+<script>
+function openBillingPanel() {
+  document.getElementById('bc-overlay').style.display = 'block';
+  document.getElementById('bc-panel').classList.add('open');
+}
+function closeBillingPanel() {
+  document.getElementById('bc-overlay').style.display = 'none';
+  document.getElementById('bc-panel').classList.remove('open');
+}
+document.addEventListener('htmx:afterRequest', function(e) {
+  const trigger = e.detail.xhr.getResponseHeader('HX-Trigger');
+  if (trigger && trigger.includes('showToast')) {
+    closeBillingPanel();
+  }
+});
+</script>
+{% endblock %}
