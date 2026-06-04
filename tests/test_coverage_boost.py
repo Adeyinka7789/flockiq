@@ -912,3 +912,65 @@ class TestBillingServiceExtended:
                 user_email=tenant_user.email,
             )
         assert result['method'] == 'error'
+
+
+# ── Production form validation branches & model __str__ ──────────────────────
+
+class TestProductionFormValidation:
+
+    def test_egg_log_form_rejects_future_date(self):
+        from apps.production.production.forms import EggProductionLogForm
+        form = EggProductionLogForm({
+            'record_date': (date.today() + timedelta(days=1)).isoformat(),
+            'total_eggs': 100,
+        })
+        assert not form.is_valid()
+        assert 'record_date' in form.errors
+
+    def test_egg_log_form_rejects_mismatched_grades(self):
+        from apps.production.production.forms import EggProductionLogForm
+        form = EggProductionLogForm({
+            'record_date': date.today().isoformat(),
+            'total_eggs': 100,
+            'grade_a': 50,
+            'grade_b': 30,
+        })
+        assert not form.is_valid()
+
+    def test_crate_inventory_str(self, test_org, test_farm):
+        from apps.production.production.models import CrateInventory
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(test_org):
+            crate = CrateInventory(
+                org=test_org, farm=test_farm, date=date.today(),
+                crates_produced=10, crates_sold=5, crates_balance=5,
+            )
+        assert 'crates balance' in str(crate)
+
+    def test_water_log_str_anomaly_flagged(self, test_org, test_batch, test_farm):
+        from apps.production.water.models import WaterLog
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(test_org):
+            log = WaterLog(
+                org=test_org, batch=test_batch, farm=test_farm,
+                record_date=date.today(), litres_consumed=50,
+                anomaly_flagged=True,
+            )
+        assert '⚠' in str(log)
+
+
+class TestWasteServiceErrors:
+
+    def test_log_waste_farm_not_found_raises(self, test_org):
+        import uuid
+        from apps.production.waste.services import WasteService
+        from apps.infrastructure.core.rls import set_tenant_context
+        with set_tenant_context(test_org):
+            svc = WasteService(test_org)
+            with pytest.raises(ValueError, match='not found'):
+                svc.log_waste(
+                    farm_id=str(uuid.uuid4()),
+                    record_date=date.today(),
+                    waste_type='litter',
+                    quantity_kg=100,
+                )
