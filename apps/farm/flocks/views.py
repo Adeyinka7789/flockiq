@@ -43,40 +43,98 @@ def _get_org(request):
 # ── HTMX views ─────────────────────────────────────────────────────────────────
 
 class BatchListView(TenantRequiredMixin, View):
-    """GET /batches/ → Full batch list page with farm/type/status filtering."""
+    """GET /batches/ → Full batch list page with farm/type/status/search filtering."""
 
     def get(self, request):
+        from datetime import date, timedelta
+        from django.core.paginator import Paginator
+        from django.db.models import Q, Sum
+
         org = _get_org(request)
-        is_htmx = request.headers.get("HX-Request") == "true"
+        today = date.today()
 
         farm_id = request.GET.get("farm", "")
-        bird_type = request.GET.get("bird_type", "")
-        status = request.GET.get("status", "active")
+        bird_type = request.GET.get("bird_type", "all")
+        status_filter = request.GET.get("status", "active")
+        q = request.GET.get("q", "").strip()
 
         with set_tenant_context(org):
             from apps.farm.farms.models import Farm
 
-            qs = Batch.objects.select_related("farm", "house")
-            if status != "all":
-                qs = qs.filter(status=status)
-            if farm_id:
-                qs = qs.filter(farm_id=farm_id)
-            if bird_type:
-                qs = qs.filter(bird_type=bird_type)
-            batches = list(qs.order_by("-placement_date"))
             farms = list(Farm.objects.filter(is_active=True))
 
+            batches = Batch.objects.filter(org=org).select_related("farm", "house").order_by("-placement_date")
+
+            if farm_id:
+                batches = batches.filter(farm_id=farm_id)
+            if bird_type and bird_type != "all":
+                batches = batches.filter(bird_type=bird_type)
+            if status_filter == "active":
+                batches = batches.filter(status="active")
+            elif status_filter == "closed":
+                batches = batches.filter(status="closed")
+            if q:
+                batches = batches.filter(
+                    Q(batch_name__icontains=q)
+                    | Q(farm__name__icontains=q)
+                    | Q(breed_name__icontains=q)
+                )
+
+            paginator = Paginator(batches, 10)
+            page_num = request.GET.get("page", 1)
+            page_obj = paginator.get_page(page_num)
+
+            active_batches = Batch.objects.filter(org=org, status="active")
+
+            from .models import MortalityLog as _MortalityLog
+            last_30 = today - timedelta(days=30)
+            total_mort = (
+                _MortalityLog.objects.filter(
+                    batch__in=active_batches,
+                    date__gte=last_30,
+                ).aggregate(total=Sum("count"))["total"] or 0
+            )
+            total_live = active_batches.aggregate(total=Sum("current_count"))["total"] or 1
+            avg_mortality_rate = round((total_mort / max(total_live * 30, 1)) * 100, 2)
+
+            from apps.production.feed.models import FeedLog
+            total_feed = (
+                FeedLog.objects.filter(batch__in=active_batches)
+                .aggregate(total=Sum("quantity_kg"))["total"] or 0
+            )
+            total_weight = sum(
+                float(b.current_count) * 1.8
+                for b in active_batches
+                if b.bird_type == "broiler"
+            )
+            avg_fcr = round(float(total_feed) / float(total_weight), 2) if total_weight > 0 and total_feed > 0 else None
+
+            upcoming_harvest = None
+            broilers = list(active_batches.filter(bird_type="broiler").order_by("-placement_date"))
+            for b in broilers:
+                days_to_harvest = max(0, 38 - b.cycle_day)
+                if days_to_harvest <= 10:
+                    upcoming_harvest = {"batch": b, "days_to_harvest": days_to_harvest}
+                    break
+            if not upcoming_harvest and broilers:
+                b = broilers[0]
+                upcoming_harvest = {"batch": b, "days_to_harvest": max(0, 38 - b.cycle_day)}
+
         context = {
-            "batches": batches,
-            "form": BatchCreateForm(),
+            "page_obj": page_obj,
             "farms": farms,
             "active_farm": farm_id,
             "active_bird_type": bird_type,
-            "active_status": status,
-            "total": len(batches),
+            "active_status": status_filter,
+            "search_query": q,
+            "total_count": paginator.count,
+            "avg_mortality_rate": avg_mortality_rate,
+            "avg_fcr": avg_fcr,
+            "upcoming_harvest": upcoming_harvest,
+            "today": today,
         }
 
-        if is_htmx:
+        if request.headers.get("HX-Request"):
             return render(request, "flocks/_batch_list_partial.html", context)
         return render(request, "flocks/batch_list.html", context)
 
