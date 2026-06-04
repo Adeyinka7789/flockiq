@@ -2,8 +2,8 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import Http404
-from django.shortcuts import render
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404, render
 from django.views import View
 
 from apps.infrastructure.core.rls import set_tenant_context
@@ -21,52 +21,60 @@ def _get_org(request):
 
 
 class WaterLogView(LoginRequiredMixin, View):
-    """POST /production/water/<batch_pk>/log/ → Returns updated water summary card."""
+    """GET/POST /production/water/<batch_pk>/log/ → Modal form or log water."""
+
+    def get(self, request, batch_pk):
+        from datetime import date
+        from .forms import WaterLogForm
+        from apps.farm.flocks.models import Batch
+
+        org = _get_org(request)
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch, pk=batch_pk)
+        return render(request, "production/water/_water_log_form.html", {
+            "form": WaterLogForm(),
+            "batch": batch,
+            "today": date.today(),
+        })
 
     def post(self, request, batch_pk):
+        from datetime import date
         from .forms import WaterLogForm
+        from apps.farm.flocks.models import Batch
 
         form = WaterLogForm(request.POST)
         org = _get_org(request)
+
+        def _error(f, status=422):
+            with set_tenant_context(org):
+                batch = get_object_or_404(Batch, pk=batch_pk)
+            return render(request, "production/water/_water_log_form.html",
+                {"form": f, "batch": batch, "today": date.today()}, status=status)
 
         if form.is_valid():
             cd = form.cleaned_data
             try:
                 with set_tenant_context(org):
-                    svc = WaterService(org)
-                    svc.log_water(
+                    WaterService(org).log_water(
                         batch_id=str(batch_pk),
                         record_date=cd["record_date"],
                         litres_consumed=cd["litres_consumed"],
                         notes=cd.get("notes", ""),
                         recorded_by=request.user,
                     )
-                    summary = svc.get_water_summary(str(batch_pk))
             except ValueError as exc:
                 form.add_error(None, str(exc))
-                return render(
-                    request,
-                    "production/water/_water_log_form.html",
-                    {"form": form, "batch_pk": batch_pk},
-                    status=422,
-                )
+                return _error(form)
 
-            response = render(
-                request,
-                "production/water/_water_summary_card.html",
-                {**summary, "batch_pk": batch_pk},
-            )
-            response["HX-Trigger"] = json.dumps(
-                {"showToast": {"message": "Water logged.", "type": "success"}}
-            )
+            response = HttpResponse('')
+            response["HX-Trigger"] = json.dumps({
+                "showToast": {"message": "Water logged.", "type": "success"},
+                "close-modal": True,
+                "waterLogged": True,
+            })
             return response
 
-        return render(
-            request,
-            "production/water/_water_log_form.html",
-            {"form": form, "batch_pk": batch_pk},
-            status=422,
-        )
+        return _error(form)
 
 
 class WaterTableView(LoginRequiredMixin, View):

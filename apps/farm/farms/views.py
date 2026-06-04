@@ -41,31 +41,80 @@ class FarmListView(TenantRequiredMixin, View):
     """
 
     def get(self, request):
+        from datetime import date, timedelta
+
+        from django.db.models import Count, Q, Sum
+
+        from apps.farm.flocks.models import MortalityLog
+
         org = _get_org(request)
         is_htmx = request.headers.get("HX-Request") == "true"
 
         with set_tenant_context(org):
-            from django.db.models import Count, Q, Sum
-            farms = list(
-                Farm.objects.filter(is_active=True)
-                .annotate(
-                    live_birds=Sum(
-                        "batches__current_count",
-                        filter=Q(batches__status="active"),
-                    ),
-                    active_batches=Count(
-                        "batches",
-                        filter=Q(batches__status="active"),
-                        distinct=True,
-                    ),
-                )
-                .order_by("name")
-            )
-            dashboard = FarmService(org).get_dashboard_data()
+            farms = Farm.objects.filter(is_active=True).annotate(
+                live_birds=Sum(
+                    "batches__current_count",
+                    filter=Q(batches__status="active"),
+                ),
+                active_batches=Count(
+                    "batches",
+                    filter=Q(batches__status="active"),
+                ),
+                house_count=Count("houses", distinct=True),
+                total_capacity=Sum("houses__capacity"),
+            ).order_by("-created_at")
+
+            farm_list = []
+            today = date.today()
+            last_30 = today - timedelta(days=30)
+
+            for farm in farms:
+                weekly_mort = []
+                for i in range(6, -1, -1):
+                    day = today - timedelta(days=i)
+                    cnt = MortalityLog.objects.filter(
+                        farm=farm, date=day
+                    ).aggregate(total=Sum("count"))["total"] or 0
+                    weekly_mort.append(cnt)
+
+                total_mort = MortalityLog.objects.filter(
+                    farm=farm, date__gte=last_30
+                ).aggregate(total=Sum("count"))["total"] or 0
+
+                live = farm.live_birds or 0
+                mort_rate = round((total_mort / max(live, 1)) * 100, 1) if live > 0 else 0
+
+                if mort_rate > 5:
+                    status, status_label = "critical", "NEEDS REVIEW"
+                elif mort_rate > 2:
+                    status, status_label = "warning", "MONITOR"
+                elif live > 0:
+                    status, status_label = "optimal", "OPTIMAL"
+                else:
+                    status, status_label = "new", "NEW ENTRY"
+
+                farm_list.append({
+                    "farm": farm,
+                    "live_birds": live,
+                    "active_batches": farm.active_batches or 0,
+                    "house_count": farm.house_count or 0,
+                    "total_capacity": farm.total_capacity or 0,
+                    "weekly_mort": weekly_mort,
+                    "max_weekly_mort": max(weekly_mort) if any(weekly_mort) else 1,
+                    "mort_rate": mort_rate,
+                    "status": status,
+                    "status_label": status_label,
+                })
+
+            total_live = sum(f["live_birds"] for f in farm_list)
+            total_capacity = sum(f["total_capacity"] for f in farm_list)
 
         context = {
-            "farms": farms,
-            "dashboard": dashboard,
+            "farm_list": farm_list,
+            "total_live": total_live,
+            "total_capacity": total_capacity,
+            "total_farms": len(farm_list),
+            "org": org,
             "form": FarmCreateForm(),
         }
 
@@ -118,13 +167,15 @@ class FarmCreateView(LoginRequiredMixin, View):
                 )
 
             if is_htmx:
-                response = render(request, "farms/_farm_card.html", {"farm": farm})
+                response = HttpResponse(status=204)
                 response["HX-Trigger"] = json.dumps({
                     "showToast": {
                         "message": f'Farm "{farm.name}" created successfully.',
                         "type": "success",
-                    }
+                    },
+                    "close-modal": True,
                 })
+                response["HX-Refresh"] = "true"
                 return response
 
             from django.shortcuts import redirect
@@ -142,17 +193,117 @@ class FarmCreateView(LoginRequiredMixin, View):
 
 
 class FarmDetailView(TenantRequiredMixin, View):
-    """GET /farms/<uuid>/  → Farm detail page with houses."""
+    """GET /farms/<uuid>/  → Farm detail dashboard."""
 
     def get(self, request, pk):
+        from datetime import date, timedelta
+
+        from django.db.models import Count, Q, Sum
+
+        from apps.farm.flocks.models import Batch, MortalityLog
+        from apps.health.health.models import VaccinationSchedule
+        from apps.infrastructure.notifications.models import NotificationLog
+        from apps.production.production.models import EggProductionLog
+
         org = _get_org(request)
+
         with set_tenant_context(org):
             try:
-                detail = FarmService(org).get_farm_detail(str(pk))
+                farm = Farm.objects.get(id=pk, org_id=org.id)
             except Farm.DoesNotExist:
                 raise Http404("Farm not found.")
 
-        return render(request, "farms/farm_detail.html", detail)
+            houses = list(
+                House.objects.filter(farm=farm, is_active=True).annotate(
+                    active_batch_count=Count(
+                        "batches", filter=Q(batches__status="active")
+                    )
+                )
+            )
+
+            active_batches = list(
+                Batch.objects.filter(farm=farm, status="active").select_related("house")
+            )
+
+            total_live = sum(b.current_count for b in active_batches)
+            total_capacity = sum(h.capacity for h in houses)
+
+            today = date.today()
+            last_30 = today - timedelta(days=30)
+
+            todays_eggs = EggProductionLog.objects.filter(
+                farm=farm, record_date=today
+            ).aggregate(total=Sum("total_eggs"))["total"] or 0
+
+            total_mort_30 = MortalityLog.objects.filter(
+                farm=farm, date__gte=last_30
+            ).aggregate(total=Sum("count"))["total"] or 0
+
+            avg_mort_rate = (
+                round((total_mort_30 / max(total_live * 30, 1)) * 100, 2)
+                if total_live > 0
+                else 0
+            )
+
+            current_week = []
+            prev_week = []
+            for i in range(6, -1, -1):
+                day = today - timedelta(days=i)
+                curr = MortalityLog.objects.filter(
+                    farm=farm, date=day
+                ).aggregate(total=Sum("count"))["total"] or 0
+                prev = MortalityLog.objects.filter(
+                    farm=farm, date=day - timedelta(days=7)
+                ).aggregate(total=Sum("count"))["total"] or 0
+                current_week.append({"day": day.strftime("%a").upper(), "count": curr})
+                prev_week.append(prev)
+
+            health_score = 100
+            if avg_mort_rate > 5:
+                health_score -= 40
+            elif avg_mort_rate > 3:
+                health_score -= 20
+            elif avg_mort_rate > 1:
+                health_score -= 10
+
+            total_vacc = VaccinationSchedule.objects.filter(batch__farm=farm).count()
+            completed_vacc = VaccinationSchedule.objects.filter(
+                batch__farm=farm, status="completed"
+            ).count()
+            vacc_compliance = round(completed_vacc / total_vacc * 100) if total_vacc > 0 else 100
+
+            critical_alerts = list(
+                NotificationLog.objects.filter(
+                    org=org, severity__in=["critical", "warning"], is_read=False
+                ).order_by("-created_at")[:3]
+            )
+
+            layer_count = sum(
+                b.current_count for b in active_batches if b.bird_type == "layer"
+            )
+            broiler_count = sum(
+                b.current_count for b in active_batches if b.bird_type == "broiler"
+            )
+
+        context = {
+            "farm": farm,
+            "houses": houses,
+            "active_batches": active_batches,
+            "total_live": total_live,
+            "total_capacity": total_capacity,
+            "todays_eggs": todays_eggs,
+            "avg_mort_rate": avg_mort_rate,
+            "health_score": health_score,
+            "vacc_compliance": vacc_compliance,
+            "critical_alerts": critical_alerts,
+            "current_week": current_week,
+            "prev_week": prev_week,
+            "layer_count": layer_count,
+            "broiler_count": broiler_count,
+            "today": today,
+        }
+
+        return render(request, "farms/farm_detail.html", context)
 
 
 class HouseCreateView(LoginRequiredMixin, View):
@@ -184,14 +335,12 @@ class HouseCreateView(LoginRequiredMixin, View):
                     raise Http404("Farm not found.")
 
             if is_htmx:
-                response = render(
-                    request,
-                    "farms/_house_list_partial.html",
-                    {"houses": houses, "farm_id": pk},
-                )
+                response = HttpResponse(status=204)
                 response["HX-Trigger"] = json.dumps({
-                    "showToast": {"message": f'House "{house.name}" added.', "type": "success"}
+                    "showToast": {"message": f'House "{house.name}" added.', "type": "success"},
+                    "close-modal": True,
                 })
+                response["HX-Refresh"] = "true"
                 return response
 
             from django.shortcuts import redirect

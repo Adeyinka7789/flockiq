@@ -322,7 +322,7 @@ class TestFeedHTMXViews:
             HTTP_HX_REQUEST="true",
         )
         assert response.status_code == 200
-        assert b"feed-summary-card" in response.content
+        assert "feedLogged" in response["HX-Trigger"]
 
     def test_log_view_invalid_post_returns_422(self, db, client):
         org, user, farm, house, batch = self._setup(db, "feedview2")

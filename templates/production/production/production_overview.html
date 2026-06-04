@@ -1,342 +1,324 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Production{% endblock %}
+{% block title %}Egg Production{% endblock %}
 {% block breadcrumb %}Egg Production{% endblock %}
 
 {% block content %}
 <style>
   .prod-wrap { max-width: 1100px; margin: 0 auto; }
 
-  .prod-metrics {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 14px; margin-bottom: 16px;
+  /* Header */
+  .prod-header {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
   }
-  .prod-card {
+  .prod-batch-selector {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .prod-batch-label {
+    font-size: 11px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .prod-batch-select {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px; background: white;
+    border: 1.5px solid #e2e8f0; border-radius: 10px;
+    font-size: 14px; font-weight: 700; color: #1a2744;
+    cursor: pointer; outline: none;
+  }
+  .prod-batch-select:focus { border-color: #3d5a99; }
+
+  .prod-presets {
+    display: flex; gap: 4px;
+  }
+  .prod-preset {
+    padding: 7px 12px; border-radius: 8px;
+    font-size: 12px; font-weight: 600;
+    border: 1.5px solid #e2e8f0; background: white;
+    color: #4a5568; cursor: pointer; transition: all 0.15s;
+  }
+  .prod-preset.active {
+    background: #3d5a99; color: white; border-color: #3d5a99;
+  }
+
+  /* Metric cards */
+  .prod-metrics {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 14px; margin-bottom: 20px;
+  }
+  .prod-metric {
     background: white; border: 1px solid #e2e8f0;
     border-radius: 14px; padding: 18px;
     position: relative; overflow: hidden;
   }
-  .prod-card::before {
-    content: ''; position: absolute;
-    top: 0; left: 0; right: 0; height: 3px;
-    border-radius: 14px 14px 0 0;
+  .prod-metric-badge {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 10px; font-weight: 700; padding: 3px 8px;
+    border-radius: 20px;
   }
-  .prod-card.green::before { background: #8bc87a; }
-  .prod-card.navy::before  { background: #3d5a99; }
-  .prod-card.amber::before { background: #f59e0b; }
-  .prod-card.blue::before  { background: #5b8dd9; }
-
-  .prod-card-icon {
-    width: 36px; height: 36px; border-radius: 10px;
+  .prod-metric-badge.live {
+    background: #edfae8; color: #166534;
+  }
+  .prod-metric-icon {
+    width: 32px; height: 32px; border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
     margin-bottom: 10px;
   }
-  .prod-card-lbl {
-    font-size: 10px; font-weight: 700; color: #8a96a8;
-    text-transform: uppercase; letter-spacing: 0.06em;
-    margin-bottom: 5px;
+  .prod-metric-lbl {
+    font-size: 11px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin-bottom: 6px;
   }
-  .prod-card-val {
+  .prod-metric-val {
     font-size: 28px; font-weight: 800; color: #1a2744;
     line-height: 1; font-variant-numeric: tabular-nums;
+    margin-bottom: 4px;
   }
-  .prod-card-sub {
-    font-size: 11px; color: #8a96a8; margin-top: 4px;
+  .prod-metric-sub {
+    font-size: 12px; color: #8a96a8;
+    display: flex; align-items: center; gap: 4px;
   }
+  .prod-metric-sub.green { color: #16a34a; }
+  .prod-metric-sub.amber { color: #d97706; }
+  .prod-metric-sub.red   { color: #dc2626; }
 
-  .filter-bar {
-    background: white; border: 1px solid #e2e8f0;
-    border-radius: 12px; padding: 12px 16px;
-    display: flex; align-items: center; gap: 10px;
-    flex-wrap: wrap; margin-bottom: 16px;
+  /* Two column layout */
+  .prod-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
   }
-  .filter-preset {
-    padding: 6px 12px; border-radius: 8px;
-    font-size: 12px; font-weight: 600; cursor: pointer;
-    border: 1.5px solid #e2e8f0; background: white;
-    color: #4a5568; transition: all 0.15s;
-  }
-  .filter-preset.active {
-    background: #3d5a99; color: white;
-    border-color: #3d5a99;
-  }
-  .filter-select {
-    padding: 7px 12px; border: 1.5px solid #e2e8f0;
-    border-radius: 8px; font-size: 12px; color: #1a2744;
-    background: white; cursor: pointer; outline: none;
-  }
+  .prod-main { min-width: 0; }
 
-  .prod-section {
+  /* Chart card */
+  .prod-chart-card {
     background: white; border: 1px solid #e2e8f0;
     border-radius: 14px; overflow: hidden;
     margin-bottom: 16px;
   }
-  .prod-section-hd {
-    display: flex; align-items: center;
+  .prod-chart-hd {
+    display: flex; align-items: flex-start;
     justify-content: space-between;
-    padding: 14px 18px;
+    padding: 16px 20px;
     border-bottom: 1px solid #f1f5f9;
   }
-  .prod-section-title {
-    font-size: 13px; font-weight: 700; color: #1a2744;
+  .prod-chart-title {
+    font-size: 14px; font-weight: 700; color: #1a2744;
+    margin-bottom: 2px;
   }
-
-  .batch-row {
-    display: flex; align-items: center; gap: 16px;
-    padding: 14px 18px; border-bottom: 1px solid #f8faff;
-    transition: background 0.1s;
+  .prod-chart-sub {
+    font-size: 12px; color: #8a96a8;
   }
-  .batch-row:last-child { border-bottom: none; }
-  .batch-row:hover { background: #f8faff; }
+  .prod-chart-legend {
+    display: flex; align-items: center; gap: 14px;
+    font-size: 11px; font-weight: 600;
+  }
+  .prod-legend-item {
+    display: flex; align-items: center; gap: 5px;
+    color: #4a5568;
+  }
+  .prod-legend-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .prod-legend-dash {
+    width: 16px; height: 2px; border-top: 2px dashed;
+  }
+  .prod-chart-body { padding: 16px; height: 220px; }
 
-  .hen-day-bar {
+  /* Daily records table */
+  .prod-table-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+  }
+  .prod-table-hd {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid #f1f5f9;
+  }
+  .prod-table-title {
+    font-size: 14px; font-weight: 700; color: #1a2744;
+    margin-bottom: 2px;
+  }
+  .prod-table-sub {
+    font-size: 11px; color: #8a96a8;
+  }
+  .prod-csv-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: #3d5a99;
+    text-decoration: none;
+  }
+  .prod-csv-btn:hover { text-decoration: underline; }
+  .prod-table { width: 100%; border-collapse: collapse; }
+  .prod-table th {
+    text-align: left; padding: 10px 16px;
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    background: #fafafa; border-bottom: 1px solid #e2e8f0;
+  }
+  .prod-table td {
+    padding: 12px 16px; font-size: 13px;
+    border-bottom: 1px solid #f8faff; color: #1a2744;
+  }
+  .prod-table tr:last-child td { border-bottom: none; }
+  .prod-table tr:hover td { background: #fafbff; }
+  .td-cracked { color: #dc2626; font-weight: 600; }
+  .td-hen-day { color: #16a34a; font-weight: 700; }
+  .td-hen-day.amber { color: #d97706; }
+
+  /* Sidebar */
+  .prod-ai-card {
+    background: linear-gradient(160deg, #1e3a8a, #2d5be3);
+    border-radius: 14px; padding: 20px; color: white;
+    margin-bottom: 14px;
+  }
+  .prod-ai-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 800; color: white;
+    margin-bottom: 4px;
+  }
+  .prod-ai-sub {
+    font-size: 11px; color: rgba(255,255,255,0.5);
+    margin-bottom: 16px;
+  }
+  .prod-ai-stat-row {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; margin-bottom: 16px;
+  }
+  .prod-ai-stat {
+    background: rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 12px;
+  }
+  .prod-ai-stat-lbl {
+    font-size: 10px; font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .prod-ai-stat-val {
+    font-size: 20px; font-weight: 800; color: white;
+    line-height: 1; font-variant-numeric: tabular-nums;
+  }
+  .prod-ai-rec-label {
+    font-size: 10px; font-weight: 700;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  .prod-ai-rec {
+    display: flex; gap: 8px; align-items: flex-start;
+    margin-bottom: 8px; font-size: 12px;
+    color: rgba(255,255,255,0.8); line-height: 1.5;
+  }
+  .prod-ai-rec-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px; font-size: 8px;
+  }
+  .prod-ai-rec-dot.good { background: #8bc87a; }
+  .prod-ai-rec-dot.warning { background: #f59e0b; }
+
+  .prod-resource-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .prod-resource-hd {
+    padding: 12px 16px; border-bottom: 1px solid #f1f5f9;
+    font-size: 12px; font-weight: 700; color: #1a2744;
+  }
+  .prod-resource-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid #f8faff;
+    gap: 12px;
+  }
+  .prod-resource-row:last-child { border-bottom: none; }
+  .prod-resource-name {
+    font-size: 12px; color: #4a5568; font-weight: 500;
+    min-width: 100px;
+  }
+  .prod-resource-bar {
     flex: 1; height: 6px; background: #f0f4ff;
     border-radius: 3px; overflow: hidden;
-    min-width: 60px; max-width: 120px;
   }
-  .hen-day-fill {
+  .prod-resource-fill {
     height: 100%; border-radius: 3px;
-    transition: width 0.6s ease;
+    background: #3d5a99; transition: width 0.6s ease;
+  }
+  .prod-resource-fill.green { background: #8bc87a; }
+  .prod-resource-fill.amber { background: #f59e0b; }
+  .prod-resource-val {
+    font-size: 12px; font-weight: 700; color: #1a2744;
+    min-width: 50px; text-align: right;
   }
 
-  .log-btn {
-    padding: 6px 14px; border-radius: 8px;
-    font-size: 11px; font-weight: 700;
-    cursor: pointer; border: none;
-    transition: all 0.15s; white-space: nowrap;
+  .empty-state {
+    padding: 48px; text-align: center;
+    color: #8a96a8; font-size: 13px;
   }
-  .log-btn.logged {
-    background: #dcfce7; color: #166534;
-    cursor: default;
-  }
-  .log-btn.not-logged {
-    background: #3d5a99; color: white;
-  }
-  .log-btn.not-logged:hover { background: #2d4578; }
 
-  .empty-production {
-    padding: 60px 20px; text-align: center;
-  }
-  .empty-icon {
-    width: 56px; height: 56px; border-radius: 16px;
-    background: #e8eef8; margin: 0 auto 16px;
-    display: flex; align-items: center; justify-content: center;
+  @media(max-width:900px){
+    .prod-layout { grid-template-columns: 1fr; }
+    .prod-metrics { grid-template-columns: 1fr 1fr; }
   }
 </style>
 
 <div class="prod-wrap">
 
-  <!-- Page header -->
-  <div style="display:flex;align-items:flex-start;
-              justify-content:space-between;margin-bottom:20px">
-    <div>
-      <h1 style="font-size:20px;font-weight:800;color:#1a2744">
-        Egg Production
-      </h1>
-      <p style="font-size:13px;color:#8a96a8;margin-top:3px">
-        Layer batch production tracking &middot; {{ today|date:"l, F j" }}
-      </p>
+  <!-- Header: batch selector + date presets -->
+  <div class="prod-header" id="prod-filters">
+    <div class="prod-batch-selector">
+      <span class="prod-batch-label">Current Batch</span>
+      <select class="prod-batch-select"
+              name="batch"
+              hx-get="{% url 'production:overview' %}"
+              hx-target="#prod-content"
+              hx-include="#prod-filters"
+              hx-push-url="true">
+        <option value="">All Layer Batches</option>
+        {% for b in layer_batches %}
+        <option value="{{ b.pk }}"
+                {% if active_batch and active_batch.pk == b.pk %}selected{% endif %}>
+          {{ b.batch_name }} — {{ b.farm.name }}
+        </option>
+        {% endfor %}
+      </select>
     </div>
-    {% if request.user.role in 'owner,manager' %}
-    <div style="display:flex;gap:8px;flex-shrink:0">
-      {% if plan_features.pdf_export %}
-      <a href="{% url 'production:export_pdf' %}" target="_blank"
-         style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:white;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#dc2626;text-decoration:none;transition:all 0.15s"
-         onmouseover="this.style.borderColor='#dc2626';this.style.background='#fee2e2'"
-         onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-        </svg>
-        PDF Report
-      </a>
-      {% else %}
-      <button disabled title="Upgrade to Monthly to unlock PDF exports"
-              style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f4f7fe;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#b0bac9;cursor:not-allowed">
-        🔒 PDF Report
-      </button>
-      {% endif %}
-      {% if plan_features.excel_export %}
-      <a href="{% url 'production:export_excel' %}"
-         style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:white;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#166534;text-decoration:none;transition:all 0.15s"
-         onmouseover="this.style.borderColor='#166534';this.style.background='#edfae8'"
-         onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-        </svg>
-        Excel
-      </a>
-      {% else %}
-      <button disabled title="Upgrade to Monthly to unlock Excel exports"
-              style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#f4f7fe;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;font-weight:600;color:#b0bac9;cursor:not-allowed">
-        🔒 Excel
-      </button>
-      {% endif %}
-    </div>
-    {% endif %}
-  </div>
 
-  {% if no_layer_batches %}
-  <!-- Empty state -->
-  <div class="prod-section">
-    <div class="empty-production">
-      <div class="empty-icon">
-        <svg width="26" height="26" fill="none" viewBox="0 0 24 24"
-             stroke="#3d5a99" stroke-width="1.5">
-          <ellipse cx="12" cy="13" rx="6" ry="8"/>
-          <path stroke-linecap="round" d="M12 5V3"/>
-        </svg>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div class="prod-presets">
+        <button class="prod-preset {% if active_preset == 'today' %}active{% endif %}"
+                hx-get="{% url 'production:overview' %}"
+                hx-vals='{"preset":"today"}'
+                hx-target="#prod-content"
+                hx-include="#prod-filters"
+                hx-push-url="true">Today</button>
+        <button class="prod-preset {% if active_preset == '7d' or not active_preset %}active{% endif %}"
+                hx-get="{% url 'production:overview' %}"
+                hx-vals='{"preset":"7d"}'
+                hx-target="#prod-content"
+                hx-include="#prod-filters"
+                hx-push-url="true">7 days</button>
+        <button class="prod-preset {% if active_preset == '30d' %}active{% endif %}"
+                hx-get="{% url 'production:overview' %}"
+                hx-vals='{"preset":"30d"}'
+                hx-target="#prod-content"
+                hx-include="#prod-filters"
+                hx-push-url="true">30 days</button>
+        <button class="prod-preset {% if active_preset == '90d' %}active{% endif %}"
+                hx-get="{% url 'production:overview' %}"
+                hx-vals='{"preset":"90d"}'
+                hx-target="#prod-content"
+                hx-include="#prod-filters"
+                hx-push-url="true">90 days</button>
       </div>
-      <h3 style="font-size:15px;font-weight:700;
-                 color:#1a2744;margin-bottom:6px">
-        No active layer batches
-      </h3>
-      <p style="font-size:13px;color:#8a96a8;margin-bottom:20px">
-        Production tracking applies to layer batches only.
-        Place a layer batch to start tracking eggs.
-      </p>
-      <a href="{% url 'farms:list' %}"
-         style="display:inline-flex;align-items:center;gap:6px;
-                padding:10px 20px;background:#3d5a99;color:white;
-                border-radius:10px;font-size:13px;font-weight:700;
-                text-decoration:none">
-        Go to Farms &rarr;
-      </a>
     </div>
   </div>
 
-  {% else %}
-
-  <!-- Metric cards -->
-  <div class="prod-metrics">
-    <div class="prod-card green">
-      <div class="prod-card-icon" style="background:#edfae8">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
-             stroke="#6aaa57" stroke-width="1.8">
-          <ellipse cx="12" cy="13" rx="6" ry="8"/>
-          <path stroke-linecap="round" d="M12 5V3"/>
-        </svg>
-      </div>
-      <div class="prod-card-lbl">Today's Eggs</div>
-      <div class="prod-card-val">{{ todays_eggs|default:0 }}</div>
-      <div class="prod-card-sub">{{ todays_crates }} crates</div>
-    </div>
-
-    <div class="prod-card amber">
-      <div class="prod-card-icon" style="background:#fef3c7">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
-             stroke="#d97706" stroke-width="1.8">
-          <path stroke-linecap="round" stroke-linejoin="round"
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0
-                   002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0
-                   012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2
-                   2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2
-                   0 01-2-2z"/>
-        </svg>
-      </div>
-      <div class="prod-card-lbl">Avg Hen-Day %</div>
-      <div class="prod-card-val">{{ todays_hen_day|default:0 }}%</div>
-      <div class="prod-card-sub">today across all batches</div>
-    </div>
-
-    <div class="prod-card navy">
-      <div class="prod-card-icon" style="background:#e8eef8">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
-             stroke="#3d5a99" stroke-width="1.8">
-          <path stroke-linecap="round" stroke-linejoin="round"
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10
-                   0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3
-                   3 0 015.356-1.857M7 20v-2c0-.656.126-1.283
-                   .356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3
-                   3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-      </div>
-      <div class="prod-card-lbl">Layer Batches</div>
-      <div class="prod-card-val">{{ active_layer_batches }}</div>
-      <div class="prod-card-sub">active</div>
-    </div>
-
-    <div class="prod-card blue">
-      <div class="prod-card-icon" style="background:#ddeeff">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
-             stroke="#5b8dd9" stroke-width="1.8">
-          <path stroke-linecap="round" stroke-linejoin="round"
-                d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6
-                   7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002
-                   0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5
-                   m0 16H9m3 0h3"/>
-        </svg>
-      </div>
-      <div class="prod-card-lbl">Est. Crates Today</div>
-      <div class="prod-card-val">{{ todays_crates }}</div>
-      <div class="prod-card-sub">@ 30 eggs per crate</div>
-    </div>
-  </div>
-
-  <!-- Filter bar -->
-  <div class="filter-bar">
-    <button class="filter-preset {% if active_preset == 'today' %}active{% endif %}"
-            hx-get="{% url 'production:overview' %}"
-            hx-vals='{"preset":"today"}'
-            hx-target="#prod-content"
-            hx-push-url="true">Today</button>
-    <button class="filter-preset {% if active_preset == '7d' %}active{% endif %}"
-            hx-get="{% url 'production:overview' %}"
-            hx-vals='{"preset":"7d"}'
-            hx-target="#prod-content"
-            hx-push-url="true">7 days</button>
-    <button class="filter-preset {% if active_preset == '30d' %}active{% endif %}"
-            hx-get="{% url 'production:overview' %}"
-            hx-vals='{"preset":"30d"}'
-            hx-target="#prod-content"
-            hx-push-url="true">30 days</button>
-    <button class="filter-preset {% if active_preset == '90d' %}active{% endif %}"
-            hx-get="{% url 'production:overview' %}"
-            hx-vals='{"preset":"90d"}'
-            hx-target="#prod-content"
-            hx-push-url="true">90 days</button>
-
-    <select class="filter-select"
-            name="farm"
-            hx-get="{% url 'production:overview' %}"
-            hx-target="#prod-content"
-            hx-include="[name='preset']"
-            hx-push-url="true">
-      <option value="">All Farms</option>
-      {% for farm in farms %}
-      <option value="{{ farm.pk }}"
-              {% if active_farm == farm.pk|stringformat:'s' %}selected{% endif %}>
-        {{ farm.name }}
-      </option>
-      {% endfor %}
-    </select>
-
-    <select class="filter-select"
-            name="batch"
-            hx-get="{% url 'production:overview' %}"
-            hx-target="#prod-content"
-            hx-include="[name='preset'],[name='farm']"
-            hx-push-url="true">
-      <option value="">All Batches</option>
-      {% for b in layer_batches %}
-      <option value="{{ b.pk }}"
-              {% if active_batch == b.pk|stringformat:'s' %}selected{% endif %}>
-        {{ b.batch_name }}
-      </option>
-      {% endfor %}
-    </select>
-
-    <span style="margin-left:auto;font-size:12px;color:#8a96a8;font-weight:600">
-      {{ active_layer_batches }} batch{{ active_layer_batches|pluralize:"es" }}
-    </span>
-  </div>
-
-  <!-- Main content — HTMX target -->
   <div id="prod-content">
     {% include 'production/production/_production_overview_partial.html' %}
   </div>
-
-  {% endif %}
 
 </div>
 {% endblock %}

@@ -2,8 +2,8 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import Http404
-from django.shortcuts import render
+from django.http import Http404, HttpResponse
+from django.shortcuts import get_object_or_404, render
 from django.views import View
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -24,20 +24,41 @@ def _get_org(request):
 
 
 class FeedLogView(LoginRequiredMixin, View):
-    """POST /production/feed/<batch_pk>/log/ → Returns updated feed summary card."""
+    """GET/POST /production/feed/<batch_pk>/log/ → Modal form or log feed."""
+
+    def get(self, request, batch_pk):
+        from datetime import date
+        from .forms import FeedLogForm
+        from apps.farm.flocks.models import Batch
+
+        org = _get_org(request)
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch, pk=batch_pk)
+        return render(request, "production/feed/_feed_log_form.html", {
+            "form": FeedLogForm(),
+            "batch": batch,
+            "today": date.today(),
+        })
 
     def post(self, request, batch_pk):
+        from datetime import date
         from .forms import FeedLogForm
+        from apps.farm.flocks.models import Batch
 
         form = FeedLogForm(request.POST)
         org = _get_org(request)
+
+        def _error(f, status=422):
+            with set_tenant_context(org):
+                batch = get_object_or_404(Batch, pk=batch_pk)
+            return render(request, "production/feed/_feed_log_form.html",
+                {"form": f, "batch": batch, "today": date.today()}, status=status)
 
         if form.is_valid():
             cd = form.cleaned_data
             try:
                 with set_tenant_context(org):
-                    svc = FeedService(org)
-                    svc.log_feed(
+                    FeedService(org).log_feed(
                         batch_id=str(batch_pk),
                         record_date=cd["record_date"],
                         feed_type=cd["feed_type"],
@@ -46,32 +67,19 @@ class FeedLogView(LoginRequiredMixin, View):
                         notes=cd.get("notes", ""),
                         recorded_by=request.user,
                     )
-                    summary = svc.get_feed_summary(str(batch_pk))
             except ValueError as exc:
                 form.add_error(None, str(exc))
-                return render(
-                    request,
-                    "production/feed/_feed_log_form.html",
-                    {"form": form, "batch_pk": batch_pk},
-                    status=422,
-                )
+                return _error(form)
 
-            response = render(
-                request,
-                "production/feed/_feed_summary_card.html",
-                {**summary, "batch_pk": batch_pk},
-            )
-            response["HX-Trigger"] = json.dumps(
-                {"showToast": {"message": "Feed logged.", "type": "success"}}
-            )
+            response = HttpResponse('')
+            response["HX-Trigger"] = json.dumps({
+                "showToast": {"message": "Feed logged.", "type": "success"},
+                "close-modal": True,
+                "feedLogged": True,
+            })
             return response
 
-        return render(
-            request,
-            "production/feed/_feed_log_form.html",
-            {"form": form, "batch_pk": batch_pk},
-            status=422,
-        )
+        return _error(form)
 
 
 class FeedTableView(LoginRequiredMixin, View):

@@ -1,34 +1,64 @@
-<form hx-post="{% url 'water:log' batch_pk %}"
-      hx-target="#water-summary-card"
-      hx-swap="outerHTML"
-      class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
-  {% csrf_token %}
+<div style="padding:20px">
+  <h3 style="font-size:16px;font-weight:800;color:#1a2744;margin-bottom:4px">Log Water</h3>
+  <p style="font-size:12px;color:#8a96a8;margin-bottom:20px">
+    {{ batch.batch_name }} · {{ batch.bird_type|title }} · Day {{ batch.cycle_day }}
+  </p>
 
-  {% if form.non_field_errors %}
-  <div class="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-  </div>
-  {% endif %}
+  <form hx-post="{% url 'water:log' batch.pk %}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML">
+    {% csrf_token %}
 
-  <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-    <div>
-      <label class="block text-xs font-medium text-gray-500 mb-1">Date</label>
-      {{ form.record_date }}
-      {% if form.record_date.errors %}<p class="text-xs text-red-600 mt-1">{{ form.record_date.errors.0 }}</p>{% endif %}
+    {% if form.non_field_errors %}
+    <div style="margin-bottom:14px;padding:10px 14px;background:#fef2f2;
+                border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#dc2626">
+      {% for error in form.non_field_errors %}{{ error }}{% endfor %}
     </div>
-    <div>
-      <label class="block text-xs font-medium text-gray-500 mb-1">Litres Consumed</label>
-      {{ form.litres_consumed }}
-      {% if form.litres_consumed.errors %}<p class="text-xs text-red-600 mt-1">{{ form.litres_consumed.errors.0 }}</p>{% endif %}
-    </div>
-    <div class="col-span-2">
-      <label class="block text-xs font-medium text-gray-500 mb-1">Notes</label>
-      {{ form.notes }}
-    </div>
-  </div>
+    {% endif %}
 
-  <button type="submit"
-          class="mt-4 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
-    Log Water
-  </button>
-</form>
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">
+        Date
+      </label>
+      <input type="date" name="record_date"
+             value="{{ today|date:'Y-m-d' }}"
+             style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                    border-radius:10px;font-size:13px;box-sizing:border-box">
+      {% if form.record_date.errors %}
+      <p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.record_date.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">
+        Litres Consumed
+      </label>
+      <input type="number" name="litres_consumed" step="0.1" min="0" placeholder="e.g. 120.0"
+             style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                    border-radius:10px;font-size:13px;box-sizing:border-box">
+      {% if form.litres_consumed.errors %}
+      <p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.litres_consumed.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <div style="margin-bottom:20px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">
+        Notes (optional)
+      </label>
+      <textarea name="notes" rows="2" placeholder="Any observations..."
+                style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                       border-radius:10px;font-size:13px;resize:vertical;
+                       box-sizing:border-box"></textarea>
+    </div>
+
+    <button type="submit"
+            style="width:100%;padding:12px;background:#3d5a99;color:white;
+                   border:none;border-radius:10px;font-size:13px;font-weight:700;
+                   cursor:pointer">
+      Log Water Entry
+    </button>
+  </form>
+</div>

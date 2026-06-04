@@ -1,43 +1,91 @@
-<form hx-post="{% url 'feed:log' batch_pk %}"
-      hx-target="#feed-summary-card"
-      hx-swap="outerHTML"
-      class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
-  {% csrf_token %}
+<div style="padding:16px">
+  <h3 style="font-size:16px;font-weight:800;color:#1a2744;margin-bottom:4px">Log Feed</h3>
+  <p style="font-size:12px;color:#8a96a8;margin-bottom:14px">
+    {{ batch.batch_name }} · {{ batch.bird_type|title }} · Day {{ batch.cycle_day }}
+  </p>
 
-  {% if form.non_field_errors %}
-  <div class="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-  </div>
-  {% endif %}
+  <form hx-post="{% url 'feed:log' batch.pk %}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML">
+    {% csrf_token %}
 
-  <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-    <div>
-      <label class="block text-xs font-medium text-gray-500 mb-1">Date</label>
-      {{ form.record_date }}
-      {% if form.record_date.errors %}<p class="text-xs text-red-600 mt-1">{{ form.record_date.errors.0 }}</p>{% endif %}
+    {% if form.non_field_errors %}
+    <div style="margin-bottom:10px;padding:8px 12px;background:#fef2f2;
+                border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#dc2626">
+      {% for error in form.non_field_errors %}{{ error }}{% endfor %}
     </div>
-    <div>
-      <label class="block text-xs font-medium text-gray-500 mb-1">Feed Type</label>
-      {{ form.feed_type }}
-      {% if form.feed_type.errors %}<p class="text-xs text-red-600 mt-1">{{ form.feed_type.errors.0 }}</p>{% endif %}
-    </div>
-    <div>
-      <label class="block text-xs font-medium text-gray-500 mb-1">Quantity (kg)</label>
-      {{ form.quantity_kg }}
-      {% if form.quantity_kg.errors %}<p class="text-xs text-red-600 mt-1">{{ form.quantity_kg.errors.0 }}</p>{% endif %}
-    </div>
-    <div>
-      <label class="block text-xs font-medium text-gray-500 mb-1">Cost / kg (₦, optional)</label>
-      {{ form.cost_per_kg }}
-    </div>
-    <div class="col-span-2">
-      <label class="block text-xs font-medium text-gray-500 mb-1">Notes</label>
-      {{ form.notes }}
-    </div>
-  </div>
+    {% endif %}
 
-  <button type="submit"
-          class="mt-4 px-5 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">
-    Log Feed
-  </button>
-</form>
+    <div style="margin-bottom:10px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+        Date
+      </label>
+      <input type="date" name="record_date"
+             value="{{ today|date:'Y-m-d' }}"
+             style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
+                    border-radius:10px;font-size:13px;box-sizing:border-box;outline:none"
+             onfocus="this.style.borderColor='#3d5a99'"
+             onblur="this.style.borderColor='#e2e8f0'">
+      {% if form.record_date.errors %}
+      <p style="color:#dc2626;font-size:11px;margin-top:3px">{{ form.record_date.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+          Quantity (kg)
+        </label>
+        <input type="number" name="quantity_kg" step="0.1" min="0" placeholder="e.g. 45.5"
+               style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
+                      border-radius:10px;font-size:13px;box-sizing:border-box;outline:none"
+               onfocus="this.style.borderColor='#3d5a99'"
+               onblur="this.style.borderColor='#e2e8f0'">
+        {% if form.quantity_kg.errors %}
+        <p style="color:#dc2626;font-size:11px;margin-top:3px">{{ form.quantity_kg.errors.0 }}</p>
+        {% endif %}
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+          Feed Type
+        </label>
+        <select name="feed_type"
+                style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
+                       border-radius:10px;font-size:13px;box-sizing:border-box;
+                       background:white;outline:none"
+                onfocus="this.style.borderColor='#3d5a99'"
+                onblur="this.style.borderColor='#e2e8f0'">
+          <option value="starter">Starter</option>
+          <option value="grower">Grower</option>
+          <option value="finisher">Finisher</option>
+          <option value="layer_mash">Layer Mash</option>
+          <option value="chick_mash">Chick Mash</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+        Cost per kg (₦, optional)
+      </label>
+      <input type="number" name="cost_per_kg" step="0.01" min="0" placeholder="e.g. 250.00"
+             style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
+                    border-radius:10px;font-size:13px;box-sizing:border-box;outline:none"
+             onfocus="this.style.borderColor='#3d5a99'"
+             onblur="this.style.borderColor='#e2e8f0'">
+    </div>
+
+    <button type="submit"
+            style="width:100%;padding:11px;background:#3d5a99;color:white;
+                   border:none;border-radius:10px;font-size:13px;font-weight:700;
+                   cursor:pointer;transition:background 0.15s"
+            onmouseover="this.style.background='#2d4578'"
+            onmouseout="this.style.background='#3d5a99'">
+      Log Feed Entry
+    </button>
+  </form>
+</div>

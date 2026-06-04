@@ -21,6 +21,11 @@ urlpatterns = [
         name="export_excel",
     ),
     path(
+        "production/eggs/<uuid:batch_pk>/export/csv/",
+        views.EggProductionCSVExportView.as_view(),
+        name="export_csv",
+    ),
+    path(
         "production/eggs/<uuid:batch_pk>/log/",
         views.ProductionLogView.as_view(),
         name="log",

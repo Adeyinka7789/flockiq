@@ -1,142 +1,375 @@
-<!-- Trend chart -->
-<div class="prod-section" style="margin-bottom:16px">
-  <div class="prod-section-hd">
-    <span class="prod-section-title">Egg Production Trend</span>
-    <span style="font-size:11px;color:#8a96a8">{{ date_from }} &mdash; {{ date_to }}</span>
+<!-- Metric cards -->
+<div class="prod-metrics">
+
+  <!-- Today's Collection -->
+  <div class="prod-metric">
+    <span class="prod-metric-badge live">LIVE</span>
+    <div class="prod-metric-icon" style="background:#e8eef8">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+           stroke="#3d5a99" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"/>
+      </svg>
+    </div>
+    <div class="prod-metric-lbl">Today's Collection</div>
+    <div class="prod-metric-val">{{ todays_eggs|floatformat:0 }}</div>
+    <div class="prod-metric-sub">
+      <span style="color:#8a96a8">eggs</span>
+      {% if todays_crates %}
+      <span style="margin-left:4px">· {{ todays_crates|floatformat:1 }} crates</span>
+      {% endif %}
+    </div>
   </div>
-  <div style="padding:16px;height:200px;position:relative">
-    <canvas id="prodTrendChart"></canvas>
+
+  <!-- Hen-Day % -->
+  <div class="prod-metric">
+    <div class="prod-metric-icon" style="background:#edfae8">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+           stroke="#16a34a" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10"/>
+      </svg>
+    </div>
+    <div class="prod-metric-lbl">Hen-Day %</div>
+    <div class="prod-metric-val">{{ todays_hen_day|floatformat:1 }}%</div>
+    <div class="prod-metric-sub
+         {% if todays_hen_day >= 85 %}green
+         {% elif todays_hen_day >= 70 %}amber
+         {% else %}red{% endif %}">
+      {% if todays_hen_day >= 85 %}Optimal
+      {% elif todays_hen_day >= 70 %}Acceptable
+      {% elif todays_hen_day %}Below target
+      {% else %}No data today{% endif %}
+    </div>
   </div>
+
+  <!-- 7-Day Average -->
+  <div class="prod-metric">
+    <div class="prod-metric-icon" style="background:#fef3c7">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+           stroke="#d97706" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+      </svg>
+    </div>
+    <div class="prod-metric-lbl">7-Day Average</div>
+    <div class="prod-metric-val">{{ avg_7day_eggs|floatformat:0 }}</div>
+    <div class="prod-metric-sub">eggs/day · {{ avg_7day|floatformat:1 }}% HD</div>
+  </div>
+
+  <!-- Forecast vs Actual -->
+  <div class="prod-metric">
+    <div class="prod-metric-icon" style="background:#e8eef8">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+           stroke="#3d5a99" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+      </svg>
+    </div>
+    <div class="prod-metric-lbl">Forecast vs Actual</div>
+    {% if forecast_delta is not None %}
+    <div class="prod-metric-val"
+         style="font-size:24px;color:{% if forecast_delta >= 0 %}#16a34a{% else %}#dc2626{% endif %}">
+      {% if forecast_delta >= 0 %}↑{% else %}↓{% endif %}{{ forecast_delta|floatformat:1 }}%
+    </div>
+    <div class="prod-metric-sub {% if forecast_delta >= 0 %}green{% else %}red{% endif %}">
+      {% if forecast_delta >= 0 %}Above Target{% else %}Below Target{% endif %}
+    </div>
+    {% else %}
+    <div class="prod-metric-val" style="font-size:16px;color:#8a96a8">—</div>
+    <div class="prod-metric-sub">No forecast data</div>
+    {% endif %}
+  </div>
+
 </div>
 
-<!-- Per-batch table -->
-<div class="prod-section">
-  <div class="prod-section-hd">
-    <span class="prod-section-title">Batch Performance</span>
-    <span style="font-size:12px;color:#8a96a8">Today's data</span>
-  </div>
+<!-- Two column layout -->
+<div class="prod-layout">
 
-  {% for summary in batch_summaries %}
-  <div class="batch-row">
+  <!-- LEFT: Chart + Table -->
+  <div class="prod-main">
 
-    <!-- Batch info -->
-    <div style="min-width:0;flex:1">
-      <div style="font-size:13px;font-weight:700;color:#1a2744">
-        {{ summary.batch.batch_name }}
-      </div>
-      <div style="font-size:11px;color:#8a96a8;margin-top:1px">
-        {{ summary.batch.farm.name }} &middot;
-        Day {{ summary.batch.cycle_day }} &middot;
-        {{ summary.batch.current_count }} hens
-      </div>
-    </div>
-
-    <!-- Today's eggs -->
-    <div style="text-align:center;min-width:70px">
-      <div style="font-size:18px;font-weight:800;color:#1a2744;
-                  font-variant-numeric:tabular-nums">
-        {{ summary.todays_eggs }}
-      </div>
-      <div style="font-size:10px;color:#8a96a8;
-                  text-transform:uppercase;letter-spacing:0.05em">eggs</div>
-    </div>
-
-    <!-- Hen-day % with bar -->
-    <div style="min-width:140px">
-      <div style="display:flex;align-items:center;
-                  justify-content:space-between;margin-bottom:5px">
-        <span style="font-size:11px;color:#8a96a8">Hen-Day%</span>
-        <span style="font-size:12px;font-weight:700;
-                     color:{% if summary.todays_hen_day >= 85 %}#166534{% elif summary.todays_hen_day >= 70 %}#92400e{% else %}#991b1b{% endif %}">
-          {{ summary.todays_hen_day }}%
-        </span>
-      </div>
-      <div class="hen-day-bar">
-        <div class="hen-day-fill"
-             style="width:{{ summary.todays_hen_day }}%;
-                    background:{% if summary.todays_hen_day >= 85 %}#8bc87a{% elif summary.todays_hen_day >= 70 %}#f59e0b{% else %}#ef4444{% endif %}">
+    <!-- Actual vs AI Forecast chart -->
+    <div class="prod-chart-card">
+      <div class="prod-chart-hd">
+        <div>
+          <div class="prod-chart-title">Actual vs AI Forecast</div>
+          <div class="prod-chart-sub">Production trajectory for current cycle</div>
+        </div>
+        <div class="prod-chart-legend">
+          <div class="prod-legend-item">
+            <span class="prod-legend-dot" style="background:#3d5a99"></span>
+            Actual
+          </div>
+          {% if chart_forecast_data %}
+          <div class="prod-legend-item">
+            <span class="prod-legend-dash" style="border-color:#94a3b8"></span>
+            AI Forecast
+          </div>
+          {% endif %}
         </div>
       </div>
-    </div>
-
-    <!-- 7-day avg -->
-    <div style="text-align:center;min-width:70px">
-      <div style="font-size:13px;font-weight:700;color:#3d5a99">
-        {{ summary.avg_7day_hen_day }}%
+      <div class="prod-chart-body">
+        <canvas id="prodTrendChart"></canvas>
       </div>
-      <div style="font-size:10px;color:#8a96a8">7d avg</div>
     </div>
 
-    <!-- Log button + link -->
-    <div style="display:flex;gap:8px;align-items:center">
-      {% if summary.logged_today %}
-      <span class="log-btn logged">&#10003; Logged</span>
+    <!-- Daily Records -->
+    <div class="prod-table-card">
+      <div class="prod-table-hd">
+        <div>
+          <div class="prod-table-title">Daily Records</div>
+          <div class="prod-table-sub">Detailed collection breakdown for current period</div>
+        </div>
+        {% if active_batch %}
+        <a href="{% url 'production:export_csv' active_batch.pk %}"
+           class="prod-csv-btn">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Export CSV
+        </a>
+        {% endif %}
+      </div>
+
+      {% if daily_records %}
+      <table class="prod-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Total Collected</th>
+            <th>Grade A</th>
+            <th>Grade B</th>
+            <th>Cracked</th>
+            <th>Hen-Day %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in daily_records %}
+          <tr>
+            <td>{{ log.record_date|date:"M d, Y" }}</td>
+            <td style="font-weight:700">{{ log.total_eggs|floatformat:0 }}</td>
+            <td>{{ log.grade_a|floatformat:0 }}</td>
+            <td>{{ log.grade_b|floatformat:0 }}</td>
+            <td class="td-cracked">{{ log.cracked|default:0|floatformat:0 }}</td>
+            <td class="td-hen-day {% if log.hen_day_pct and log.hen_day_pct < 75 %}amber{% endif %}">
+              {% if log.hen_day_pct %}{{ log.hen_day_pct|floatformat:1 }}%{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
       {% else %}
-      <button class="log-btn not-logged"
-              hx-get="{% url 'production:log' summary.batch.pk %}"
-              hx-target="#modal-body"
-              hx-swap="innerHTML"
-              hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))">
-        + Log Eggs
-      </button>
+      <div class="empty-state">
+        {% if active_batch %}No production records yet for this batch.
+        {% else %}Select a batch to see daily records.{% endif %}
+      </div>
       {% endif %}
-      <a href="{% url 'flocks:detail' summary.batch.pk %}"
-         style="font-size:11px;color:#3d5a99;text-decoration:none;font-weight:600">
-        View &rarr;
+    </div>
+
+  </div>
+
+  <!-- RIGHT: Sidebar -->
+  <div class="prod-sidebar">
+
+    <!-- AI Insights -->
+    {% if plan_features.ai_egg_forecast and forecast_total_14d %}
+    <div class="prod-ai-card">
+      <div class="prod-ai-title">
+        <svg width="16" height="16" fill="white" viewBox="0 0 24 24">
+          <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+        </svg>
+        AI Insights
+      </div>
+      <div class="prod-ai-sub">14-Day Forecast Summary</div>
+
+      <div class="prod-ai-stat-row">
+        <div class="prod-ai-stat">
+          <div class="prod-ai-stat-lbl">Expected Total</div>
+          <div class="prod-ai-stat-val">{{ forecast_total_14d|floatformat:0 }}</div>
+        </div>
+        <div class="prod-ai-stat">
+          <div class="prod-ai-stat-lbl">Confidence</div>
+          <div class="prod-ai-stat-val">
+            {% if forecast_confidence %}{{ forecast_confidence }}%{% else %}—{% endif %}
+          </div>
+        </div>
+      </div>
+
+      {% if ai_recommendations %}
+      <div>
+        <div class="prod-ai-rec-label">Recommendations</div>
+        {% for rec in ai_recommendations %}
+        <div class="prod-ai-rec">
+          <div class="prod-ai-rec-dot {{ rec.type }}">✓</div>
+          <span>{{ rec.text }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% elif not plan_features.ai_egg_forecast %}
+    <div style="background:linear-gradient(160deg,#1e3a8a,#2d5be3);
+                border-radius:14px;padding:20px;margin-bottom:14px;
+                text-align:center">
+      <div style="font-size:24px;margin-bottom:8px">🔒</div>
+      <div style="font-size:13px;font-weight:700;color:white;margin-bottom:6px">AI Egg Forecast</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:14px">
+        Available on Monthly plan and above
+      </div>
+      <a href="/billing/"
+         style="display:inline-block;padding:8px 16px;background:white;color:#1e3a8a;
+                border-radius:8px;font-size:12px;font-weight:700;text-decoration:none">
+        Upgrade →
       </a>
     </div>
+    {% endif %}
+
+    <!-- Resource Utilization -->
+    <div class="prod-resource-card">
+      <div class="prod-resource-hd">Resource Utilization</div>
+
+      <div class="prod-resource-row">
+        <div class="prod-resource-name">Egg Trays (Large)</div>
+        <div class="prod-resource-bar">
+          <div class="prod-resource-fill {% if crate_utilization_pct and crate_utilization_pct > 80 %}amber{% endif %}"
+               style="width:{{ crate_utilization_pct|default:0 }}%"></div>
+        </div>
+        <div class="prod-resource-val">
+          {% if crate_utilization_pct %}{{ crate_utilization_pct }}%{% else %}—{% endif %}
+        </div>
+      </div>
+
+      <div class="prod-resource-row">
+        <div class="prod-resource-name">Water (Avg/Bird)</div>
+        <div class="prod-resource-bar">
+          <div class="prod-resource-fill green"
+               style="width:{% if todays_water_avg %}{% widthratio todays_water_avg 300 100 %}%{% else %}0%{% endif %}">
+          </div>
+        </div>
+        <div class="prod-resource-val">
+          {% if todays_water_avg %}
+          {{ todays_water_avg|floatformat:0 }}ml
+          {% if todays_water_avg >= 200 %}
+          <span style="font-size:10px;color:#16a34a;font-weight:600;margin-left:2px">Optimal</span>
+          {% endif %}
+          {% else %}—{% endif %}
+        </div>
+      </div>
+
+    </div>
 
   </div>
-  {% empty %}
-  <div style="padding:32px;text-align:center;color:#8a96a8;font-size:13px">
-    No layer batches match the current filter.
-  </div>
-  {% endfor %}
 </div>
 
-{{ trend_data|json_script:"prod-trend-data" }}
+<!-- Chart JS data -->
+{{ chart_actual_labels|json_script:"prod-actual-labels" }}
+{{ chart_actual_data|json_script:"prod-actual-data" }}
+{{ chart_forecast_labels|json_script:"prod-forecast-labels" }}
+{{ chart_forecast_data|json_script:"prod-forecast-data" }}
 <script>
-(function () {
-  function initProdChart() {
-    var canvas = document.getElementById('prodTrendChart');
-    if (!canvas) return;
-    if (typeof Chart === 'undefined') return;
-    if (canvas._prodChart) { canvas._prodChart.destroy(); }
-    var data = JSON.parse(document.getElementById('prod-trend-data').textContent);
-    canvas._prodChart = new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels: data.map(function(d) { return d.date; }),
-        datasets: [{
-          data: data.map(function(d) { return d.total; }),
-          borderColor: '#8bc87a',
-          backgroundColor: 'rgba(139,200,122,0.08)',
-          fill: true, tension: 0.3,
-          pointRadius: 2, borderWidth: 2,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { font: { size: 9 }, color: '#9ca3af', maxTicksLimit: 10 }
-          },
-          y: {
-            grid: { color: '#f3f4f6' },
-            ticks: { font: { size: 9 }, color: '#9ca3af' },
-            beginAtZero: true,
+(function() {
+  var actualLabels   = JSON.parse(document.getElementById('prod-actual-labels').textContent);
+  var actualData     = JSON.parse(document.getElementById('prod-actual-data').textContent);
+  var forecastLabels = JSON.parse(document.getElementById('prod-forecast-labels').textContent);
+  var forecastData   = JSON.parse(document.getElementById('prod-forecast-data').textContent);
+
+  var canvas = document.getElementById('prodTrendChart');
+  if (!canvas || !actualLabels.length) return;
+  if (typeof Chart === 'undefined') return;
+  if (canvas._prodChart) { canvas._prodChart.destroy(); }
+
+  var allLabels = actualLabels.concat(forecastLabels);
+
+  var paddedActual = actualData.concat(forecastLabels.map(function() { return null; }));
+  var paddedForecast = actualLabels.map(function(_, i) {
+    return i === actualLabels.length - 1 ? actualData[i] : null;
+  }).concat(forecastData);
+
+  var todayIndex = {{ chart_today_index|default:"null" }};
+
+  var pluginAnnotation = {};
+  if (todayIndex !== null && window.Chart && Chart.registry) {
+    pluginAnnotation = {
+      annotation: {
+        annotations: {
+          todayLine: {
+            type: 'line',
+            xMin: todayIndex,
+            xMax: todayIndex,
+            borderColor: '#3d5a99',
+            borderWidth: 2,
+            borderDash: [4, 4],
+            label: {
+              display: true,
+              content: 'TODAY',
+              position: 'start',
+              backgroundColor: '#3d5a99',
+              color: 'white',
+              font: { size: 10, weight: 'bold' },
+              padding: { x: 6, y: 3 },
+              borderRadius: 4,
+            }
           }
         }
       }
-    });
+    };
   }
 
-  if (typeof Chart !== 'undefined') {
-    initProdChart();
-  } else {
-    document.addEventListener('DOMContentLoaded', initProdChart);
-  }
+  canvas._prodChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: allLabels,
+      datasets: [
+        {
+          label: 'Actual',
+          data: paddedActual,
+          borderColor: '#1e3a8a',
+          backgroundColor: 'rgba(30,58,138,0.08)',
+          borderWidth: 2.5,
+          pointRadius: 3,
+          pointBackgroundColor: '#1e3a8a',
+          fill: true,
+          tension: 0.4,
+          spanGaps: false,
+        },
+        {
+          label: 'AI Forecast',
+          data: paddedForecast,
+          borderColor: '#94a3b8',
+          borderDash: [6, 4],
+          borderWidth: 2,
+          pointRadius: 2,
+          pointBackgroundColor: '#94a3b8',
+          fill: false,
+          tension: 0.4,
+          spanGaps: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: Object.assign({ legend: { display: false } }, pluginAnnotation),
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10 }, color: '#94a3b8', maxTicksLimit: 8 }
+        },
+        y: {
+          grid: { color: '#f3f4f6' },
+          ticks: {
+            font: { size: 10 }, color: '#94a3b8',
+            callback: function(v) { return v + '%'; }
+          },
+          min: 0, max: 100,
+        }
+      }
+    }
+  });
 })();
 </script>

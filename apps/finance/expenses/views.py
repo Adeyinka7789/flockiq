@@ -261,7 +261,11 @@ class ExpenseLogView(LoginRequiredMixin, View):
             "expenses/_expense_log_form.html",
             {"success": True, "record": record, "batch_pk": batch_pk},
         )
-        response["HX-Trigger"] = '{"expenseAdded": true}'
+        response["HX-Trigger"] = json.dumps({
+            "expenseAdded": True,
+            "close-modal": True,
+            "showToast": {"message": "Expense recorded.", "type": "success"},
+        })
         return response
 
 

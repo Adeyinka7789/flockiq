@@ -1,94 +1,593 @@
 {% extends "base.html" %}
-
-{% block title %}{{ farm.name }} — FlockIQ{% endblock %}
+{% load static %}
+{% block title %}{{ farm.name }}{% endblock %}
 {% block breadcrumb %}{{ farm.name }}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 py-8">
+<style>
+  .fd-wrap { max-width: 1100px; margin: 0 auto; }
 
-  <!-- Breadcrumb -->
-  <nav class="text-xs text-gray-400 mb-4">
-    <a href="{% url 'farms:list' %}" class="hover:text-green-600">Farms</a>
-    <span class="mx-1">/</span>
-    <span class="text-gray-700">{{ farm.name }}</span>
-  </nav>
+  .fd-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; margin-bottom: 28px;
+  }
+  .fd-breadcrumb {
+    font-size: 12px; color: #8a96a8; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .fd-breadcrumb a { color: #3d5a99; text-decoration: none; font-weight: 600; }
+  .fd-location {
+    font-size: 11px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 4px; display: flex; align-items: center; gap: 4px;
+  }
+  .fd-farm-name {
+    font-size: 32px; font-weight: 800; color: #1a2744;
+    letter-spacing: -1px; margin-bottom: 8px;
+  }
+  .fd-farm-desc { font-size: 14px; color: #4a5568; line-height: 1.6; max-width: 500px; }
+  .fd-header-actions { display: flex; gap: 10px; flex-shrink: 0; }
+  .fd-btn-secondary {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 18px; background: white; color: #1a2744;
+    border: 1.5px solid #e2e8f0; border-radius: 10px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s; text-decoration: none;
+  }
+  .fd-btn-secondary:hover { border-color: #3d5a99; color: #3d5a99; }
+  .fd-btn-primary {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 20px; background: #3d5a99; color: white;
+    border: none; border-radius: 10px; font-size: 13px;
+    font-weight: 700; cursor: pointer; transition: all 0.15s;
+    text-decoration: none;
+  }
+  .fd-btn-primary:hover { background: #2d4578; }
 
-  <!-- Farm header -->
-  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
-    <div class="flex items-start justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">{{ farm.name }}</h1>
-        <p class="text-sm text-gray-500 mt-1">{{ farm.location }}</p>
-        <p class="text-xs text-gray-400 mt-1">
-          {{ farm.latitude }}, {{ farm.longitude }}
-        </p>
+  .fd-metrics {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 14px; margin-bottom: 24px;
+  }
+  .fd-metric {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 18px;
+  }
+  .fd-metric-lbl {
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
+  }
+  .fd-metric-val {
+    font-size: 28px; font-weight: 800; color: #1a2744;
+    line-height: 1; font-variant-numeric: tabular-nums; margin-bottom: 4px;
+  }
+  .fd-metric-val.green { color: #16a34a; }
+  .fd-metric-val.amber { color: #d97706; }
+  .fd-metric-val.red   { color: #dc2626; }
+  .fd-metric-sub { font-size: 11px; color: #8a96a8; }
+
+  .fd-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+  .fd-main { min-width: 0; }
+
+  .fd-section {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden; margin-bottom: 16px;
+  }
+  .fd-section-hd {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid #f1f5f9;
+  }
+  .fd-section-title { font-size: 14px; font-weight: 700; color: #1a2744; letter-spacing: -0.2px; }
+  .fd-section-link { font-size: 12px; color: #3d5a99; font-weight: 600; text-decoration: none; }
+  .fd-section-link:hover { text-decoration: underline; }
+
+  .fd-batch-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; border-bottom: 1px solid #f8faff;
+    transition: background 0.1s; cursor: pointer;
+  }
+  .fd-batch-row:last-child { border-bottom: none; }
+  .fd-batch-row:hover { background: #fafbff; }
+  .fd-batch-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .fd-batch-info { flex: 1; min-width: 0; }
+  .fd-batch-name { font-size: 13px; font-weight: 700; color: #1a2744; }
+  .fd-batch-meta { font-size: 11px; color: #8a96a8; margin-top: 2px; }
+  .fd-batch-progress { min-width: 160px; }
+  .fd-batch-day {
+    display: flex; justify-content: flex-end;
+    align-items: baseline; gap: 2px; margin-bottom: 6px;
+  }
+  .fd-batch-day-num { font-size: 20px; font-weight: 800; color: #1a2744; line-height: 1; }
+  .fd-batch-day-total { font-size: 13px; color: #8a96a8; font-weight: 500; }
+  .fd-progress-bar {
+    height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden;
+  }
+  .fd-progress-fill {
+    height: 100%; border-radius: 2px; background: #3d5a99; transition: width 0.6s ease;
+  }
+  .fd-progress-fill.green { background: #8bc87a; }
+  .fd-progress-fill.amber { background: #f59e0b; }
+
+  .fd-house-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  .fd-house-item {
+    padding: 14px 18px; border-bottom: 1px solid #f8faff; border-right: 1px solid #f8faff;
+  }
+  .fd-house-item:nth-child(even) { border-right: none; }
+  .fd-house-item:nth-last-child(-n+2) { border-bottom: none; }
+  .fd-house-wing {
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;
+  }
+  .fd-house-name {
+    font-size: 14px; font-weight: 700; color: #1a2744;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .fd-house-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .fd-house-dot.active   { background: #16a34a; }
+  .fd-house-dot.idle     { background: #d97706; }
+  .fd-house-stats { display: flex; gap: 16px; }
+  .fd-house-stat-lbl {
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px;
+  }
+  .fd-house-stat-val { font-size: 13px; font-weight: 700; color: #1a2744; }
+
+  .fd-quick-logs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 14px; }
+  .fd-log-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 14px 8px; background: #f4f7fe;
+    border: 1px solid #e2e8f0; border-radius: 12px;
+    cursor: pointer; transition: all 0.15s; text-decoration: none;
+    font-size: 11px; font-weight: 700; color: #4a5568;
+    text-align: center; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .fd-log-btn:hover { background: #e8eef8; border-color: #3d5a99; color: #3d5a99; }
+  .fd-log-btn-icon { font-size: 20px; }
+
+  .fd-sidebar { }
+
+  .fd-health-card {
+    background: linear-gradient(160deg, #1e3a8a, #2d5be3);
+    border-radius: 14px; padding: 20px; color: white; margin-bottom: 14px;
+  }
+  .fd-health-title { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.7); margin-bottom: 12px; }
+  .fd-health-score {
+    font-size: 52px; font-weight: 800; color: white;
+    line-height: 1; margin-bottom: 4px; font-variant-numeric: tabular-nums;
+  }
+  .fd-health-label { font-size: 13px; font-weight: 700; color: #8bc87a; margin-bottom: 16px; }
+  .fd-health-metric { margin-bottom: 12px; }
+  .fd-health-metric-hd { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
+  .fd-health-metric-name { color: rgba(255,255,255,0.6); font-weight: 600; }
+  .fd-health-metric-val { color: white; font-weight: 700; }
+  .fd-health-bar { height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden; }
+  .fd-health-fill { height: 100%; border-radius: 2px; background: #8bc87a; }
+
+  .fd-alerts-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden; margin-bottom: 14px;
+  }
+  .fd-alert-item { padding: 12px 16px; border-bottom: 1px solid #f8faff; }
+  .fd-alert-item:last-child { border-bottom: none; }
+  .fd-alert-title { font-size: 12px; font-weight: 700; color: #1a2744; margin-bottom: 3px; }
+  .fd-alert-body { font-size: 11px; color: #4a5568; line-height: 1.5; margin-bottom: 4px; }
+  .fd-alert-time { font-size: 10px; color: #d97706; font-weight: 600; text-transform: uppercase; }
+
+  .fd-chart-wrap { padding: 16px; height: 180px; position: relative; }
+
+  @media(max-width:900px){
+    .fd-layout { grid-template-columns: 1fr; }
+    .fd-metrics { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+
+<div class="fd-wrap">
+
+  <!-- Header -->
+  <div class="fd-header">
+    <div>
+      <div class="fd-breadcrumb">
+        <a href="{% url 'farms:list' %}">My Farms</a>
+        <span>›</span>
+        <span>{{ farm.name }}</span>
       </div>
-      <div class="flex flex-col items-end gap-3">
-        <button hx-get="{% url 'flocks:create' farm.pk %}"
-                hx-target="#modal-container"
-                hx-swap="innerHTML"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold"
-                style="background:#3d5a99">
-          + Add Batch
-        </button>
-        <span class="px-3 py-1 rounded-full text-sm font-medium
-          {% if farm.farm_type == 'layer' %}bg-yellow-100 text-yellow-700
-          {% elif farm.farm_type == 'broiler' %}bg-blue-100 text-blue-700
-          {% else %}bg-gray-100 text-gray-600{% endif %}">
-          {{ farm.get_farm_type_display }}
-        </span>
-        <span class="flex items-center gap-1 text-xs
-          {% if farm.is_active %}text-green-600{% else %}text-gray-400{% endif %}">
-          <span class="w-1.5 h-1.5 rounded-full
-            {% if farm.is_active %}bg-green-500{% else %}bg-gray-300{% endif %}"></span>
-          {% if farm.is_active %}Active{% else %}Inactive{% endif %}
-        </span>
+      <div class="fd-location">
+        <svg width="12" height="12" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+        </svg>
+        {{ farm.location|default:"Nigeria" }}
+      </div>
+      <div class="fd-farm-name">{{ farm.name }}</div>
+      <div class="fd-farm-desc">
+        {{ farm.farm_type|title }} farm with {{ houses|length }} house{{ houses|length|pluralize }}.
+        Monitoring bird health, production efficiency, and resource distribution.
       </div>
     </div>
-    {% if farm.notes %}
-      <p class="text-sm text-gray-600 mt-4 border-t border-gray-50 pt-4">{{ farm.notes }}</p>
-    {% endif %}
+    <div class="fd-header-actions">
+      <button class="fd-btn-secondary"
+              hx-get="{% url 'farms:house_create' farm.pk %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+        </svg>
+        New House
+      </button>
+      <a href="{% url 'flocks:list' %}" class="fd-btn-primary">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+        </svg>
+        New Intake
+      </a>
+    </div>
   </div>
 
-  <!-- Houses section -->
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="text-lg font-semibold text-gray-800">Houses</h2>
-    <button
-      hx-get="{% url 'farms:house_create' farm.id %}"
-      hx-target="#modal-container"
-      hx-swap="innerHTML"
-      class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-      </svg>
-      Add House
-    </button>
+  <!-- Metric cards -->
+  <div class="fd-metrics">
+    <div class="fd-metric">
+      <div class="fd-metric-lbl">Total Capacity</div>
+      <div class="fd-metric-val">{{ total_capacity|floatformat:0 }}</div>
+      <div class="fd-metric-sub">Birds across all houses</div>
+    </div>
+    <div class="fd-metric">
+      <div class="fd-metric-lbl">Current Stock</div>
+      <div class="fd-metric-val green">{{ total_live|floatformat:0 }}</div>
+      <div class="fd-metric-sub">Active live birds</div>
+    </div>
+    <div class="fd-metric">
+      <div class="fd-metric-lbl">
+        {% if active_batches and active_batches.0.bird_type == 'layer' %}Today's Eggs
+        {% else %}Active Batches{% endif %}
+      </div>
+      <div class="fd-metric-val amber">
+        {% if active_batches and active_batches.0.bird_type == 'layer' %}{{ todays_eggs|floatformat:0 }}
+        {% else %}{{ active_batches|length }}{% endif %}
+      </div>
+      <div class="fd-metric-sub">
+        {% if active_batches and active_batches.0.bird_type == 'layer' %}Eggs collected today
+        {% else %}Running cycles{% endif %}
+      </div>
+    </div>
+    <div class="fd-metric">
+      <div class="fd-metric-lbl">Avg Mortality</div>
+      <div class="fd-metric-val {% if avg_mort_rate > 3 %}red{% elif avg_mort_rate > 1 %}amber{% else %}green{% endif %}">
+        {{ avg_mort_rate }}%
+      </div>
+      <div class="fd-metric-sub">Last 30 days average</div>
+    </div>
   </div>
 
-  <div id="house-list">
-    {% include "farms/_house_list_partial.html" with farm_id=farm.id %}
+  <!-- Two column layout -->
+  <div class="fd-layout">
+
+    <!-- LEFT -->
+    <div class="fd-main">
+
+      <!-- Weekly mortality trend chart -->
+      <div class="fd-section">
+        <div class="fd-section-hd">
+          <span class="fd-section-title">Weekly Mortality Trend</span>
+          <div style="display:flex;align-items:center;gap:12px;font-size:11px;font-weight:600">
+            <span style="display:flex;align-items:center;gap:4px;color:#8a96a8">
+              <span style="width:8px;height:8px;border-radius:50%;
+                           background:#d4dff5;display:inline-block"></span>
+              Previous Week
+            </span>
+            <span style="display:flex;align-items:center;gap:4px;color:#3d5a99">
+              <span style="width:8px;height:8px;border-radius:50%;
+                           background:#3d5a99;display:inline-block"></span>
+              Current Period
+            </span>
+          </div>
+        </div>
+        <div class="fd-chart-wrap">
+          <canvas id="mortalityTrendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Active batches -->
+      <div class="fd-section">
+        <div class="fd-section-hd">
+          <span class="fd-section-title">Currently Active Batches</span>
+          <a href="{% url 'flocks:list' %}" class="fd-section-link">View All Batches →</a>
+        </div>
+        {% for batch in active_batches %}
+        <a href="{% url 'flocks:detail' batch.pk %}"
+           class="fd-batch-row" style="text-decoration:none">
+          <div class="fd-batch-icon"
+               style="background:{% if batch.bird_type == 'layer' %}#edfae8{% else %}#fef3c7{% endif %}">
+            {% if batch.bird_type == 'layer' %}🥚{% else %}🍗{% endif %}
+          </div>
+          <div class="fd-batch-info">
+            <div class="fd-batch-name">{{ batch.batch_name }}</div>
+            <div class="fd-batch-meta">
+              {{ batch.breed_name|default:batch.get_bird_type_display }} •
+              Arrived {{ batch.placement_date|date:"M j, Y" }}
+            </div>
+          </div>
+          <div class="fd-batch-progress">
+            {% with max_days=42 %}
+            <div class="fd-batch-day">
+              <span class="fd-batch-day-num">{{ batch.cycle_day|stringformat:"02d" }}</span>
+              <span class="fd-batch-day-total"> / {{ max_days }}</span>
+            </div>
+            <div class="fd-progress-bar">
+              <div class="fd-progress-fill
+                   {% if batch.cycle_day >= 38 %}green
+                   {% elif batch.cycle_day >= 28 %}amber{% endif %}"
+                   style="width:{% widthratio batch.cycle_day max_days 100 %}%">
+              </div>
+            </div>
+            {% endwith %}
+          </div>
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+               stroke="#8a96a8" stroke-width="2" style="flex-shrink:0">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+        {% empty %}
+        <div style="padding:32px;text-align:center;color:#8a96a8;font-size:13px">
+          No active batches.
+          <a href="{% url 'flocks:list' %}" style="color:#3d5a99;font-weight:600">
+            Place a batch →
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- House inventory -->
+      <div class="fd-section">
+        <div class="fd-section-hd">
+          <span class="fd-section-title">House Inventory</span>
+          <span style="font-size:11px;font-weight:700;background:#edfae8;color:#166534;
+                       padding:3px 10px;border-radius:20px">
+            {{ houses|length }} ACTIVE
+          </span>
+        </div>
+        <div class="fd-house-grid">
+          {% for house in houses %}
+          <div class="fd-house-item">
+            <div class="fd-house-wing">{{ house.house_type|upper }} UNIT</div>
+            <div class="fd-house-name">
+              <span class="fd-house-dot {% if house.active_batch_count > 0 %}active{% else %}idle{% endif %}"></span>
+              {{ house.name }}
+            </div>
+            <div class="fd-house-stats">
+              <div>
+                <div class="fd-house-stat-lbl">Capacity</div>
+                <div class="fd-house-stat-val">{{ house.capacity|floatformat:0 }}</div>
+              </div>
+              <div>
+                <div class="fd-house-stat-lbl">Status</div>
+                <div class="fd-house-stat-val"
+                     style="color:{% if house.active_batch_count > 0 %}#16a34a{% else %}#d97706{% endif %}">
+                  {% if house.active_batch_count > 0 %}Active{% else %}Idle{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div style="grid-column:1/-1;padding:24px;text-align:center;
+                      color:#8a96a8;font-size:13px">
+            No houses added yet.
+            <button class="fd-btn-secondary" style="margin-left:8px;padding:6px 14px"
+                    hx-get="{% url 'farms:house_create' farm.pk %}"
+                    hx-target="#modal-body"
+                    hx-swap="innerHTML">
+              Add House
+            </button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Farm Quick Logs -->
+      <div class="fd-section">
+        <div class="fd-section-hd">
+          <span class="fd-section-title">Farm Quick Logs</span>
+        </div>
+        <div class="fd-quick-logs">
+          {% if active_batches %}
+          {% with batch=active_batches.0 %}
+          <a class="fd-log-btn"
+             hx-get="{% url 'feed:log' batch.pk %}"
+             hx-target="#modal-body"
+             hx-swap="innerHTML"
+             href="#">
+            <span class="fd-log-btn-icon">🌾</span>
+            Feed Log
+          </a>
+          <a class="fd-log-btn"
+             hx-get="{% url 'health:add_vaccination' %}"
+             hx-target="#modal-body"
+             hx-swap="innerHTML"
+             href="#">
+            <span class="fd-log-btn-icon">💉</span>
+            Medication
+          </a>
+          <a class="fd-log-btn"
+             hx-get="{% url 'water:log' batch.pk %}"
+             hx-target="#modal-body"
+             hx-swap="innerHTML"
+             href="#">
+            <span class="fd-log-btn-icon">💧</span>
+            Water Usage
+          </a>
+          <a href="{% url 'flocks:detail' batch.pk %}" class="fd-log-btn">
+            <span class="fd-log-btn-icon">📊</span>
+            Batch Detail
+          </a>
+          {% endwith %}
+          {% else %}
+          <div style="grid-column:1/-1;padding:16px;text-align:center;
+                      color:#8a96a8;font-size:12px">
+            Place a batch to enable quick logging.
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div class="fd-sidebar">
+
+      <!-- Farm Health Score -->
+      <div class="fd-health-card">
+        <div class="fd-health-title">Farm Health Score</div>
+        <div class="fd-health-score">{{ health_score }}</div>
+        <div class="fd-health-label">
+          {% if health_score >= 90 %}EXCELLENT
+          {% elif health_score >= 75 %}GOOD
+          {% elif health_score >= 60 %}FAIR
+          {% else %}NEEDS ATTENTION{% endif %}
+        </div>
+
+        <div class="fd-health-metric">
+          <div class="fd-health-metric-hd">
+            <span class="fd-health-metric-name">Vaccination Coverage</span>
+            <span class="fd-health-metric-val">{{ vacc_compliance }}%</span>
+          </div>
+          <div class="fd-health-bar">
+            <div class="fd-health-fill" style="width:{{ vacc_compliance }}%"></div>
+          </div>
+        </div>
+
+        <div class="fd-health-metric">
+          <div class="fd-health-metric-hd">
+            <span class="fd-health-metric-name">Mortality Rate</span>
+            <span class="fd-health-metric-val">{{ avg_mort_rate }}%</span>
+          </div>
+          <div class="fd-health-bar">
+            <div class="fd-health-fill"
+                 style="width:{% if avg_mort_rate > 10 %}100{% else %}{% widthratio avg_mort_rate 10 100 %}{% endif %}%;
+                        background:{% if avg_mort_rate > 3 %}#ef4444{% else %}#8bc87a{% endif %}">
+            </div>
+          </div>
+        </div>
+
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);
+                    margin-top:12px;font-style:italic">
+          *Target 100% compliance for bio-security safety.
+        </div>
+      </div>
+
+      <!-- Farm location info -->
+      <div style="background:#1a2744;border-radius:14px;overflow:hidden;margin-bottom:14px">
+        <div style="height:80px;background:linear-gradient(135deg,#1e3a8a,#0f172a);
+                    display:flex;align-items:center;justify-content:center">
+          <div style="background:rgba(255,255,255,0.1);
+                      border:1px solid rgba(255,255,255,0.2);
+                      padding:5px 12px;border-radius:20px;
+                      font-size:11px;font-weight:700;color:white;
+                      display:flex;align-items:center;gap:5px">
+            <svg width="10" height="10" fill="#8bc87a" viewBox="0 0 8 8">
+              <circle cx="4" cy="4" r="4"/>
+            </svg>
+            FARM LOCATION
+          </div>
+        </div>
+        <div style="padding:14px 16px">
+          <div style="font-size:14px;font-weight:700;color:white;margin-bottom:4px">
+            {{ farm.name }}
+          </div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.5)">
+            {{ farm.location|default:"Location not set" }}
+            {% if farm.latitude and farm.longitude %}
+            <br>{{ farm.latitude }}°N {{ farm.longitude }}°E
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Critical alerts -->
+      {% if critical_alerts %}
+      <div class="fd-alerts-card">
+        <div class="fd-section-hd">
+          <span style="font-size:12px;font-weight:700;color:#dc2626;
+                       display:flex;align-items:center;gap:6px">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+                 stroke="#dc2626" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+            Critical Alerts
+          </span>
+        </div>
+        {% for alert in critical_alerts %}
+        <div class="fd-alert-item"
+             style="border-left:3px solid {% if alert.severity == 'critical' %}#ef4444{% else %}#f59e0b{% endif %}">
+          <div class="fd-alert-title">{{ alert.title }}</div>
+          <div class="fd-alert-body">{{ alert.body|truncatechars:80 }}</div>
+          <div class="fd-alert-time">{{ alert.created_at|timesince }} ago</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+    </div>
   </div>
 
 </div>
+{% endblock %}
 
-<!-- Modal container -->
-<div id="modal-container"></div>
-
-<!-- Toast -->
-<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
-
+{% block extra_js %}
+{{ current_week|json_script:"curr-week" }}
+{{ prev_week|json_script:"prev-week" }}
 <script>
-  document.body.addEventListener("showToast", function(evt) {
-    const { message, type } = evt.detail;
-    const bg = type === "success" ? "bg-green-600" : "bg-red-600";
-    const toast = document.createElement("div");
-    toast.className = `${bg} text-white text-sm px-4 py-3 rounded-lg shadow-lg`;
-    toast.textContent = message;
-    document.getElementById("toast-container").appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+document.addEventListener('DOMContentLoaded', function() {
+  const canvas = document.getElementById('mortalityTrendChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const currData = JSON.parse(document.getElementById('curr-week').textContent);
+  const prevData = JSON.parse(document.getElementById('prev-week').textContent);
+
+  new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: currData.map(d => d.day),
+      datasets: [
+        {
+          label: 'Previous Week',
+          data: prevData,
+          backgroundColor: 'rgba(212, 223, 245, 0.8)',
+          borderRadius: 6,
+          borderSkipped: false,
+        },
+        {
+          label: 'Current Week',
+          data: currData.map(d => d.count),
+          backgroundColor: '#1e3a8a',
+          borderRadius: 6,
+          borderSkipped: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10 }, color: '#94a3b8' }
+        },
+        y: {
+          grid: { color: '#f3f4f6' },
+          ticks: { font: { size: 10 }, color: '#94a3b8' },
+          beginAtZero: true,
+        }
+      }
+    }
   });
-  document.body.addEventListener("closeModal", function() {
-    document.getElementById("modal-container").innerHTML = "";
-  });
+});
 </script>
 {% endblock %}

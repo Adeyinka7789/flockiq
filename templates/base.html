@@ -703,14 +703,15 @@
   <div id="modal-container"
        x-data="{ open: false }"
        @open-modal.window="open = true"
-       @close-modal.window="open = false"
-       @keydown.escape.window="open = false"
+       @close-modal.window="open = false; closeModal()"
+       @keydown.escape.window="open = false; $nextTick(() => closeModal())"
        x-show="open"
        x-cloak
        class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div class="absolute inset-0 bg-black/50" @click="open = false"></div>
+    <div class="absolute inset-0 bg-black/50"
+         @click.self="open = false; $nextTick(() => closeModal())"></div>
     <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden z-10">
-      <button @click="open = false"
+      <button @click="open = false; $nextTick(() => closeModal())"
               class="absolute top-3 right-3 p-1.5 rounded-lg text-gray-400
                      hover:text-gray-600 hover:bg-gray-100 transition-colors z-10">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -718,7 +719,7 @@
                 d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
-      <div id="modal-body"></div>
+      <div id="modal-body" x-ref="modalBody"></div>
     </div>
   </div>
 
@@ -755,6 +756,23 @@
         }
       }
     });
+    document.addEventListener('htmx:afterSwap', function(e) {
+      if (e.detail.target.id === 'modal-body') {
+        if (window.Alpine) {
+          Alpine.initTree(document.getElementById('modal-body'));
+        }
+        window.dispatchEvent(new CustomEvent('open-modal'));
+      }
+    });
+
+    function closeModal() {
+      var modalBody = document.getElementById('modal-body');
+      if (modalBody && window.Alpine) {
+        Alpine.destroyTree(modalBody);
+      }
+      if (modalBody) modalBody.innerHTML = '';
+    }
+    window.closeModal = closeModal;
   </script>
 </body>
 </html>

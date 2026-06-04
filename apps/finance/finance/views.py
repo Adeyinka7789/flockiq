@@ -1,4 +1,5 @@
 import datetime
+import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -110,7 +111,11 @@ class SaleLogView(LoginRequiredMixin, View):
             "finance/_sale_log_form.html",
             {"success": True, "record": record, "batch_pk": batch_pk},
         )
-        response["HX-Trigger"] = '{"saleAdded": true}'
+        response["HX-Trigger"] = json.dumps({
+            "saleAdded": True,
+            "close-modal": True,
+            "showToast": {"message": "Sale recorded.", "type": "success"},
+        })
         return response
 
 

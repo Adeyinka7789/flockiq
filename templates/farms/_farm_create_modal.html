@@ -1,85 +1,127 @@
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-     x-data
-     @keydown.escape.window="document.getElementById('modal-container').innerHTML = ''">
-  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+<div style="padding:24px">
+  <h3 style="font-size:16px;font-weight:800;color:#1a2744;margin-bottom:4px">Add New Farm</h3>
+  <p style="font-size:12px;color:#8a96a8;margin-bottom:20px">
+    Register a new farm site to start tracking production.
+  </p>
 
-    <div class="flex items-center justify-between mb-5">
-      <h2 class="text-lg font-semibold text-gray-900">Add Farm</h2>
-      <button @click="document.getElementById('modal-container').innerHTML = ''"
-              class="text-gray-400 hover:text-gray-600">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-        </svg>
-      </button>
+  <form hx-post="{% url 'farms:create' %}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div style="margin-bottom:14px;padding:10px 14px;background:#fef2f2;
+                border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#dc2626">
+      {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+    </div>
+    {% endif %}
+
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+        Farm Name
+      </label>
+      <input type="text" name="name"
+             placeholder="e.g. Sunrise Poultry Farm" required
+             {% if form.name.value %}value="{{ form.name.value }}"{% endif %}
+             style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                    border-radius:10px;font-size:13px;box-sizing:border-box;outline:none"
+             onfocus="this.style.borderColor='#3d5a99'"
+             onblur="this.style.borderColor='#e2e8f0'">
+      {% if form.name.errors %}
+      <p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.name.errors.0 }}</p>
+      {% endif %}
     </div>
 
-    <form hx-post="{% url 'farms:create' %}"
-          hx-target="#farm-list"
-          hx-swap="innerHTML"
-          hx-on::after-request="if(event.detail.successful) document.getElementById('modal-container').innerHTML = ''">
-      {% csrf_token %}
-
-      <div class="space-y-4">
-
-        <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Farm name</label>
-          {{ form.name }}
-          {% if form.name.errors %}
-            <p class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</p>
-          {% endif %}
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Location</label>
-          {{ form.location }}
-          {% if form.location.errors %}
-            <p class="text-red-500 text-xs mt-1">{{ form.location.errors.0 }}</p>
-          {% endif %}
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">Latitude</label>
-            {{ form.latitude }}
-            {% if form.latitude.errors %}
-              <p class="text-red-500 text-xs mt-1">{{ form.latitude.errors.0 }}</p>
-            {% endif %}
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">Longitude</label>
-            {{ form.longitude }}
-            {% if form.longitude.errors %}
-              <p class="text-red-500 text-xs mt-1">{{ form.longitude.errors.0 }}</p>
-            {% endif %}
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Farm type</label>
-          {{ form.farm_type }}
-          {% if form.farm_type.errors %}
-            <p class="text-red-500 text-xs mt-1">{{ form.farm_type.errors.0 }}</p>
-          {% endif %}
-        </div>
-
-      </div>
-
-      {% if form.non_field_errors %}
-        <p class="text-red-500 text-xs mt-3">{{ form.non_field_errors.0 }}</p>
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+        Location
+      </label>
+      <input type="text" name="location"
+             placeholder="e.g. Ibadan, Oyo State" required
+             {% if form.location.value %}value="{{ form.location.value }}"{% endif %}
+             style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                    border-radius:10px;font-size:13px;box-sizing:border-box;outline:none"
+             onfocus="this.style.borderColor='#3d5a99'"
+             onblur="this.style.borderColor='#e2e8f0'">
+      {% if form.location.errors %}
+      <p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.location.errors.0 }}</p>
       {% endif %}
+    </div>
 
-      <div class="mt-6 flex gap-3">
-        <button type="button"
-                @click="document.getElementById('modal-container').innerHTML = ''"
-                class="flex-1 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-          Cancel
-        </button>
-        <button type="submit"
-                class="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
-          Create Farm
-        </button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+          Latitude
+        </label>
+        <input type="number" name="latitude" step="0.0000001"
+               placeholder="e.g. 7.3775" required
+               {% if form.latitude.value %}value="{{ form.latitude.value }}"{% endif %}
+               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                      border-radius:10px;font-size:13px;box-sizing:border-box;outline:none"
+               onfocus="this.style.borderColor='#3d5a99'"
+               onblur="this.style.borderColor='#e2e8f0'">
+        {% if form.latitude.errors %}
+        <p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.latitude.errors.0 }}</p>
+        {% endif %}
       </div>
-    </form>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+          Longitude
+        </label>
+        <input type="number" name="longitude" step="0.0000001"
+               placeholder="e.g. 3.9470" required
+               {% if form.longitude.value %}value="{{ form.longitude.value }}"{% endif %}
+               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                      border-radius:10px;font-size:13px;box-sizing:border-box;outline:none"
+               onfocus="this.style.borderColor='#3d5a99'"
+               onblur="this.style.borderColor='#e2e8f0'">
+        {% if form.longitude.errors %}
+        <p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.longitude.errors.0 }}</p>
+        {% endif %}
+      </div>
+    </div>
 
-  </div>
+    <div style="margin-bottom:18px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+        Farm Type
+      </label>
+      <select name="farm_type" required
+              style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                     border-radius:10px;font-size:13px;box-sizing:border-box;
+                     background:white;outline:none"
+              onfocus="this.style.borderColor='#3d5a99'"
+              onblur="this.style.borderColor='#e2e8f0'">
+        <option value="">Select type...</option>
+        <option value="broiler" {% if form.farm_type.value == 'broiler' %}selected{% endif %}>Broiler</option>
+        <option value="layer" {% if form.farm_type.value == 'layer' %}selected{% endif %}>Layer</option>
+        <option value="mixed" {% if form.farm_type.value == 'mixed' %}selected{% endif %}>Mixed</option>
+      </select>
+      {% if form.farm_type.errors %}
+      <p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.farm_type.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button type="button"
+              @click="$dispatch('close-modal')"
+              style="flex:1;padding:11px;background:#f4f7fe;color:#4a5568;
+                     border:1.5px solid #e2e8f0;border-radius:10px;
+                     font-size:13px;font-weight:600;cursor:pointer">
+        Cancel
+      </button>
+      <button type="submit"
+              style="flex:2;padding:11px;background:#3d5a99;color:white;border:none;
+                     border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;
+                     transition:background 0.15s"
+              onmouseover="this.style.background='#2d4578'"
+              onmouseout="this.style.background='#3d5a99'">
+        Create Farm
+      </button>
+    </div>
+  </form>
 </div>

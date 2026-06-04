@@ -97,7 +97,7 @@ class RecordMarketPriceView(LoginRequiredMixin, View):
             response = HttpResponse()
             response["HX-Trigger"] = json.dumps({
                 "showToast": {"message": "Price recorded", "type": "success"},
-                "closeModal": True,
+                "close-modal": True,
             })
             response["HX-Refresh"] = "true"
             return response

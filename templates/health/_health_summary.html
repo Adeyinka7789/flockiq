@@ -240,13 +240,13 @@
 
     <div class="action-row">
       <button hx-get="{% url 'health:medication_log' batch_pk %}"
-              hx-target="#modal-container"
+              hx-target="#modal-body"
               hx-swap="innerHTML"
               class="action-btn">
         + Log Medication
       </button>
       <button hx-get="{% url 'health:symptom_log' batch_pk %}"
-              hx-target="#modal-container"
+              hx-target="#modal-body"
               hx-swap="innerHTML"
               class="action-btn">
         + Log Symptoms

@@ -1,154 +1,150 @@
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-     x-data
-     @keydown.escape.window="document.getElementById('modal-container').innerHTML = ''">
-  <div class="bg-white rounded-2xl shadow-xl w-full mx-4"
-       style="max-width:520px;max-height:90vh;overflow-y:auto">
+{% if success %}
+<div style="padding:40px;text-align:center">
+  <div style="width:56px;height:56px;background:#fef3e2;border-radius:50%;
+              display:flex;align-items:center;justify-content:center;
+              margin:0 auto 16px;font-size:24px">✓</div>
+  <h3 style="font-size:16px;font-weight:800;color:#1a2744;margin-bottom:8px">Expense Recorded</h3>
+  <p style="font-size:13px;color:#8a96a8;margin-bottom:24px">
+    ₦{{ record.amount_naira|floatformat:0 }} ({{ record.get_category_display }}) has been logged.
+  </p>
+  <button type="button"
+          @click="$dispatch('close-modal')"
+          style="padding:12px 32px;background:#3d5a99;color:white;border:none;
+                 border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">
+    Done
+  </button>
+</div>
+{% else %}
 
-    {% if success %}
-    <div style="padding:40px;text-align:center">
-      <div style="width:56px;height:56px;background:#fef3e2;border-radius:50%;
-                  display:flex;align-items:center;justify-content:center;
-                  margin:0 auto 16px;font-size:24px">✓</div>
-      <h3 style="font-size:16px;font-weight:800;color:#1a2744;margin-bottom:8px">Expense Recorded</h3>
-      <p style="font-size:13px;color:#8a96a8;margin-bottom:24px">
-        ₦{{ record.amount_naira|floatformat:0 }} ({{ record.get_category_display }}) has been logged.
+<div style="padding:16px 20px 0">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+    <div style="width:40px;height:40px;border-radius:12px;
+                background:#fee2e2;display:flex;align-items:center;
+                justify-content:center;flex-shrink:0;font-size:20px">
+      📊
+    </div>
+    <div>
+      <h3 style="font-size:15px;font-weight:800;color:#1a2744;margin-bottom:2px">Record Expense</h3>
+      {% if batch %}
+      <p style="font-size:11px;color:#8a96a8;margin:0">
+        {{ batch.batch_name }} · {{ batch.farm.name }}
       </p>
-      <button onclick="document.getElementById('modal-container').innerHTML = ''"
-              style="padding:12px 32px;background:#3d5a99;color:white;border:none;
-                     border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">
-        Done
-      </button>
-    </div>
-    {% else %}
-
-    <!-- Header -->
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;
-                padding:24px 24px 0">
-      <div>
-        <h3 style="font-size:16px;font-weight:800;color:#1a2744;margin-bottom:4px">Record Expense</h3>
-        {% if batch %}
-        <p style="font-size:12px;color:#8a96a8">{{ batch.batch_name }} · {{ batch.farm.name }}</p>
-        {% endif %}
-      </div>
-      <button onclick="document.getElementById('modal-container').innerHTML = ''"
-              style="background:#f4f7fe;border:none;cursor:pointer;width:28px;height:28px;
-                     border-radius:8px;font-size:16px;color:#8a96a8;flex-shrink:0;
-                     display:flex;align-items:center;justify-content:center">✕</button>
-    </div>
-
-    <form hx-post="{% url 'expenses:log' batch_pk %}"
-          hx-target="#modal-container"
-          hx-swap="innerHTML"
-          style="padding:20px 24px 24px;display:flex;flex-direction:column;gap:16px">
-      {% csrf_token %}
-      <input type="hidden" name="batch_id" value="{{ batch_pk }}">
-
-      {% if error %}
-      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;
-                  padding:12px 14px;font-size:13px;color:#dc2626">{{ error }}</div>
       {% endif %}
-
-      <!-- Category -->
-      <div>
-        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                      margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em">
-          Category
-        </label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          {% for value, label in categories %}
-          <label style="display:flex;align-items:center;gap:8px;padding:10px 12px;
-                        border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;
-                        font-size:13px;font-weight:500;color:#1a2744;transition:all 0.15s"
-                 onclick="this.parentElement.querySelectorAll('label').forEach(function(l){l.style.borderColor='#e2e8f0';l.style.background='white'}); this.style.borderColor='#3d5a99'; this.style.background='#e8eef8'">
-            <input type="radio" name="category" value="{{ value }}" style="display:none">
-            <span>{% if value == 'feed' %}🌾{% elif value == 'medication' %}💊{% elif value == 'labour' %}👷{% elif value == 'utilities' %}⚡{% elif value == 'equipment' %}🔧{% elif value == 'chicks' %}🐥{% elif value == 'transport' %}🚚{% elif value == 'veterinary' %}🩺{% elif value == 'packaging' %}📦{% else %}📋{% endif %}</span>
-            {{ label }}
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-
-      <!-- Amount -->
-      <div>
-        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                      margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em">
-          Amount (₦)
-        </label>
-        <div style="position:relative">
-          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);
-                       font-size:14px;font-weight:700;color:#8a96a8">₦</span>
-          <input type="number" name="amount" min="0" step="0.01" required
-                 inputmode="decimal" placeholder="0.00"
-                 style="width:100%;padding:11px 14px 11px 30px;border:1.5px solid #e2e8f0;
-                        border-radius:10px;font-size:14px;font-weight:600;color:#1a2744;
-                        box-sizing:border-box;outline:none"
-                 onfocus="this.style.borderColor='#3d5a99'"
-                 onblur="this.style.borderColor='#e2e8f0'">
-        </div>
-      </div>
-
-      <!-- Description -->
-      <div>
-        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                      margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em">
-          Description
-        </label>
-        <input type="text" name="description" required maxlength="300"
-               placeholder="What was this expense for?"
-               style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;
-                      border-radius:10px;font-size:13px;color:#1a2744;
-                      box-sizing:border-box;outline:none"
-               onfocus="this.style.borderColor='#3d5a99'"
-               onblur="this.style.borderColor='#e2e8f0'">
-      </div>
-
-      <!-- Expense date -->
-      <div>
-        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                      margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em">
-          Date
-        </label>
-        <input type="date" name="expense_date" value="{{ today }}"
-               style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;
-                      border-radius:10px;font-size:13px;color:#1a2744;
-                      box-sizing:border-box;outline:none"
-               onfocus="this.style.borderColor='#3d5a99'"
-               onblur="this.style.borderColor='#e2e8f0'">
-      </div>
-
-      <!-- Notes -->
-      <div>
-        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                      margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em">
-          Notes <span style="font-weight:400;color:#b0bac9">(optional)</span>
-        </label>
-        <textarea name="notes" rows="2" placeholder="Additional details..."
-                  style="width:100%;padding:11px 14px;border:1.5px solid #e2e8f0;
-                         border-radius:10px;font-size:13px;color:#1a2744;
-                         box-sizing:border-box;outline:none;resize:none"
-                  onfocus="this.style.borderColor='#3d5a99'"
-                  onblur="this.style.borderColor='#e2e8f0'"></textarea>
-      </div>
-
-      <!-- Actions -->
-      <div style="display:flex;gap:10px;margin-top:4px">
-        <button type="button"
-                onclick="document.getElementById('modal-container').innerHTML = ''"
-                style="flex:1;padding:12px;background:white;color:#4a5568;
-                       border:1.5px solid #e2e8f0;border-radius:10px;
-                       font-size:14px;font-weight:600;cursor:pointer">
-          Cancel
-        </button>
-        <button type="submit"
-                style="flex:2;padding:12px;background:#3d5a99;color:white;border:none;
-                       border-radius:10px;font-size:14px;font-weight:700;cursor:pointer"
-                onmouseover="this.style.background='#2d4578'"
-                onmouseout="this.style.background='#3d5a99'">
-          Record Expense
-        </button>
-      </div>
-    </form>
-
-    {% endif %}
+    </div>
   </div>
 </div>
+
+<form hx-post="{% url 'expenses:log' batch_pk %}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML"
+      style="padding:0 20px 20px;display:flex;flex-direction:column;gap:10px">
+  {% csrf_token %}
+  <input type="hidden" name="batch_id" value="{{ batch_pk }}">
+
+  {% if error %}
+  <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;
+              padding:10px 12px;font-size:12px;color:#dc2626">{{ error }}</div>
+  {% endif %}
+
+  <!-- Category -->
+  <div>
+    <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                  margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+      Category *
+    </label>
+    <select name="category" required
+            style="width:100%;padding:9px 12px;
+                   border:1.5px solid #e2e8f0;border-radius:9px;
+                   font-size:13px;box-sizing:border-box;
+                   background:white;outline:none"
+            onfocus="this.style.borderColor='#3d5a99'"
+            onblur="this.style.borderColor='#e2e8f0'">
+      <option value="">Select category...</option>
+      {% for value, label in categories %}
+      <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Amount -->
+  <div>
+    <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                  margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+      Amount (₦) *
+    </label>
+    <div style="position:relative">
+      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);
+                   font-size:13px;font-weight:700;color:#8a96a8">₦</span>
+      <input type="number" name="amount" min="0" step="0.01" required
+             inputmode="decimal" placeholder="0.00"
+             style="width:100%;padding:9px 12px 9px 28px;border:1.5px solid #e2e8f0;
+                    border-radius:9px;font-size:13px;font-weight:600;color:#1a2744;
+                    box-sizing:border-box;outline:none"
+             onfocus="this.style.borderColor='#3d5a99'"
+             onblur="this.style.borderColor='#e2e8f0'">
+    </div>
+  </div>
+
+  <!-- Description -->
+  <div>
+    <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                  margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+      Description *
+    </label>
+    <input type="text" name="description" required maxlength="300"
+           placeholder="What was this expense for?"
+           style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
+                  border-radius:9px;font-size:13px;color:#1a2744;
+                  box-sizing:border-box;outline:none"
+           onfocus="this.style.borderColor='#3d5a99'"
+           onblur="this.style.borderColor='#e2e8f0'">
+  </div>
+
+  <!-- Date + Notes (2-col on date, full-width notes) -->
+  <div>
+    <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                  margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+      Date
+    </label>
+    <input type="date" name="expense_date" value="{{ today|date:'Y-m-d' }}"
+           style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
+                  border-radius:9px;font-size:13px;color:#1a2744;
+                  box-sizing:border-box;outline:none"
+           onfocus="this.style.borderColor='#3d5a99'"
+           onblur="this.style.borderColor='#e2e8f0'">
+  </div>
+
+  <!-- Notes -->
+  <div>
+    <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                  margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+      Notes <span style="font-weight:400;color:#b0bac9">(optional)</span>
+    </label>
+    <textarea name="notes" rows="2" placeholder="Additional details..."
+              style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
+                     border-radius:9px;font-size:13px;color:#1a2744;
+                     box-sizing:border-box;outline:none;resize:none"
+              onfocus="this.style.borderColor='#3d5a99'"
+              onblur="this.style.borderColor='#e2e8f0'"></textarea>
+  </div>
+
+  <!-- Actions -->
+  <div style="display:flex;gap:10px;margin-top:2px">
+    <button type="button"
+            @click="$dispatch('close-modal')"
+            style="flex:1;padding:11px;background:#f4f7fe;color:#4a5568;
+                   border:1.5px solid #e2e8f0;border-radius:10px;
+                   font-size:13px;font-weight:600;cursor:pointer">
+      Cancel
+    </button>
+    <button type="submit"
+            style="flex:2;padding:11px;background:#3d5a99;color:white;border:none;
+                   border-radius:10px;font-size:13px;font-weight:700;cursor:pointer"
+            onmouseover="this.style.background='#2d4578'"
+            onmouseout="this.style.background='#3d5a99'">
+      Record Expense
+    </button>
+  </div>
+</form>
+
+{% endif %}

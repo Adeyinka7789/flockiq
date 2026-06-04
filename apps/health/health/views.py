@@ -278,6 +278,7 @@ class MedicationLogView(LoginRequiredMixin, View):
         response["HX-Trigger"] = json.dumps({
             "showToast": {"message": "Medication recorded.", "type": "success"},
             "medicationLogged": {},
+            "close-modal": True,
         })
         return response
 
@@ -463,7 +464,7 @@ class AddVaccinationView(TenantRequiredMixin, View):
                     "message": f"{vaccine_name} scheduled for {due_date_str}",
                     "type": "success",
                 },
-                "closeModal": {},
+                "close-modal": True,
             }
         )
         response["HX-Refresh"] = "true"

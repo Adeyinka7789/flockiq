@@ -262,7 +262,7 @@ class TestWaterHTMXViews:
             HTTP_HX_REQUEST="true",
         )
         assert response.status_code == 200
-        assert b"water-summary-card" in response.content
+        assert "waterLogged" in response["HX-Trigger"]
 
     def test_table_view_returns_200(self, db, client):
         org, user, farm, house, batch = self._setup(db, "waterviewtable")

@@ -152,7 +152,7 @@ class BatchCreateView(LoginRequiredMixin, View):
             if is_htmx:
                 response = HttpResponse(status=204)
                 response["HX-Trigger"] = json.dumps({
-                    "closeModal": True,
+                    "close-modal": True,
                     "showToast": {
                         "message": f'Batch "{batch.batch_name}" created.',
                         "type": "success",
@@ -348,6 +348,24 @@ class BatchDetailView(TenantRequiredMixin, View):
         return render(request, "flocks/batch_detail.html", context)
 
 
+class ExitOptimizerPartialView(TenantRequiredMixin, View):
+    """GET /batches/<uuid>/exit-optimizer/ → HTMX partial for price adjustment."""
+
+    def get(self, request, pk):
+        from apps.health.analytics.exit_optimizer import BroilerExitOptimizer
+
+        org = _get_org(request)
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch, id=pk)
+        price = int(request.GET.get("price_per_kg", 1850))
+        exit_analysis = BroilerExitOptimizer().analyze(batch, price)
+        return render(
+            request,
+            "flocks/_exit_optimizer_card.html",
+            {"batch": batch, "exit_analysis": exit_analysis},
+        )
+
+
 class MortalityRecentView(LoginRequiredMixin, View):
     """GET /batches/<uuid:pk>/mortality/recent/ → HTMX mortality table fragment with filters."""
 
@@ -402,11 +420,14 @@ class MortalityLogView(LoginRequiredMixin, View):
     """GET /batches/<uuid>/mortality/ → modal form; POST → logs mortality and closes modal."""
 
     def get(self, request, pk):
+        from datetime import date
         org = _get_org(request)
         with set_tenant_context(org):
             batch = get_object_or_404(Batch, id=pk)
         form = MortalityLogForm()
-        return render(request, "flocks/_mortality_modal.html", {"form": form, "batch": batch})
+        return render(request, "flocks/_mortality_modal.html", {
+            "form": form, "batch": batch, "today": date.today(),
+        })
 
     def post(self, request, pk):
         form = MortalityLogForm(request.POST)
@@ -445,6 +466,7 @@ class MortalityLogView(LoginRequiredMixin, View):
             response["HX-Trigger"] = json.dumps({
                 "showToast": {"message": f"{cd['count']} mortality logged.", "type": "success"},
                 "mortalityLogged": True,
+                "close-modal": True,
             })
             return response
 
