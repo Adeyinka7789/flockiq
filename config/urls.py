@@ -12,6 +12,7 @@ from rest_framework_simplejwt.views import (
 from apps.infrastructure.accounts.views import WebLoginView, WebLogoutView, SignupView
 from apps.infrastructure.core.views import DashboardView
 from apps.infrastructure.core.search import GlobalSearchView
+from apps.infrastructure.superadmin import urls as superadmin_urls
 
 urlpatterns = [
     # ── Web app shell (must be first) ────────────────────────────────────────
@@ -39,6 +40,7 @@ urlpatterns = [
     path("", include("apps.finance.expenses.urls")),
     path("", include("apps.finance.finance.urls")),
     path("", include("apps.finance.market.urls")),
+    path("", include(superadmin_urls)),
     path("admin/", admin.site.urls),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

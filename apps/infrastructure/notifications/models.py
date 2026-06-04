@@ -24,6 +24,7 @@ EVENT_TYPE_CHOICES = [
     ("disease_outbreak", "Disease Outbreak"),
     ("medication_withdrawal", "Medication Withdrawal"),
     ("ai_anomaly", "AI Anomaly"),
+    ("announcement", "Announcement"),
 ]
 
 SEVERITY_CHOICES = [
@@ -135,6 +136,40 @@ class NotificationLog(TenantAwareModel):
 
     def __str__(self):
         return f"{self.title} → {self.recipient} ({'read' if self.is_read else 'unread'})"
+
+
+class BroadcastNotification(models.Model):
+    AUDIENCE_CHOICES = [
+        ('all', 'All Users'),
+        ('owners', 'Farm Owners Only'),
+        ('managers', 'Managers Only'),
+        ('owners_managers', 'Owners & Managers'),
+    ]
+    BROADCAST_CHANNEL_CHOICES = [
+        ('in_app', 'In-App Only'),
+        ('email', 'Email Only'),
+        ('both', 'In-App + Email'),
+    ]
+
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    audience = models.CharField(max_length=20, choices=AUDIENCE_CHOICES, default='owners_managers')
+    channel = models.CharField(max_length=10, choices=BROADCAST_CHANNEL_CHOICES, default='both')
+    sent_by = models.ForeignKey(
+        'accounts.CustomUser',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='broadcasts_sent',
+    )
+    sent_at = models.DateTimeField(auto_now_add=True)
+    recipient_count = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = 'notifications_broadcastnotification'
+        ordering = ['-sent_at']
+
+    def __str__(self):
+        return f'{self.title} ({self.sent_at.date()})'
 
 
 DEFAULT_ALERT_RULES = [

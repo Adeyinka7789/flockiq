@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Tenant Directory{% endblock %}
+{% block breadcrumb %}Tenant Management{% endblock %}
+
+{% block content %}
+<style>
+  .sa-wrap { max-width: 1100px; margin: 0 auto; }
+  .sa-card { background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;margin-bottom:16px; }
+  .sa-card-hd { display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #f1f5f9; }
+  .sa-card-title { font-size:14px;font-weight:700;color:#1a2744; }
+  .sa-table { width:100%;border-collapse:collapse; }
+  .sa-table th { text-align:left;padding:10px 16px;font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;letter-spacing:0.07em;background:#fafafa;border-bottom:1px solid #e2e8f0; }
+  .sa-table td { padding:14px 16px;font-size:13px;border-bottom:1px solid #f8faff;color:#1a2744;vertical-align:middle; }
+  .sa-table tr:last-child td { border-bottom:none; }
+  .sa-table tr:hover td { background:#fafbff; }
+  .sa-plan-pill { padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase; }
+  .sa-plan-pill.trial   { background:#f1f5f9;color:#475569; }
+  .sa-plan-pill.cycle   { background:#fef3c7;color:#92400e; }
+  .sa-plan-pill.monthly { background:#e8eef8;color:#2d4578; }
+  .sa-plan-pill.yearly  { background:#edfae8;color:#166534; }
+  .sa-filters { display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #f1f5f9;flex-wrap:wrap;background:#fafafa; }
+  .sa-filter-select { padding:7px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:12px;color:#1a2744;background:white;outline:none;cursor:pointer; }
+  .sa-search { display:flex;align-items:center;gap:7px;padding:7px 12px;border:1.5px solid #e2e8f0;border-radius:9px;background:white;margin-left:auto; }
+  .sa-search input { border:none;outline:none;font-size:12px;color:#1a2744;width:180px;background:transparent; }
+  .sa-action-btn { padding:5px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:1.5px solid;transition:all 0.15s; }
+  .sa-action-btn.suspend { border-color:#fecaca;color:#dc2626;background:#fee2e2; }
+  .sa-action-btn.activate { border-color:#bbf7d0;color:#166534;background:#dcfce7; }
+  .sa-action-btn.manage { border-color:#e2e8f0;color:#3d5a99;background:white; }
+</style>
+
+<div class="sa-wrap">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div style="font-size:11px;font-weight:700;color:#8a96a8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Platform Oversight</div>
+      <div style="font-size:24px;font-weight:800;color:#1a2744;letter-spacing:-0.5px">Tenant Directory</div>
+      <div style="font-size:13px;color:#8a96a8">{{ total_count }} organisations registered</div>
+    </div>
+    <a href="/admin/tenants/organization/add/"
+       style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:#3d5a99;color:white;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none">
+      + Launch New Tenant
+    </a>
+  </div>
+
+  <div class="sa-card">
+    <div class="sa-filters" id="sa-filters">
+      <select class="sa-filter-select" name="status"
+              hx-get="{% url 'superadmin:tenants' %}"
+              hx-target="#tenant-table"
+              hx-include="#sa-filters"
+              hx-push-url="true">
+        <option value="all" {% if active_status == 'all' %}selected{% endif %}>All Statuses</option>
+        <option value="active" {% if active_status == 'active' %}selected{% endif %}>Active</option>
+        <option value="suspended" {% if active_status == 'suspended' %}selected{% endif %}>Suspended</option>
+      </select>
+
+      <select class="sa-filter-select" name="plan"
+              hx-get="{% url 'superadmin:tenants' %}"
+              hx-target="#tenant-table"
+              hx-include="#sa-filters"
+              hx-push-url="true">
+        <option value="all" {% if active_plan == 'all' %}selected{% endif %}>All Plans</option>
+        {% for val, lbl in plan_choices %}
+        <option value="{{ val }}" {% if active_plan == val %}selected{% endif %}>{{ lbl }}</option>
+        {% endfor %}
+      </select>
+
+      <div class="sa-search">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#8a96a8" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input type="text" name="q"
+               placeholder="Search tenants..."
+               value="{{ search_query|default:'' }}"
+               hx-get="{% url 'superadmin:tenants' %}"
+               hx-trigger="keyup changed delay:300ms"
+               hx-target="#tenant-table"
+               hx-include="#sa-filters"
+               hx-push-url="true">
+      </div>
+    </div>
+
+    <div id="tenant-table">
+      <table class="sa-table">
+        <thead>
+          <tr>
+            <th>Tenant Name</th>
+            <th>Plan</th>
+            <th>Created</th>
+            <th>Active Birds</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in org_list %}
+          {% with org=item.org %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:34px;height:34px;border-radius:10px;background:#e8eef8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#3d5a99;flex-shrink:0">
+                  {{ org.name|first|upper }}{{ org.name|slice:"1:2"|upper }}
+                </div>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#1a2744">{{ org.name }}</div>
+                  <div style="font-size:11px;color:#8a96a8">{{ org.owner_email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="sa-plan-pill {{ org.plan_tier }}">{{ org.plan_tier|title }}</span>
+            </td>
+            <td style="font-size:12px;color:#8a96a8">{{ org.created_at|date:"M d, Y" }}</td>
+            <td style="font-weight:700;font-variant-numeric:tabular-nums">{{ item.active_birds }}</td>
+            <td>
+              {% if org.is_active %}
+              <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#16a34a">
+                <span style="width:6px;height:6px;border-radius:50%;background:#16a34a;display:inline-block"></span>
+                ACTIVE
+              </span>
+              {% else %}
+              <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#ef4444">
+                <span style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block"></span>
+                SUSPENDED
+              </span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="display:flex;gap:6px">
+                {% if org.is_active %}
+                <button class="sa-action-btn suspend"
+                        hx-post="{% url 'superadmin:tenant_action' org.pk %}"
+                        hx-vals='{"action":"suspend"}'
+                        hx-confirm="Suspend {{ org.name }}?"
+                        hx-swap="none">
+                  Suspend
+                </button>
+                {% else %}
+                <button class="sa-action-btn activate"
+                        hx-post="{% url 'superadmin:tenant_action' org.pk %}"
+                        hx-vals='{"action":"activate"}'
+                        hx-swap="none">
+                  Activate
+                </button>
+                {% endif %}
+                <a href="/admin/tenants/organization/{{ org.pk }}/change/"
+                   class="sa-action-btn manage"
+                   style="text-decoration:none;display:inline-flex;align-items:center">
+                  Edit
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endwith %}
+          {% empty %}
+          <tr>
+            <td colspan="6" style="text-align:center;padding:40px;color:#8a96a8;font-size:13px">
+              No tenants found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if page_obj.paginator.num_pages > 1 %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-top:1px solid #f1f5f9;font-size:12px;color:#4a5568">
+        <span>
+          Showing <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong>
+          of <strong>{{ total_count }}</strong> organizations
+        </span>
+        <div style="display:flex;gap:4px">
+          {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}&status={{ active_status }}&plan={{ active_plan }}&q={{ search_query }}"
+             style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;display:flex;align-items:center;justify-content:center;font-size:12px;color:#4a5568;text-decoration:none">←</a>
+          {% endif %}
+          {% for num in page_obj.paginator.page_range %}
+          {% if num == page_obj.number %}
+          <span style="width:30px;height:30px;border-radius:8px;background:#3d5a99;color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">{{ num }}</span>
+          {% elif num <= 3 or num >= page_obj.paginator.num_pages|add:"-2" %}
+          <a href="?page={{ num }}&status={{ active_status }}&plan={{ active_plan }}&q={{ search_query }}"
+             style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;display:flex;align-items:center;justify-content:center;font-size:12px;color:#4a5568;text-decoration:none">{{ num }}</a>
+          {% endif %}
+          {% endfor %}
+          {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}&status={{ active_status }}&plan={{ active_plan }}&q={{ search_query }}"
+             style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;display:flex;align-items:center;justify-content:center;font-size:12px;color:#4a5568;text-decoration:none">→</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

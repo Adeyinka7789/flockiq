@@ -152,8 +152,10 @@ class PaystackWebhookView(View):
 
 class BillingPageView(LoginRequiredMixin, View):
     def get(self, request):
-        if not request.user.org:
-            return render(request, "billing/billing_page.html", {"is_super_admin": True})
+        # Super admins have no org — redirect to admin dashboard
+        if request.user.is_superuser or \
+           getattr(request.user, 'role', '') == 'super_admin':
+            return redirect('superadmin:dashboard')
 
         from datetime import timedelta
         from apps.infrastructure.billing.features import get_plan_features

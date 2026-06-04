@@ -65,8 +65,8 @@ class DashboardView(TemplateView):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return self.render_landing(request)
-        if request.user.role == "super_admin" or request.user.is_superuser:
-            return self.super_admin_view(request)
+        if request.user.is_superuser or getattr(request.user, 'role', '') == 'super_admin':
+            return redirect('superadmin:dashboard')
         if not request.user.org:
             return self.render_landing(request)
 

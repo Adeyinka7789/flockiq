@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block breadcrumb %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<style>
+  .sa-wrap { max-width: 1100px; margin: 0 auto; }
+
+  .sa-header { margin-bottom: 24px; }
+  .sa-eyebrow {
+    font-size: 11px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+  .sa-title {
+    font-size: 26px; font-weight: 800; color: #1a2744;
+    letter-spacing: -0.5px; margin-bottom: 2px;
+  }
+  .sa-subtitle { font-size: 13px; color: #8a96a8; }
+
+  .sa-metrics {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 14px; margin-bottom: 24px;
+  }
+  .sa-metric {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; padding: 20px;
+    position: relative; overflow: hidden;
+  }
+  .sa-metric.navy {
+    background: #1a2744; border-color: #1a2744;
+  }
+  .sa-metric-lbl {
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .sa-metric.navy .sa-metric-lbl { color: rgba(255,255,255,0.5); }
+  .sa-metric-val {
+    font-size: 36px; font-weight: 800; color: #1a2744;
+    line-height: 1; font-variant-numeric: tabular-nums;
+    margin-bottom: 6px;
+  }
+  .sa-metric.navy .sa-metric-val { color: white; }
+  .sa-metric-sub {
+    font-size: 12px; color: #8a96a8;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .sa-metric.navy .sa-metric-sub { color: rgba(255,255,255,0.5); }
+  .sa-metric-change { font-size: 12px; font-weight: 600; color: #16a34a; }
+
+  .sa-layout {
+    display: grid; grid-template-columns: 1fr 320px;
+    gap: 16px; margin-bottom: 24px;
+  }
+
+  .sa-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+  }
+  .sa-card-hd {
+    display: flex; align-items: flex-start;
+    justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid #f1f5f9;
+  }
+  .sa-card-title { font-size: 14px; font-weight: 700; color: #1a2744; margin-bottom: 2px; }
+  .sa-card-sub { font-size: 12px; color: #8a96a8; }
+  .sa-chart-body { padding: 16px; height: 200px; }
+
+  .sa-health-card {
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 14px; overflow: hidden;
+  }
+  .sa-health-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 13px 18px; border-bottom: 1px solid #f8faff;
+    font-size: 13px;
+  }
+  .sa-health-row:last-child { border-bottom: none; }
+  .sa-health-label {
+    display: flex; align-items: center; gap: 8px;
+    color: #4a5568; font-weight: 500;
+  }
+  .sa-health-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .sa-health-val { font-weight: 700; color: #1a2744; }
+  .sa-health-val.green { color: #16a34a; }
+  .sa-health-val.amber { color: #d97706; }
+
+  .sa-security {
+    margin: 14px; background: #edfae8;
+    border-radius: 12px; padding: 14px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .sa-security-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: #16a34a; display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .sa-security-title { font-size: 13px; font-weight: 700; color: #1a2744; }
+  .sa-security-sub { font-size: 11px; color: #8a96a8; }
+
+  .sa-table { width: 100%; border-collapse: collapse; }
+  .sa-table th {
+    text-align: left; padding: 10px 18px;
+    font-size: 10px; font-weight: 700; color: #8a96a8;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    background: #fafafa; border-bottom: 1px solid #e2e8f0;
+  }
+  .sa-table td {
+    padding: 14px 18px; font-size: 13px;
+    border-bottom: 1px solid #f8faff; color: #1a2744;
+  }
+  .sa-table tr:last-child td { border-bottom: none; }
+  .sa-table tr:hover td { background: #fafbff; }
+
+  .sa-org-avatar {
+    width: 34px; height: 34px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: white; flex-shrink: 0;
+  }
+  .sa-org-name { font-size: 13px; font-weight: 700; color: #1a2744; }
+  .sa-org-sub { font-size: 11px; color: #8a96a8; }
+
+  .sa-plan-pill {
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .sa-plan-pill.trial   { background:#f1f5f9;color:#475569; }
+  .sa-plan-pill.cycle   { background:#fef3c7;color:#92400e; }
+  .sa-plan-pill.monthly { background:#e8eef8;color:#2d4578; }
+  .sa-plan-pill.yearly  { background:#edfae8;color:#166534; }
+
+  .sa-status-active { display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#16a34a; }
+  .sa-status-inactive { display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#ef4444; }
+
+  @media(max-width:900px){
+    .sa-layout{grid-template-columns:1fr}
+    .sa-metrics{grid-template-columns:1fr 1fr}
+  }
+</style>
+
+<div class="sa-wrap">
+  <div class="sa-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+    <div>
+      <div class="sa-eyebrow">Platform Oversight — FlockIQ</div>
+      <div class="sa-title">FlockIQ Admin</div>
+      <div class="sa-subtitle">
+        Super administrator console · {{ total_orgs }} tenants · {{ total_users }} users
+      </div>
+    </div>
+    <button hx-get="{% url 'superadmin:broadcast' %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML"
+            style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;
+                   background:#3d5a99;color:white;border:none;border-radius:10px;
+                   font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;
+                   flex-shrink:0"
+            onmouseover="this.style.background='#2d4578'"
+            onmouseout="this.style.background='#3d5a99'">
+      &#128226; Send Broadcast
+    </button>
+  </div>
+
+  <div class="sa-metrics">
+    <div class="sa-metric">
+      <div class="sa-metric-lbl">Total Active Tenants</div>
+      <div class="sa-metric-val">{{ active_orgs }}</div>
+      <div class="sa-metric-sub">
+        <span class="sa-metric-change">↑ {{ total_orgs }} total</span>
+        · {{ suspended_orgs }} suspended
+      </div>
+    </div>
+    <div class="sa-metric navy">
+      <div class="sa-metric-lbl">Total Birds Managed</div>
+      <div class="sa-metric-val">
+        {% if total_birds >= 1000000 %}{{ total_birds|floatformat:1 }}M
+        {% elif total_birds >= 1000 %}{{ total_birds }}
+        {% else %}{{ total_birds }}{% endif %}
+      </div>
+      <div class="sa-metric-sub">Precision tracking active</div>
+    </div>
+    <div class="sa-metric">
+      <div class="sa-metric-lbl">Monthly Recurring Revenue</div>
+      <div class="sa-metric-val" style="color:#3d5a99">₦{{ mrr_naira }}</div>
+      <div class="sa-metric-sub">Avg ticket: ₦{{ avg_ticket }}</div>
+    </div>
+  </div>
+
+  <div class="sa-layout">
+    <div class="sa-card">
+      <div class="sa-card-hd">
+        <div>
+          <div class="sa-card-title">Revenue Trajectory</div>
+          <div class="sa-card-sub">MRR performance across all plans</div>
+        </div>
+      </div>
+      <div class="sa-chart-body">
+        <canvas id="revenueChart"></canvas>
+      </div>
+    </div>
+
+    <div class="sa-health-card">
+      <div class="sa-card-hd">
+        <div class="sa-card-title">System Health</div>
+      </div>
+      <div class="sa-health-row">
+        <span class="sa-health-label">
+          <span class="sa-health-dot" style="background:#16a34a"></span>
+          Platform Uptime
+        </span>
+        <span class="sa-health-val green">99.9%</span>
+      </div>
+      <div class="sa-health-row">
+        <span class="sa-health-label">
+          <span class="sa-health-dot" style="background:#16a34a"></span>
+          Active Tenants
+        </span>
+        <span class="sa-health-val green">{{ active_orgs }}</span>
+      </div>
+      <div class="sa-health-row">
+        <span class="sa-health-label">
+          <span class="sa-health-dot" style="background:#16a34a"></span>
+          Total Payments
+        </span>
+        <span class="sa-health-val">₦{{ mrr_naira }} MTD</span>
+      </div>
+      <div class="sa-health-row">
+        <span class="sa-health-label">
+          <span class="sa-health-dot" style="background:#d97706"></span>
+          Suspended Orgs
+        </span>
+        <span class="sa-health-val {% if suspended_orgs > 0 %}amber{% endif %}">
+          {{ suspended_orgs }}
+        </span>
+      </div>
+      <div class="sa-security">
+        <div class="sa-security-icon">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="sa-security-title">Security Shield</div>
+          <div class="sa-security-sub">Last scanned: just now</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sa-card">
+    <div class="sa-card-hd">
+      <div>
+        <div class="sa-card-title">Recent Tenant Onboarding</div>
+        <div class="sa-card-sub">Latest organisations added to the platform</div>
+      </div>
+      <a href="{% url 'superadmin:tenants' %}"
+         style="font-size:12px;font-weight:700;color:#3d5a99;text-decoration:none">
+        View All Tenants →
+      </a>
+    </div>
+    <table class="sa-table">
+      <thead>
+        <tr>
+          <th>Tenant Name</th>
+          <th>Owner</th>
+          <th>Plan</th>
+          <th>Joined</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for org in recent_orgs %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="sa-org-avatar"
+                   style="background:{% cycle '#3d5a99' '#16a34a' '#d97706' '#dc2626' '#8b5cf6' %}">
+                {{ org.name|first|upper }}{{ org.name|slice:"1:2"|upper }}
+              </div>
+              <div>
+                <div class="sa-org-name">{{ org.name }}</div>
+                <div class="sa-org-sub">{{ org.plan_tier|title }} Plan</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-size:12px;color:#4a5568">{{ org.owner_email|truncatechars:28 }}</td>
+          <td>
+            <span class="sa-plan-pill {{ org.plan_tier }}">{{ org.plan_tier|title }}</span>
+          </td>
+          <td style="font-size:12px;color:#8a96a8">{{ org.created_at|date:"M d, Y" }}</td>
+          <td>
+            {% if org.is_active %}
+            <span class="sa-status-active">
+              <span style="width:6px;height:6px;border-radius:50%;background:#16a34a;display:inline-block"></span>
+              Active
+            </span>
+            {% else %}
+            <span class="sa-status-inactive">
+              <span style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block"></span>
+              Suspended
+            </span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'superadmin:tenants' %}?q={{ org.owner_email }}"
+               style="font-size:11px;color:#3d5a99;font-weight:600;text-decoration:none">
+              Manage →
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align:center;padding:32px;color:#8a96a8;font-size:13px">
+            No tenants yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{{ revenue_trend|json_script:"revenue-trend" }}
+<script>
+(function() {
+  const data = JSON.parse(document.getElementById('revenue-trend').textContent);
+  const canvas = document.getElementById('revenueChart');
+  if (!canvas || !data.length) return;
+
+  new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.month),
+      datasets: [{
+        data: data.map(d => d.revenue),
+        backgroundColor: data.map((d, i) => i === data.length - 1 ? '#1e3a8a' : '#d4dff5'),
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#94a3b8' } },
+        y: {
+          grid: { color: '#f3f4f6' },
+          ticks: {
+            font: { size: 10 }, color: '#94a3b8',
+            callback: v => '₦' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v)
+          }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endblock %}

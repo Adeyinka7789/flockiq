@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Broadcast History{% endblock %}
+{% block breadcrumb %}Broadcasts{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:0 auto">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div style="font-size:22px;font-weight:800;color:#1a2744;letter-spacing:-0.4px">Broadcast History</div>
+      <div style="font-size:13px;color:#8a96a8">All platform announcements sent to tenants</div>
+    </div>
+    <button hx-get="{% url 'superadmin:broadcast' %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML"
+            style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;
+                   background:#3d5a99;color:white;border:none;border-radius:10px;
+                   font-size:13px;font-weight:700;cursor:pointer">
+      &#128226; New Broadcast
+    </button>
+  </div>
+
+  {% for b in broadcasts %}
+  <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
+              padding:20px;margin-bottom:12px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:15px;font-weight:700;color:#1a2744">{{ b.title }}</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <span style="background:#e8eef8;color:#2d4578;padding:3px 10px;border-radius:20px;
+                     font-size:11px;font-weight:700">
+          {{ b.get_channel_display }}
+        </span>
+        <span style="background:#f4f7fe;color:#4a5568;padding:3px 10px;border-radius:20px;
+                     font-size:11px;font-weight:700">
+          {{ b.get_audience_display }}
+        </span>
+      </div>
+    </div>
+    <div style="font-size:13px;color:#4a5568;line-height:1.6;margin-bottom:12px">
+      {{ b.message }}
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;font-size:11px;color:#8a96a8">
+      <span>
+        Sent by
+        <strong style="color:#1a2744">
+          {{ b.sent_by.get_full_name|default:b.sent_by.email }}
+        </strong>
+      </span>
+      <span>{{ b.sent_at|date:"M d, Y · g:i A" }}</span>
+      <span>
+        <strong style="color:#3d5a99">{{ b.recipient_count }}</strong> recipients
+      </span>
+    </div>
+  </div>
+  {% empty %}
+  <div style="text-align:center;padding:60px;color:#8a96a8;font-size:13px">
+    <div style="font-size:32px;margin-bottom:12px">&#128226;</div>
+    No broadcasts sent yet.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
