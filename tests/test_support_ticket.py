@@ -224,7 +224,7 @@ def test_superadmin_mark_read_toggles(client):
 
     client.force_login(su)
     resp = client.post(f"/superadmin/support-tickets/{ticket.pk}/mark-read/")
-    assert resp.status_code == 204
+    assert resp.status_code == 200
 
     ticket.refresh_from_db()
     assert ticket.is_read_by_admin is True

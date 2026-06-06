@@ -109,6 +109,7 @@ class NotificationLog(TenantAwareModel):
     body = models.TextField()
     severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES)
     channel = models.CharField(max_length=10, choices=CHANNEL_CHOICES)
+    action_url = models.CharField(max_length=500, blank=True, default='')
     recipient = models.ForeignKey(
         "accounts.CustomUser",
         on_delete=models.CASCADE,
@@ -209,6 +210,7 @@ class AdminNotification(models.Model):
     title = models.CharField(max_length=200)
     body = models.TextField()
     is_read = models.BooleanField(default=False)
+    action_url = models.CharField(max_length=500, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

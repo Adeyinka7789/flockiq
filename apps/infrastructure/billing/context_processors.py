@@ -1,3 +1,11 @@
+def support_contact(request):
+    from django.conf import settings
+    return {
+        'support_email': getattr(settings, 'SUPPORT_EMAIL', 'support@flockiq.com'),
+        'support_phone': getattr(settings, 'SUPPORT_PHONE', '+234 000 000 0000'),
+    }
+
+
 def plan_features(request):
     """
     Makes plan_features available in all templates.

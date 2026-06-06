@@ -6,6 +6,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from django.views import View
 
 from apps.infrastructure.billing.models import PaymentRecord
@@ -791,9 +792,14 @@ class SupportTicketMarkReadView(SuperAdminMixin, View):
         ticket.save(update_fields=['is_read_by_admin'])
 
         label = 'Marked as read' if ticket.is_read_by_admin else 'Marked as unread'
-        response = HttpResponse(status=204)
+        new_unread = SupportTicket.objects.filter(is_read_by_admin=False).count()
+        oob_html = (
+            '<div id="unread-count-value" hx-swap-oob="true" '
+            'style="font-size:22px;font-weight:800;color:#3d5a99;margin-top:2px;">'
+            f'{new_unread}</div>'
+        )
+        response = HttpResponse(oob_html, status=200)
         response['HX-Trigger'] = json.dumps({'showToast': {'message': label, 'type': 'success'}})
-        response['HX-Refresh'] = 'true'
         return response
 
 
@@ -874,6 +880,7 @@ class SupportTicketReplyView(SuperAdminMixin, View):
                     severity='info',
                     channel='in_app',
                     recipient=ticket.submitted_by,
+                    action_url=reverse('notifications:support_ticket_detail', kwargs={'pk': ticket.pk}),
                 )
 
         replies = ticket.replies.select_related('author').all()

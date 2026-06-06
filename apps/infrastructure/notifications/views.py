@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 from django.http import HttpResponse
@@ -20,11 +21,18 @@ logger = structlog.get_logger(__name__)
 
 class NotificationBellView(LoginRequiredMixin, View):
     def get(self, request):
-        if not request.user.org:
-            return HttpResponse("0")
-        svc = NotificationService(request.user.org)
-        with set_tenant_context(request.user.org):
-            count = svc.get_unread_count(request.user)
+        if request.user.is_superuser:
+            from .models import AdminNotification
+            count = AdminNotification.objects.filter(
+                recipient=request.user,
+                is_read=False,
+            ).count()
+        elif not request.user.org:
+            count = 0
+        else:
+            svc = NotificationService(request.user.org)
+            with set_tenant_context(request.user.org):
+                count = svc.get_unread_count(request.user)
         html = render_to_string(
             "notifications/_bell_count.html",
             {"unread_count": count},
@@ -35,6 +43,20 @@ class NotificationBellView(LoginRequiredMixin, View):
 
 class NotificationDropdownView(LoginRequiredMixin, View):
     def get(self, request):
+        if request.user.is_superuser:
+            from .models import AdminNotification
+            notifications = list(
+                AdminNotification.objects.filter(
+                    recipient=request.user,
+                    is_read=False,
+                ).order_by("-created_at")[:3]
+            )
+            html = render_to_string(
+                "notifications/_dropdown.html",
+                {"notifications": notifications},
+                request=request,
+            )
+            return HttpResponse(html)
         if not request.user.org:
             return HttpResponse(render_to_string(
                 "notifications/_dropdown.html",
@@ -79,10 +101,19 @@ class NotificationsPageView(LoginRequiredMixin, View):
 
 class MarkReadView(LoginRequiredMixin, View):
     def post(self, request, pk):
-        svc = NotificationService(request.user.org)
-        with set_tenant_context(request.user.org):
-            svc.mark_read(pk)
-            count = svc.get_unread_count(request.user)
+        if request.user.is_superuser:
+            from .models import AdminNotification
+            AdminNotification.objects.filter(
+                pk=pk, recipient=request.user
+            ).update(is_read=True)
+            count = AdminNotification.objects.filter(
+                recipient=request.user, is_read=False
+            ).count()
+        else:
+            svc = NotificationService(request.user.org)
+            with set_tenant_context(request.user.org):
+                svc.mark_read(pk)
+                count = svc.get_unread_count(request.user)
         html = render_to_string(
             "notifications/_bell_count.html",
             {"unread_count": count},
@@ -96,19 +127,36 @@ class MarkReadView(LoginRequiredMixin, View):
 class MarkAllReadView(LoginRequiredMixin, View):
     def post(self, request):
         from django.utils import timezone
-        from .models import NotificationLog
-        with set_tenant_context(request.user.org):
-            NotificationLog.objects.filter(
-                org=request.user.org,
-                recipient=request.user,
-                is_read=False,
-            ).update(is_read=True, read_at=timezone.now())
+        if request.user.is_superuser:
+            from .models import AdminNotification
+            AdminNotification.objects.filter(
+                recipient=request.user, is_read=False
+            ).update(is_read=True)
+        else:
+            from .models import NotificationLog
+            with set_tenant_context(request.user.org):
+                NotificationLog.objects.filter(
+                    org=request.user.org,
+                    recipient=request.user,
+                    is_read=False,
+                ).update(is_read=True, read_at=timezone.now())
         html = render_to_string(
             "notifications/_dropdown.html",
             {"notifications": []},
             request=request,
         )
-        return HttpResponse(html)
+        response = HttpResponse(html)
+        response["HX-Trigger"] = json.dumps({"refreshBell": True})
+        return response
+
+
+class MarkAdminNotificationReadView(LoginRequiredMixin, View):
+    """POST /notifications/admin/<int:pk>/read/ — mark an AdminNotification as read."""
+
+    def post(self, request, pk):
+        from .models import AdminNotification
+        AdminNotification.objects.filter(pk=pk, recipient=request.user).update(is_read=True)
+        return HttpResponse(status=204)
 
 
 class AcknowledgeNotificationView(LoginRequiredMixin, View):
@@ -208,11 +256,13 @@ class SupportTicketDetailUserView(LoginRequiredMixin, View):
             message=message,
         )
 
+        followup_url = reverse('superadmin:support_ticket_detail', kwargs={'pk': ticket.pk})
         for su in CustomUser.objects.filter(is_superuser=True):
             AdminNotification.objects.create(
                 recipient=su,
                 title=f"[Support follow-up] {ticket.subject} | {ticket.org.name}",
                 body=f"{request.user.email}: {message[:200]}",
+                action_url=followup_url,
             )
 
         replies = ticket.replies.select_related("author").all()
@@ -261,6 +311,7 @@ class SubmitSupportTicketView(LoginRequiredMixin, View):
         )
 
         superusers = CustomUser.objects.filter(is_superuser=True)
+        ticket_url = reverse('superadmin:support_ticket_detail', kwargs={'pk': ticket.pk})
         for su in superusers:
             AdminNotification.objects.create(
                 recipient=su,
@@ -271,6 +322,7 @@ class SubmitSupportTicketView(LoginRequiredMixin, View):
                     f"Priority: {priority}\n\n"
                     f"{message}"
                 ),
+                action_url=ticket_url,
             )
 
         try:

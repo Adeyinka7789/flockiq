@@ -103,6 +103,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.infrastructure.billing.context_processors.plan_features",
+                "apps.infrastructure.billing.context_processors.support_contact",
             ],
         },
     },
@@ -255,6 +256,8 @@ DEFAULT_FROM_EMAIL = config(
     "DEFAULT_FROM_EMAIL", default="FlockIQ <noreply@flockiq.com>"
 )
 ADMIN_EMAIL = config("ADMIN_EMAIL", default="admin@flockiq.com")
+SUPPORT_EMAIL = config("SUPPORT_EMAIL", default="support@flockiq.com")
+SUPPORT_PHONE = config("SUPPORT_PHONE", default="+234 000 000 0000")
 PASSWORD_RESET_TIMEOUT = 3600
 SITE_URL = config("SITE_URL", default="http://localhost:8000")
 

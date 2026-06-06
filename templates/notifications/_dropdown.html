@@ -8,12 +8,12 @@
           hx-post="{% url 'notifications:mark_all_read' %}"
           hx-target="#notification-dropdown"
           hx-swap="innerHTML"
-      hx-indicator="#htmx-spinner">
+          hx-indicator="#htmx-spinner">
       {% csrf_token %}
       <button type="submit"
               style="font-size:11px;font-weight:600;color:#3d5a99;
                      background:none;border:none;cursor:pointer"
-        hx-disabled-elt="this">
+              hx-disabled-elt="this">
         Mark all read
       </button>
     </form>
@@ -21,14 +21,28 @@
 
   {% if notifications %}
     {% for notif in notifications %}
-    <a href="{% url 'notifications:notifications_page' %}"
-       hx-post="{% url 'notifications:mark_read' notif.pk %}"
-       hx-swap="none"
-       style="display:flex;gap:10px;padding:10px 14px;text-decoration:none;
-              background:{% if not notif.is_read %}#f4f7fe{% else %}white{% endif %};
-              border-bottom:1px solid #f1f5f9;transition:background 0.1s"
-       onmouseover="this.style.background='#e8eef8'"
-       onmouseout="this.style.background='{% if not notif.is_read %}#f4f7fe{% else %}white{% endif %}'">
+    {# Determine navigation href: prefer action_url, then per-type fallback #}
+    {% if notif.event_type %}
+      {% with href=notif.action_url|default_if_none:"" %}
+      <a href="{% if href %}{{ href }}{% else %}{% url 'notifications:notifications_page' %}{% endif %}"
+         onclick="htmx.ajax('POST', this.dataset.readUrl, {source: this, swap: 'none'})"
+         data-read-url="{% url 'notifications:mark_read' notif.pk %}"
+         style="display:flex;gap:10px;padding:10px 14px;text-decoration:none;
+                background:{% if not notif.is_read %}#f4f7fe{% else %}white{% endif %};
+                border-bottom:1px solid #f1f5f9;transition:background 0.1s"
+         onmouseover="this.style.background='#e8eef8'"
+         onmouseout="this.style.background='{% if not notif.is_read %}#f4f7fe{% else %}white{% endif %}'">
+      {% endwith %}
+    {% else %}
+      <a href="{% if notif.action_url %}{{ notif.action_url }}{% else %}{% url 'superadmin:support_tickets' %}{% endif %}"
+         onclick="htmx.ajax('POST', this.dataset.readUrl, {source: this, swap: 'none'})"
+         data-read-url="{% url 'notifications:mark_admin_read' notif.pk %}"
+         style="display:flex;gap:10px;padding:10px 14px;text-decoration:none;
+                background:{% if not notif.is_read %}#f4f7fe{% else %}white{% endif %};
+                border-bottom:1px solid #f1f5f9;transition:background 0.1s"
+         onmouseover="this.style.background='#e8eef8'"
+         onmouseout="this.style.background='{% if not notif.is_read %}#f4f7fe{% else %}white{% endif %}'">
+    {% endif %}
       <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;
                   background:{% if notif.severity == 'critical' %}#ef4444
                   {% elif notif.severity == 'warning' %}#f59e0b
@@ -47,7 +61,7 @@
         <div style="font-size:10px;color:#b0bac9;margin-top:3px">
           {{ notif.created_at|timesince }} ago
         </div>
-        {% if not notif.acknowledged and notif.severity == 'critical' %}
+        {% if notif.event_type and not notif.acknowledged and notif.severity == 'critical' %}
         <div style="margin-top:4px">
           <button hx-post="{% url 'notifications:acknowledge' notif.pk %}"
                   hx-swap="none"
@@ -69,11 +83,21 @@
     </div>
   {% endif %}
 
-  <a href="{% url 'notifications:notifications_page' %}"
+  {% if request.user.is_superuser %}
+  <a href="{% url 'superadmin:support_tickets' %}"
      style="display:block;text-align:center;padding:10px;
             font-size:12px;font-weight:600;color:#3d5a99;
             text-decoration:none;border-top:1px solid #f1f5f9;
             background:#fafafa">
     View all notifications →
   </a>
+  {% else %}
+  <a href="{% url 'notifications:my_support_tickets' %}"
+     style="display:block;text-align:center;padding:10px;
+            font-size:12px;font-weight:600;color:#3d5a99;
+            text-decoration:none;border-top:1px solid #f1f5f9;
+            background:#fafafa">
+    View all notifications →
+  </a>
+  {% endif %}
 </div>
