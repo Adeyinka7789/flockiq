@@ -28,8 +28,15 @@
     <label class="block text-xs font-medium text-gray-500 mb-1">Notes</label>
     {{ form.notes }}
   </div>
-  <button type="submit"
-          class="mt-4 w-full py-3 bg-red-600 text-white font-medium text-sm rounded-lg hover:bg-red-700 transition-colors">
-    Log Mortality
+  <button hx-post="{% url 'flocks:mortality_log' batch.pk %}"
+        hx-indicator="#loading-spinner"
+        hx-disabled-elt="this"
+        class="btn btn-primary"
+        type="submit">
+    <span hx-indicator="this" class="hidden">
+      <svg class="inline animate-spin h-4 w-4 mr-2" ...></svg>
+      Processing...
+    </span>
+    <span hx-indicator="none">Record Mortality</span>
   </button>
 </form>

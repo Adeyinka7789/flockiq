@@ -1,0 +1,611 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlockIQ — Cookie Policy</title>
+  <meta name="description" content="FlockIQ's cookie policy explains how we use cookies and similar technologies to improve your experience on our poultry farm management platform.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --navy: #1e3a8a;
+      --navy-mid: #2d5be3;
+      --navy-light: #eff6ff;
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --text: #0f172a;
+      --text2: #475569;
+      --text3: #94a3b8;
+      --border: #e2e8f0;
+      --bg: #f8fafc;
+      --white: #ffffff;
+      --surface: #f7f9ff;
+      --surface-container-low: #f1f4fb;
+      --surface-container-lowest: #ffffff;
+      --surface-container-high: #e5e8ef;
+      --on-surface: #181c21;
+      --on-surface-variant: #444650;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--surface);
+      color: var(--on-surface);
+    }
+
+    /* ── NAV ── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(247, 249, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(196, 198, 210, 0.2);
+      padding: 0 6%;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo-mark {
+      width: 36px;
+      height: 36px;
+      background: var(--navy);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: -0.5px;
+    }
+
+    .nav-logo-text {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.4px;
+      font-family: 'Manrope', sans-serif;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      color: var(--text2);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .nav-links a:hover {
+      color: var(--navy);
+    }
+
+    .nav-cta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-ghost {
+      padding: 8px 18px;
+      border-radius: 9999px;
+      border: 1.5px solid var(--border);
+      color: var(--text2);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.15s;
+      background: white;
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--navy);
+      color: var(--navy);
+    }
+
+    .btn-navy {
+      padding: 9px 20px;
+      border-radius: 9999px;
+      background: var(--navy);
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .btn-navy:hover {
+      background: #1e40af;
+      transform: translateY(-1px);
+    }
+
+    /* Main content */
+    .policy-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 6% 80px;
+    }
+
+    .policy-header {
+      margin-bottom: 48px;
+    }
+
+    .policy-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--green);
+      margin-bottom: 1rem;
+      display: inline-block;
+    }
+
+    .policy-header h1 {
+      font-family: 'Manrope', sans-serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--navy);
+      line-height: 1.2;
+      margin-bottom: 1rem;
+    }
+
+    .policy-header p {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--text2);
+    }
+
+    .last-updated {
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      color: var(--text3);
+    }
+
+    /* Section styling */
+    .policy-section {
+      margin-bottom: 48px;
+      scroll-margin-top: 80px;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      border-left: 4px solid var(--navy);
+      padding-left: 20px;
+      margin-bottom: 24px;
+    }
+
+    .section-number {
+      font-family: 'Manrope', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text3);
+    }
+
+    .section-heading h2 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--navy);
+    }
+
+    .policy-section p {
+      font-size: 0.9375rem;
+      line-height: 1.7;
+      color: var(--text2);
+      margin-bottom: 16px;
+    }
+
+    .cookie-card {
+      background: var(--surface-container-low);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin: 24px 0;
+    }
+
+    .cookie-card h4 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 12px;
+    }
+
+    .cookie-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+    }
+
+    .cookie-table th,
+    .cookie-table td {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+
+    .cookie-table th {
+      background: var(--surface-container-high);
+      font-weight: 700;
+      color: var(--navy);
+    }
+
+    .cookie-table td {
+      color: var(--text2);
+    }
+
+    .consent-banner-mock {
+      background: var(--navy);
+      border-radius: 1rem;
+      padding: 1.25rem;
+      margin-top: 32px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .consent-banner-mock p {
+      color: white;
+      margin-bottom: 0;
+      font-size: 0.875rem;
+      flex: 1;
+    }
+
+    .consent-btn {
+      background: var(--active-intel, #8bc87a);
+      color: var(--navy);
+      border: none;
+      padding: 8px 20px;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    /* Footer */
+    .footer {
+      background: #0f172a;
+      padding: 52px 6% 28px;
+    }
+
+    .footer-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 32px;
+      flex-wrap: wrap;
+      margin-bottom: 44px;
+    }
+
+    .footer-brand {
+      max-width: 200px;
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .footer-logo-mark {
+      width: 30px;
+      height: 30px;
+      background: var(--navy-mid);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 900;
+      font-size: 11px;
+    }
+
+    .footer-logo-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: white;
+      font-family: 'Manrope', sans-serif;
+    }
+
+    .footer-tagline {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.35);
+      line-height: 1.6;
+    }
+
+    .footer-col-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 14px;
+    }
+
+    .footer-links {
+      list-style: none;
+    }
+
+    .footer-links li {
+      margin-bottom: 10px;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.5);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-links a:hover {
+      color: white;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      padding-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .footer-copy {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 768px) {
+      .section-heading {
+        gap: 12px;
+        padding-left: 16px;
+      }
+      .section-number {
+        font-size: 1.2rem;
+      }
+      .section-heading h2 {
+        font-size: 1.1rem;
+      }
+      .cookie-table {
+        font-size: 0.75rem;
+        overflow-x: auto;
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-mark">FQ</div>
+    <span class="nav-logo-text">FlockIQ</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/#how">How it works</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/about/">About</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="/login/" class="btn-ghost">Sign in</a>
+    <a href="/signup/" class="btn-navy">Get Started →</a>
+  </div>
+</nav>
+
+<!-- Main Content -->
+<div class="policy-container">
+  <div class="policy-header reveal">
+    <div class="policy-badge">🍪 Transparency Notice</div>
+    <h1>Cookie Policy</h1>
+    <p>FlockIQ uses cookies and similar technologies to improve your experience, analyze performance, and secure our platform. This policy explains what cookies are, how we use them, and your choices.</p>
+    <div class="last-updated">Last updated: May 20, 2026</div>
+  </div>
+
+  <!-- Section 1 -->
+  <div class="policy-section reveal" id="what-are-cookies">
+    <div class="section-heading">
+      <span class="section-number">01.</span>
+      <h2>What Are Cookies?</h2>
+    </div>
+    <p>Cookies are small text files stored on your device when you visit a website. They help websites remember your actions and preferences (such as login, language, font size, and other display preferences) over a period of time, so you don't have to keep re-entering them whenever you come back to the site or browse from one page to another.</p>
+    <p>FlockIQ uses both "persistent cookies" (which remain on your device until you delete them) and "session cookies" (which are deleted when you close your browser).</p>
+  </div>
+
+  <!-- Section 2 -->
+  <div class="policy-section reveal" id="how-we-use">
+    <div class="section-heading">
+      <span class="section-number">02.</span>
+      <h2>How FlockIQ Uses Cookies</h2>
+    </div>
+    <p>We use cookies for the following purposes:</p>
+    <div class="cookie-card">
+      <h4>🔐 Essential Cookies (Strictly Necessary)</h4>
+      <p>These cookies are required for the platform to function. They enable you to log in, navigate between pages, and access secure areas. Without these cookies, our services cannot be provided.</p>
+    </div>
+    <div class="cookie-card">
+      <h4>📊 Performance & Analytics Cookies</h4>
+      <p>These help us understand how visitors interact with FlockIQ by collecting anonymous data about page views, time on site, and user flows. This helps us improve the platform's performance and user experience.</p>
+    </div>
+    <div class="cookie-card">
+      <h4>🎨 Functional Cookies</h4>
+      <p>These remember your preferences — such as language selection, dashboard layout, and notification settings — to provide a personalized experience.</p>
+    </div>
+  </div>
+
+  <!-- Section 3: Cookie Table -->
+  <div class="policy-section reveal" id="cookie-list">
+    <div class="section-heading">
+      <span class="section-number">03.</span>
+      <h2>Cookies We Use</h2>
+    </div>
+    <table class="cookie-table">
+      <thead>
+        <tr><th>Cookie Name</th><th>Purpose</th><th>Duration</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>flockiq_session</td><td>User authentication and session management</td><td>Session</td></tr>
+        <tr><td>farm_preferences</td><td>Stores dashboard and language preferences</td><td>1 year</td></tr>
+        <tr><td>_ga</td><td>Google Analytics — anonymous usage tracking</td><td>2 years</td></tr>
+        <tr><td>_gid</td><td>Google Analytics — user session tracking</td><td>24 hours</td></tr>
+        <tr><td>cookie_consent</td><td>Remembers your cookie preference</td><td>1 year</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Section 4 -->
+  <div class="policy-section reveal" id="third-party">
+    <div class="section-heading">
+      <span class="section-number">04.</span>
+      <h2>Third-Party Cookies</h2>
+    </div>
+    <p>Some cookies are placed by third-party services that appear on our pages. These include:</p>
+    <ul style="margin-left: 24px; color: var(--text2); line-height: 1.8;">
+      <li><strong>Google Analytics</strong> — Helps us understand how users engage with FlockIQ</li>
+      <li><strong>Termii</strong> — Powers our SMS notification system</li>
+      <li><strong>OpenWeather</strong> — Provides weather intelligence for your farm location</li>
+      <li><strong>PayStack</strong> — Handles secure payment processing</li>
+    </ul>
+    <p style="margin-top: 16px;">We do not sell or share your personal data with advertisers or tracking networks.</p>
+  </div>
+
+  <!-- Section 5 -->
+  <div class="policy-section reveal" id="your-choices">
+    <div class="section-heading">
+      <span class="section-number">05.</span>
+      <h2>Your Cookie Choices</h2>
+    </div>
+    <p>When you first visit FlockIQ, you will see a cookie banner allowing you to accept or decline non-essential cookies. You can also:</p>
+    <ul style="margin-left: 24px; color: var(--text2); line-height: 1.8;">
+      <li>Change your browser settings to block or delete cookies</li>
+      <li>Use your browser's "incognito" or "private browsing" mode</li>
+      <li>Opt out of Google Analytics via the <a href="#" style="color: var(--navy);">Google Analytics Opt-out Browser Add-on</a></li>
+    </ul>
+    <div class="consent-banner-mock">
+      <p>🍪 We use cookies to enhance your experience. By continuing to use FlockIQ, you accept our use of cookies.</p>
+      <button class="consent-btn" onclick="alert('Cookie preference saved. This is a demo notification.')">Accept All</button>
+    </div>
+  </div>
+
+  <!-- Section 6 -->
+  <div class="policy-section reveal" id="contact">
+    <div class="section-heading">
+      <span class="section-number">06.</span>
+      <h2>Contact Us About Cookies</h2>
+    </div>
+    <p>If you have questions about our use of cookies, please contact our Data Protection Officer:</p>
+    <div class="cookie-card" style="background: var(--surface-container-lowest); border: 1px solid var(--border);">
+      <p><strong>📧 Email:</strong> privacy@flockiq.com</p>
+      <p><strong>📍 Address:</strong> 12 Precision Way, Victoria Island, Lagos, Nigeria</p>
+      <p><strong>📞 Phone:</strong> +234 800 FLOCKIQ</p>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="footer-logo">
+        <div class="footer-logo-mark">FQ</div>
+        <span class="footer-logo-name">FlockIQ</span>
+      </div>
+      <p class="footer-tagline">Empowering poultry farmers with AI-driven intelligence. Built in Lagos, for Nigeria.</p>
+    </div>
+    <div>
+      <div class="footer-col-title">Platform</div>
+      <ul class="footer-links">
+        <li><a href="/#features">Neural Engine</a></li>
+        <li><a href="/#features">AI Inference</a></li>
+        <li><a href="/#features">Security IQ</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Company</div>
+      <ul class="footer-links">
+        <li><a href="/about/">About ADM Tech Hub</a></li>
+        <li><a href="#">Careers</a></li>
+        <li><a href="#">Press</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Legal</div>
+      <ul class="footer-links">
+        <li><a href="/privacy/">Privacy Policy</a></li>
+        <li><a href="/terms/">Terms of Service</a></li>
+        <li><a href="/cookie/">Cookie Policy</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Support</div>
+      <ul class="footer-links">
+        <li><a href="/help/">Help Center</a></li>
+        <li><a href="#">WhatsApp Support</a></li>
+        <li><a href="#">System Status</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy">© 2026 FlockIQ / ADM Tech Hub. All rights reserved.</div>
+    <div class="footer-copy">Built in Lagos, Nigeria 🇳🇬</div>
+  </div>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

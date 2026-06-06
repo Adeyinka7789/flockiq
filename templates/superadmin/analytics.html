@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% load static %}
 {% block title %}Platform Analytics{% endblock %}
 {% block breadcrumb %}Platform Analytics{% endblock %}
@@ -46,7 +47,7 @@
   <div class="sa-metrics-4">
     <div class="sa-metric-sm">
       <div class="sa-metric-sm-lbl">Global Revenue</div>
-      <div class="sa-metric-sm-val" style="color:#3d5a99">₦{{ total_revenue_naira }}</div>
+      <div class="sa-metric-sm-val" style="color:#3d5a99">₦{{ total_revenue_naira|intcomma }}</div>
       <div class="sa-metric-sm-change">All time</div>
     </div>
     <div class="sa-metric-sm">
@@ -148,7 +149,7 @@
               {{ item.mort_rate }}%
             </span>
           </td>
-          <td style="font-weight:700;color:#1a2744">₦{{ item.revenue }}</td>
+          <td style="font-weight:700;color:#1a2744">₦{{ item.revenue|intcomma }}</td>
         </tr>
         {% empty %}
         <tr>

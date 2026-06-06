@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% load static %}
 {% block title %}Billing & Subscription{% endblock %}
 {% block breadcrumb %}Billing{% endblock %}
@@ -448,7 +449,7 @@
       </div>
       <div class="bill-plan-opt-price">
         {% if p.plan_tier == 'trial' %}₦0
-        {% else %}₦{{ p.amount_naira|floatformat:0 }}{% endif %}
+        {% else %}₦{{ p.amount_naira|intcomma }}{% endif %}
         <span>
           {% if p.plan_tier == 'trial' %}/ 14 days
           {% else %}/ {{ p.get_billing_interval_display }}{% endif %}
@@ -471,12 +472,12 @@
       </a>
       {% elif p.amount_kobo > plan.amount_kobo|default:0 %}
       <button class="bill-plan-cta upgrade-cta"
-              onclick="openUpgradeModal('{{ p.plan_tier }}','{{ p.name }}','{{ p.amount_naira|floatformat:0 }}')">
+              onclick="openUpgradeModal('{{ p.plan_tier }}','{{ p.name }}','{{ p.amount_naira|intcomma }}')">
         Upgrade to {{ p.name }}
       </button>
       {% else %}
       <button class="bill-plan-cta downgrade-cta"
-              onclick="openUpgradeModal('{{ p.plan_tier }}','{{ p.name }}','{{ p.amount_naira|floatformat:0 }}')">
+              onclick="openUpgradeModal('{{ p.plan_tier }}','{{ p.name }}','{{ p.amount_naira|intcomma }}')">
         Downgrade to {{ p.name }}
       </button>
       {% endif %}
@@ -558,7 +559,7 @@
             {% for p in all_plans %}
             {% if p.plan_tier != 'trial' %}
             <option value="{{ p.plan_tier }}" data-amount="{{ p.amount_naira|floatformat:0 }}">
-              {{ p.name }} — ₦{{ p.amount_naira|floatformat:0 }}
+              {{ p.name }} — ₦{{ p.amount_naira|intcomma }}
             </option>
             {% endif %}
             {% endfor %}
@@ -610,7 +611,7 @@
         <tr>
           <td>{{ payment.created_at|date:"M d, Y" }}</td>
           <td>{{ payment.plan.name|default:"—" }}</td>
-          <td style="font-weight:700">₦{{ payment.amount_naira|floatformat:0 }}</td>
+          <td style="font-weight:700">₦{{ payment.amount_naira|intcomma }}</td>
           <td>
             {% if payment.status == 'success' %}
             <span class="bill-status-paid">Paid</span>

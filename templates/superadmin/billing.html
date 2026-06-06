@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}Billing Control Center{% endblock %}
 {% block breadcrumb %}Billing Control{% endblock %}
 
@@ -212,7 +213,7 @@
     <div class="bc-metric">
       <div class="bc-metric-icon" style="background:#e8eef8">💳</div>
       <div class="bc-metric-lbl">Total MRR</div>
-      <div class="bc-metric-val green">₦{{ mrr_naira|floatformat:0 }}</div>
+      <div class="bc-metric-val green">₦{{ mrr_naira|intcomma }}</div>
       <div class="bc-metric-sub">This month</div>
     </div>
     <div class="bc-metric">

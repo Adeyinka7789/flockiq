@@ -278,6 +278,169 @@
         </div>
       </div>
 
+      <!-- Feed Efficiency (FCR) -->
+      {% if fcr_data %}
+      <div class="ai-card">
+        <div class="ai-card-hd">
+          <div class="ai-card-icon" style="background:#fef3c7">🌾</div>
+          <div>
+            <div class="ai-card-title">Feed Efficiency (FCR)</div>
+            <div class="ai-card-sub">vs {{ fcr_data.breed }} target of {{ fcr_data.target_fcr }}</div>
+          </div>
+        </div>
+        <div class="ai-card-body">
+          <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px">
+            <div style="text-align:center;flex-shrink:0">
+              <div style="font-size:36px;font-weight:800;
+                {% if fcr_data.status == 'good' %}color:#16a34a
+                {% elif fcr_data.status == 'warning' %}color:#d97706
+                {% elif fcr_data.status == 'critical' %}color:#dc2626
+                {% else %}color:#8a96a8{% endif %}">
+                {% if fcr_data.fcr %}{{ fcr_data.fcr }}{% else %}—{% endif %}
+              </div>
+              <div style="font-size:11px;color:#8a96a8;text-transform:uppercase;letter-spacing:0.07em">
+                Current FCR
+              </div>
+            </div>
+            <div style="font-size:13px;color:#4a5568;line-height:1.6;flex:1">
+              {% if fcr_data.status == 'good' %}
+              ✅ FCR is within target. Excellent feed management.
+              {% elif fcr_data.status == 'acceptable' %}
+              🟡 FCR is slightly above target. Monitor wastage.
+              {% elif fcr_data.status == 'warning' %}
+              ⚠️ FCR is above target. Review feed quality and minimize wastage.
+              {% elif fcr_data.status == 'critical' %}
+              🔴 FCR significantly above target. Check feed quality, water availability, and bird health.
+              {% else %}
+              Log feed data daily to enable FCR tracking.
+              {% endif %}
+            </div>
+          </div>
+
+          {% if weekly_fcr %}
+          <div style="height:120px">
+            <canvas id="fcrTrendChart"></canvas>
+          </div>
+          {% endif %}
+
+          {% if feed_recommendations %}
+          <div style="margin-top:14px">
+            {% for rec in feed_recommendations %}
+            <div style="padding:10px 12px;border-radius:9px;margin-bottom:8px;font-size:12px;line-height:1.6;
+              {% if rec.priority == 'high' %}background:#fff5f5;border-left:3px solid #ef4444;color:#991b1b;
+              {% elif rec.priority == 'medium' %}background:#fffbeb;border-left:3px solid #f59e0b;color:#92400e;
+              {% else %}background:#f0fdf4;border-left:3px solid #8bc87a;color:#166534;{% endif %}">
+              {{ rec.text }}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Farm History Comparison -->
+      {% if farm_score.has_history %}
+      <div class="ai-card">
+        <div class="ai-card-hd">
+          <div class="ai-card-icon" style="background:#e8eef8">📊</div>
+          <div>
+            <div class="ai-card-title">vs Your Farm History</div>
+            <div class="ai-card-sub">Based on {{ farm_score.historical_batches }} previous batches</div>
+          </div>
+        </div>
+        <div class="ai-card-body">
+          <div style="padding:14px;border-radius:12px;font-size:13px;line-height:1.6;color:#1a2744;
+            {% if farm_score.verdict == 'better_than_usual' %}background:#edfae8;
+            {% elif farm_score.verdict == 'worse_than_usual' %}background:#fee2e2;
+            {% else %}background:#f4f7fe;{% endif %}">
+            {{ farm_score.verdict_text }}
+          </div>
+          <div style="display:flex;gap:16px;margin-top:12px">
+            <div style="text-align:center;flex:1;padding:10px;background:#f8faff;border-radius:9px">
+              <div style="font-size:20px;font-weight:800;color:#1a2744">{{ farm_score.curr_mort_rate }}%</div>
+              <div style="font-size:11px;color:#8a96a8">This Batch</div>
+            </div>
+            <div style="text-align:center;flex:1;padding:10px;background:#f8faff;border-radius:9px">
+              <div style="font-size:20px;font-weight:800;color:#8a96a8">{{ farm_score.avg_hist_mort_rate }}%</div>
+              <div style="font-size:11px;color:#8a96a8">Farm Average</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Harvest Timing Optimizer (broilers only) -->
+      {% if harvest_timing %}
+      <div class="ai-card">
+        <div class="ai-card-hd">
+          <div class="ai-card-icon" style="background:#edfae8">🎯</div>
+          <div>
+            <div class="ai-card-title">Harvest Timing Optimizer</div>
+            <div class="ai-card-sub">
+              {{ harvest_timing.breed }} · Day {{ harvest_timing.current_day }} of {{ harvest_timing.optimal_day }}
+            </div>
+          </div>
+        </div>
+        <div class="ai-card-body">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+            <div style="padding:14px 20px;border-radius:12px;font-size:13px;font-weight:700;text-align:center;flex-shrink:0;
+              {% if harvest_timing.urgency == 'critical' %}background:#fee2e2;color:#991b1b;
+              {% elif harvest_timing.urgency == 'high' %}background:#fef3c7;color:#92400e;
+              {% elif harvest_timing.urgency == 'medium' %}background:#e8eef8;color:#2d4578;
+              {% else %}background:#edfae8;color:#166534;{% endif %}">
+              {% if harvest_timing.recommendation == 'sell_now' %}🔴 SELL NOW
+              {% elif harvest_timing.recommendation == 'sell_this_week' %}🟡 SELL THIS WEEK
+              {% elif harvest_timing.recommendation == 'prepare_to_sell' %}🔵 PREPARE TO SELL
+              {% else %}🟢 CONTINUE GROWING{% endif %}
+            </div>
+            <div style="font-size:12px;color:#4a5568;line-height:1.6;flex:1">
+              {{ harvest_timing.reason }}
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:80px;padding:10px;background:#f8faff;border-radius:9px;text-align:center">
+              <div style="font-size:18px;font-weight:800;color:#1a2744">{{ harvest_timing.days_remaining }}</div>
+              <div style="font-size:10px;color:#8a96a8;text-transform:uppercase">Days Left</div>
+            </div>
+            <div style="flex:1;min-width:80px;padding:10px;background:#f8faff;border-radius:9px;text-align:center">
+              <div style="font-size:18px;font-weight:800;color:#1a2744">{{ harvest_timing.current_weight_kg }}kg</div>
+              <div style="font-size:10px;color:#8a96a8;text-transform:uppercase">Curr Weight</div>
+            </div>
+            <div style="flex:1;min-width:80px;padding:10px;background:#f8faff;border-radius:9px;text-align:center">
+              <div style="font-size:18px;font-weight:800;color:#1a2744">
+                ₦{{ harvest_timing.holding_cost_total|floatformat:0 }}
+              </div>
+              <div style="font-size:10px;color:#8a96a8;text-transform:uppercase">Holding Cost</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Proactive Alerts -->
+      {% if proactive_alerts %}
+      <div class="ai-card">
+        <div class="ai-card-hd">
+          <div class="ai-card-icon" style="background:#fee2e2">🚨</div>
+          <div>
+            <div class="ai-card-title">Proactive Alerts</div>
+            <div class="ai-card-sub">
+              {{ proactive_alerts|length }} early warning{{ proactive_alerts|length|pluralize }}
+            </div>
+          </div>
+        </div>
+        <div class="ai-card-body">
+          {% for alert in proactive_alerts %}
+          <div class="ai-pattern {{ alert.severity }}" style="margin-bottom:10px">
+            <div class="ai-pattern-title">{{ alert.title }}</div>
+            <div class="ai-pattern-detail">{{ alert.body }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
       <!-- Mortality Trend Chart -->
       {% if mort_trend %}
       <div class="ai-card">
@@ -386,6 +549,56 @@
       scales: {
         x: { grid:{display:false}, ticks:{font:{size:10},color:'#94a3b8'} },
         y: { grid:{color:'#f3f4f6'}, ticks:{font:{size:10},color:'#94a3b8'}, beginAtZero: true }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+
+{% if weekly_fcr %}
+{{ weekly_fcr|json_script:"fcr-trend-data" }}
+<script>
+(function() {
+  const data = JSON.parse(
+    document.getElementById('fcr-trend-data').textContent);
+  const canvas = document.getElementById('fcrTrendChart');
+  if (!canvas || !data.length) return;
+
+  new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: data.map(d => 'Wk ' + d.week),
+      datasets: [
+        {
+          label: 'Actual FCR',
+          data: data.map(d => d.fcr),
+          borderColor: '#3d5a99',
+          backgroundColor: 'rgba(61,90,153,0.1)',
+          borderWidth: 2,
+          pointRadius: 3,
+          fill: true,
+          tension: 0.4,
+          spanGaps: true,
+        },
+        {
+          label: 'Target FCR',
+          data: data.map(d => d.target),
+          borderColor: '#8bc87a',
+          borderWidth: 1.5,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          fill: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#94a3b8' } },
+        y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 }, color: '#94a3b8' }, beginAtZero: false }
       }
     }
   });

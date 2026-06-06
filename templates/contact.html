@@ -1,0 +1,744 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlockIQ — Contact & Support Center</title>
+  <meta name="description" content="Get in touch with FlockIQ's support team. WhatsApp support, email, or send us a message. We're here to help Nigerian poultry farmers succeed.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* FlockIQ base colors */
+      --navy: #1e3a8a;
+      --navy-mid: #2d5be3;
+      --navy-light: #eff6ff;
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --text: #0f172a;
+      --text2: #475569;
+      --text3: #94a3b8;
+      --border: #e2e8f0;
+      --bg: #f8fafc;
+      --white: #ffffff;
+
+      /* Precision Pastoral additions */
+      --surface: #f7f9ff;
+      --surface-container-low: #f1f4fb;
+      --surface-container-lowest: #ffffff;
+      --surface-container-high: #e5e8ef;
+      --on-surface: #181c21;
+      --on-surface-variant: #444650;
+      --outline-variant: #c4c6d2;
+      --secondary: #336a28;
+      --secondary-container: #b1f09e;
+      --on-secondary-container: #376f2c;
+      --error: #ba1a1a;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--surface);
+      color: var(--on-surface);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── NAV (inherited from FlockIQ Landing) ── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(247, 249, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(196, 198, 210, 0.2);
+      padding: 0 6%;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo-mark {
+      width: 36px;
+      height: 36px;
+      background: var(--navy);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: -0.5px;
+    }
+
+    .nav-logo-text {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.4px;
+      font-family: 'Manrope', sans-serif;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      color: var(--text2);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .nav-links a:hover {
+      color: var(--navy);
+    }
+
+    .nav-cta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-ghost {
+      padding: 8px 18px;
+      border-radius: 9999px;
+      border: 1.5px solid var(--border);
+      color: var(--text2);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.15s;
+      background: white;
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--navy);
+      color: var(--navy);
+    }
+
+    .btn-navy {
+      padding: 9px 20px;
+      border-radius: 9999px;
+      background: var(--navy);
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .btn-navy:hover {
+      background: #1e40af;
+      transform: translateY(-1px);
+    }
+
+    /* ── MAIN CONTENT (no sidebar, centered) ── */
+    .contact-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 48px 6% 80px;
+    }
+
+    /* Header with editorial spacing */
+    .contact-header {
+      margin-bottom: 48px;
+      padding-left: 0;
+    }
+
+    @media (min-width: 768px) {
+      .contact-header {
+        padding-left: 4rem;
+      }
+    }
+
+    .contact-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--green);
+      margin-bottom: 1rem;
+      display: inline-block;
+    }
+
+    .contact-header h1 {
+      font-family: 'Manrope', sans-serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--navy);
+      line-height: 1.2;
+      max-width: 600px;
+    }
+
+    /* Bento grid */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .bento-grid {
+        grid-template-columns: 2fr 1fr;
+      }
+    }
+
+    /* Form card */
+    .form-card {
+      background: var(--surface-container-lowest);
+      border-radius: 1.5rem;
+      padding: 2rem;
+      box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
+    }
+
+    .form-card h3 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--on-surface);
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--on-surface-variant);
+      margin-bottom: 0.5rem;
+      margin-left: 0.25rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--surface-container-low);
+      border: none;
+      border-radius: 0.75rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.875rem;
+      color: var(--on-surface);
+      transition: all 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      background: var(--surface-container-lowest);
+      box-shadow: 0 0 0 2px var(--navy);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .btn-submit {
+      background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+      color: white;
+      border: none;
+      padding: 0.875rem 2rem;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    @media (min-width: 640px) {
+      .btn-submit {
+        width: auto;
+      }
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25);
+    }
+
+    /* Contact info cards */
+    .info-card {
+      background: var(--surface-container-high);
+      border-radius: 1.5rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .info-card h4 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--on-surface);
+      margin-bottom: 1rem;
+    }
+
+    .contact-detail {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .contact-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(30, 58, 138, 0.1);
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    .contact-detail p {
+      font-size: 0.875rem;
+      line-height: 1.5;
+      color: var(--on-surface-variant);
+    }
+
+    .contact-detail strong {
+      color: var(--on-surface);
+      font-weight: 700;
+    }
+
+    /* WhatsApp card */
+    .whatsapp-card {
+      background: var(--green);
+      border-radius: 1.5rem;
+      padding: 1.75rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .whatsapp-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(22, 163, 74, 0.25);
+    }
+
+    .whatsapp-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      font-size: 2rem;
+    }
+
+    .whatsapp-card h4 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: white;
+      margin-bottom: 0.5rem;
+    }
+
+    .whatsapp-card p {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 1.25rem;
+    }
+
+    .whatsapp-btn {
+      display: inline-block;
+      background: white;
+      color: var(--green);
+      padding: 0.75rem 1.5rem;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 0.75rem;
+      text-decoration: none;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: all 0.2s;
+    }
+
+    .whatsapp-btn:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    /* FAQ mini section */
+    .faq-mini {
+      margin-top: 3rem;
+    }
+
+    .faq-mini h3 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--on-surface);
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .faq-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    @media (min-width: 768px) {
+      .faq-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .faq-mini-card {
+      background: var(--surface-container-low);
+      border-radius: 1rem;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .faq-mini-card .question {
+      font-weight: 700;
+      font-size: 0.875rem;
+      color: var(--navy);
+      margin-bottom: 0.5rem;
+    }
+
+    .faq-mini-card .answer {
+      font-size: 0.75rem;
+      color: var(--text2);
+      line-height: 1.5;
+    }
+
+    /* Footer */
+    .footer {
+      background: #0f172a;
+      padding: 52px 6% 28px;
+      margin-top: 60px;
+    }
+
+    .footer-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 32px;
+      flex-wrap: wrap;
+      margin-bottom: 44px;
+    }
+
+    .footer-brand {
+      max-width: 200px;
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .footer-logo-mark {
+      width: 30px;
+      height: 30px;
+      background: var(--navy-mid);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 900;
+      font-size: 11px;
+    }
+
+    .footer-logo-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: white;
+      font-family: 'Manrope', sans-serif;
+    }
+
+    .footer-tagline {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.35);
+      line-height: 1.6;
+    }
+
+    .footer-col-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 14px;
+    }
+
+    .footer-links {
+      list-style: none;
+    }
+
+    .footer-links li {
+      margin-bottom: 10px;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.5);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-links a:hover {
+      color: white;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      padding-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .footer-copy {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Reveal animation */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV (inherited from FlockIQ) -->
+<nav class="nav">
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-mark">FQ</div>
+    <span class="nav-logo-text">FlockIQ</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/#how">How it works</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/#about">About</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="/login/" class="btn-ghost">Sign in</a>
+    <a href="/signup/" class="btn-navy">Get Started →</a>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="contact-container">
+  <!-- Editorial header -->
+  <div class="contact-header reveal">
+    <div class="contact-badge">🐔 Connect with us</div>
+    <h1>Expert guidance for the modern Nigerian poultry farm.</h1>
+  </div>
+
+  <!-- Bento grid: form + contact info -->
+  <div class="bento-grid">
+    <!-- Left: Contact Form -->
+    <div class="form-card reveal">
+      <h3>Send us a message</h3>
+      <form action="#" method="POST">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Full name</label>
+            <input type="text" placeholder="Adebayo Ogunlesi" required>
+          </div>
+          <div class="form-group">
+            <label>Email address</label>
+            <input type="email" placeholder="adebayo@flockiq.com" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Phone number</label>
+          <input type="tel" placeholder="+234 801 234 5678">
+        </div>
+        <div class="form-group">
+          <label>Subject</label>
+          <select>
+            <option>General inquiry</option>
+            <option>Technical support</option>
+            <option>Billing question</option>
+            <option>Farm setup assistance</option>
+            <option>Partnership opportunity</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Message</label>
+          <textarea rows="4" placeholder="How can we help you and your flock today?"></textarea>
+        </div>
+        <button type="submit" class="btn-submit">Send message →</button>
+      </form>
+    </div>
+
+    <!-- Right: Contact info + WhatsApp -->
+    <div>
+      <div class="info-card reveal">
+        <h4>📍 Contact information</h4>
+        <div class="contact-detail">
+          <div class="contact-icon">🏠</div>
+          <div>
+            <strong>Lagos HQ</strong>
+            <p>12 Precision Way, Victoria Island, Lagos, Nigeria</p>
+          </div>
+        </div>
+        <div class="contact-detail">
+          <div class="contact-icon">📞</div>
+          <div>
+            <strong>Phone</strong>
+            <p>+234 800 FLOCKIQ (356-2747)</p>
+          </div>
+        </div>
+        <div class="contact-detail">
+          <div class="contact-icon">✉️</div>
+          <div>
+            <strong>Email</strong>
+            <p>support@flockiq.com</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="whatsapp-card reveal" onclick="window.open('https://wa.me/2348003562747', '_blank')">
+        <div class="whatsapp-icon">💚</div>
+        <h4>Instant WhatsApp Support</h4>
+        <p>Average response time: &lt; 5 minutes</p>
+        <span class="whatsapp-btn">Chat on WhatsApp →</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mini FAQ section -->
+  <div class="faq-mini reveal">
+    <h3>📋 Quick answers</h3>
+    <div class="faq-grid">
+      <div class="faq-mini-card">
+        <div class="question">Response time?</div>
+        <div class="answer">Email: 24h | WhatsApp: &lt;5min | Phone: during business hours</div>
+      </div>
+      <div class="faq-mini-card">
+        <div class="question">Support hours?</div>
+        <div class="answer">Monday–Friday: 8am–6pm WAT | Saturday: 9am–1pm</div>
+      </div>
+      <div class="faq-mini-card">
+        <div class="question">Emergency support?</div>
+        <div class="answer">For critical farm outages, call our emergency line: +234 800 555 1234</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER (inherited from FlockIQ) -->
+<footer class="footer">
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="footer-logo">
+        <div class="footer-logo-mark">FQ</div>
+        <span class="footer-logo-name">FlockIQ</span>
+      </div>
+      <p class="footer-tagline">Empowering the standard of global food production through high-frequency avian intelligence.</p>
+    </div>
+    <div>
+      <div class="footer-col-title">Platform</div>
+      <ul class="footer-links">
+        <li><a href="/#features">Neural Engine</a></li>
+        <li><a href="/#features">AI Inference</a></li>
+        <li><a href="/#features">Drone Hub</a></li>
+        <li><a href="/#features">Security IQ</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Company</div>
+      <ul class="footer-links">
+        <li><a href="/#about">About ADM Tech Hub</a></li>
+        <li><a href="#">Investor Relations</a></li>
+        <li><a href="#">News & Press</a></li>
+        <li><a href="#">Careers</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Legal</div>
+      <ul class="footer-links">
+        <li><a href="#">Privacy Policy</a></li>
+        <li><a href="#">Terms of Service</a></li>
+        <li><a href="#">Data Security</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Support</div>
+      <ul class="footer-links">
+        <li><a href="#">Documentation</a></li>
+        <li><a href="https://wa.me/2348003562747">WhatsApp Support</a></li>
+        <li><a href="#">System Status</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy">© 2026 FlockIQ / ADM Tech Hub. All rights reserved.</div>
+    <div class="footer-copy">Built in Lagos, Nigeria 🇳🇬</div>
+  </div>
+</footer>
+
+<script>
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Form submission prevention (demo)
+  document.querySelector('form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    alert('Thanks for reaching out! Our team will respond within 24 hours.');
+  });
+</script>
+
+</body>
+</html>

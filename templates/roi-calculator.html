@@ -1,0 +1,339 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlockIQ — ROI Calculator | See Your Savings</title>
+  <meta name="description" content="Calculate how much FlockIQ can save your poultry farm. Reduce mortality, optimize feed, and prevent losses with AI.">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1e3a8a',
+            'primary-mid': '#2d5be3',
+            secondary: '#16a34a',
+            'active-intel': '#8bc87a',
+          },
+          fontFamily: {
+            'headline': ['Manrope', 'sans-serif'],
+            'body': ['Inter', 'sans-serif'],
+          },
+          borderRadius: {
+            'xl': '1.5rem',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    input[type="range"] {
+      -webkit-appearance: none;
+      background: #e2e8f0;
+      height: 6px;
+      border-radius: 10px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #1e3a8a;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #2d5be3;
+      transform: scale(1.2);
+    }
+    .reveal-up {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .reveal-up.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body class="bg-[#f7f9ff] font-body">
+
+<!-- NAV -->
+<nav class="bg-white/80 backdrop-blur-xl border-b border-[#e2e8f0]/20 sticky top-0 z-50">
+  <div class="flex justify-between items-center px-6 md:px-12 py-4 max-w-7xl mx-auto">
+    <a href="/" class="flex items-center gap-3">
+      <div class="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
+        <span class="text-white font-bold text-sm">FQ</span>
+      </div>
+      <span class="text-xl font-headline font-extrabold text-primary tracking-tight">FlockIQ</span>
+    </a>
+    <div class="hidden md:flex items-center gap-8">
+      <a href="/#features" class="text-sm text-[#475569] hover:text-primary font-medium">Features</a>
+      <a href="/#pricing" class="text-sm text-[#475569] hover:text-primary font-medium">Pricing</a>
+      <a href="/about/" class="text-sm text-[#475569] hover:text-primary font-medium">About</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="/login/" class="text-sm font-semibold text-[#475569] hover:text-primary">Sign in</a>
+      <a href="/signup/" class="bg-primary text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-[#1e40af] transition-all">Get Started</a>
+    </div>
+  </div>
+</nav>
+
+<main class="max-w-6xl mx-auto px-6 py-12 md:py-20">
+  <!-- Header -->
+  <div class="text-center mb-12 reveal-up">
+    <span class="text-secondary text-sm font-bold uppercase tracking-wider mb-3 block">📊 Financial Intelligence</span>
+    <h1 class="font-headline text-4xl md:text-5xl font-extrabold text-primary mb-4 tracking-tight">Calculate Your FlockIQ ROI</h1>
+    <p class="text-[#475569] text-lg max-w-2xl mx-auto">See how much you could save by reducing mortality, preventing outbreaks, and optimizing feed conversion.</p>
+  </div>
+
+  <div class="grid md:grid-cols-2 gap-8">
+    <!-- Left: Inputs -->
+    <div class="bg-white rounded-xl p-6 md:p-8 shadow-lg reveal-up" style="transition-delay: 0.1s">
+      <h2 class="font-headline text-xl font-bold text-primary mb-6">Your Farm Profile</h2>
+      
+      <div class="space-y-6">
+        <!-- Farm Size -->
+        <div>
+          <div class="flex justify-between mb-2">
+            <label class="text-sm font-semibold text-[#1e293b]">🐔 Farm Size (birds per cycle)</label>
+            <span class="text-primary font-bold" id="birdCountVal">5,000</span>
+          </div>
+          <input type="range" id="birdCount" min="500" max="50000" step="500" value="5000" class="w-full">
+          <div class="flex justify-between text-xs text-[#94a3b8] mt-1">
+            <span>500</span>
+            <span>10K</span>
+            <span>20K</span>
+            <span>30K</span>
+            <span>40K</span>
+            <span>50K</span>
+          </div>
+        </div>
+
+        <!-- Current Mortality Rate -->
+        <div>
+          <div class="flex justify-between mb-2">
+            <label class="text-sm font-semibold text-[#1e293b]">⚠️ Current Mortality Rate (%)</label>
+            <span class="text-primary font-bold" id="mortalityVal">8.0</span>
+          </div>
+          <input type="range" id="mortalityRate" min="2" max="25" step="0.5" value="8" class="w-full">
+          <p class="text-xs text-[#94a3b8] mt-1">Industry average: 8-12% | FlockIQ users: 3-5%</p>
+        </div>
+
+        <!-- Feed Cost -->
+        <div>
+          <div class="flex justify-between mb-2">
+            <label class="text-sm font-semibold text-[#1e293b]">🌾 Feed Cost per Bird (₦)</label>
+            <span class="text-primary font-bold" id="feedCostVal">₦4,500</span>
+          </div>
+          <input type="range" id="feedCost" min="2000" max="8000" step="100" value="4500" class="w-full">
+        </div>
+
+        <!-- Bird Value -->
+        <div>
+          <div class="flex justify-between mb-2">
+            <label class="text-sm font-semibold text-[#1e293b]">💰 Average Bird Value at Sale (₦)</label>
+            <span class="text-primary font-bold" id="birdValueVal">₦8,500</span>
+          </div>
+          <input type="range" id="birdValue" min="3000" max="15000" step="100" value="8500" class="w-full">
+          <p class="text-xs text-[#94a3b8] mt-1">Broilers: ₦8,000-12,000 | Layers: ₦3,500-5,000</p>
+        </div>
+
+        <!-- Cycles per Year -->
+        <div>
+          <div class="flex justify-between mb-2">
+            <label class="text-sm font-semibold text-[#1e293b]">🔄 Cycles per Year</label>
+            <span class="text-primary font-bold" id="cyclesVal">3</span>
+          </div>
+          <input type="range" id="cycles" min="1" max="6" step="1" value="3" class="w-full">
+          <div class="flex justify-between text-xs text-[#94a3b8] mt-1">
+            <span>1 (Broilers)</span>
+            <span>3</span>
+            <span>6 (Layers)</span>
+          </div>
+        </div>
+
+        <!-- Theft/Shrinkage -->
+        <div>
+          <div class="flex justify-between mb-2">
+            <label class="text-sm font-semibold text-[#1e293b]">🔍 Current Theft/Shrinkage Rate (%)</label>
+            <span class="text-primary font-bold" id="theftVal">3.0</span>
+          </div>
+          <input type="range" id="theftRate" min="0" max="10" step="0.5" value="3" class="w-full">
+          <p class="text-xs text-[#94a3b8] mt-1">FlockIQ reduces shrinkage through audit trails and stock reconciliation</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Results -->
+    <div class="bg-gradient-to-br from-primary to-primary-mid rounded-xl p-6 md:p-8 text-white shadow-xl reveal-up" style="transition-delay: 0.2s">
+      <h2 class="font-headline text-xl font-bold mb-6 opacity-90">Your Projected Annual Savings</h2>
+      
+      <div class="space-y-6">
+        <!-- Mortality Savings -->
+        <div class="bg-white/10 rounded-xl p-4">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium opacity-80">Mortality Reduction Savings</span>
+            <span class="text-2xl font-bold" id="mortalitySavings">₦0</span>
+          </div>
+          <div class="w-full bg-white/20 rounded-full h-2">
+            <div class="bg-[#8bc87a] h-2 rounded-full transition-all duration-300" id="mortalityBar" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Feed Efficiency -->
+        <div class="bg-white/10 rounded-xl p-4">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium opacity-80">Feed Efficiency Savings</span>
+            <span class="text-2xl font-bold" id="feedSavings">₦0</span>
+          </div>
+          <div class="w-full bg-white/20 rounded-full h-2">
+            <div class="bg-[#8bc87a] h-2 rounded-full transition-all duration-300" id="feedBar" style="width: 0%"></div>
+          </div>
+          <p class="text-xs opacity-60 mt-2">Based on 5-8% feed conversion improvement</p>
+        </div>
+
+        <!-- Theft Prevention -->
+        <div class="bg-white/10 rounded-xl p-4">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium opacity-80">Theft Prevention Savings</span>
+            <span class="text-2xl font-bold" id="theftSavings">₦0</span>
+          </div>
+          <div class="w-full bg-white/20 rounded-full h-2">
+            <div class="bg-[#8bc87a] h-2 rounded-full transition-all duration-300" id="theftBar" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Total Savings -->
+        <div class="bg-white/20 rounded-xl p-5 mt-4">
+          <div class="flex justify-between items-center">
+            <span class="text-lg font-bold">Total Annual Savings</span>
+            <span class="text-3xl md:text-4xl font-extrabold" id="totalSavings">₦0</span>
+          </div>
+          <div class="w-full bg-white/30 rounded-full h-3 mt-3">
+            <div class="bg-[#8bc87a] h-3 rounded-full transition-all duration-300" id="totalBar" style="width: 0%"></div>
+          </div>
+          <p class="text-xs opacity-70 mt-3 text-center">FlockIQ subscription: As low as ₦15,000/month — pays for itself many times over</p>
+        </div>
+
+        <!-- ROI Badge -->
+        <div class="text-center pt-4">
+          <div class="inline-block bg-[#8bc87a]/20 rounded-full px-5 py-2">
+            <span class="text-sm font-bold">📈 Estimated ROI: </span>
+            <span class="text-xl font-extrabold" id="roiPercent">0x</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="text-center mt-12 reveal-up" style="transition-delay: 0.3s">
+    <p class="text-[#475569] mb-5">Ready to start saving? Join hundreds of Nigerian farmers already using FlockIQ.</p>
+    <a href="/signup/" class="bg-primary text-white px-8 py-3 rounded-full font-bold text-lg hover:bg-[#1e40af] transition-all inline-flex items-center gap-2 shadow-lg shadow-primary/25">
+      Start Your Free Trial
+      <span>→</span>
+    </a>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="bg-[#0f172a] mt-20 py-12 px-6">
+  <div class="max-w-7xl mx-auto text-center text-white/40 text-sm">
+    <p>© 2026 FlockIQ / ADM Tech Hub. All rights reserved. Built in Lagos, Nigeria 🇳🇬</p>
+  </div>
+</footer>
+
+<script>
+  const formatMoney = (value) => {
+    return '₦' + Math.round(value).toLocaleString();
+  };
+
+  const calculateROI = () => {
+    // Get values
+    const birds = parseInt(document.getElementById('birdCount').value);
+    const mortalityRate = parseFloat(document.getElementById('mortalityRate').value);
+    const feedCost = parseFloat(document.getElementById('feedCost').value);
+    const birdValue = parseFloat(document.getElementById('birdValue').value);
+    const cycles = parseInt(document.getElementById('cycles').value);
+    const theftRate = parseFloat(document.getElementById('theftRate').value);
+
+    // Update displays
+    document.getElementById('birdCountVal').innerText = birds.toLocaleString();
+    document.getElementById('mortalityVal').innerText = mortalityRate.toFixed(1);
+    document.getElementById('feedCostVal').innerHTML = '₦' + feedCost.toLocaleString();
+    document.getElementById('birdValueVal').innerHTML = '₦' + birdValue.toLocaleString();
+    document.getElementById('cyclesVal').innerText = cycles;
+    document.getElementById('theftVal').innerText = theftRate.toFixed(1);
+
+    // Assumptions (FlockIQ improvements)
+    const improvedMortality = Math.max(2, mortalityRate * 0.45); // 55% reduction
+    const mortalityReduction = mortalityRate - improvedMortality;
+    const feedImprovement = 0.07; // 7% feed efficiency gain
+    const theftReduction = Math.min(theftRate, theftRate * 0.75); // 75% reduction
+
+    // Calculate savings per cycle
+    const birdsLost = birds * (mortalityRate / 100);
+    const birdsSaved = birds * (mortalityReduction / 100);
+    const mortalitySavingsPerCycle = birdsSaved * birdValue;
+    
+    const feedSavingsPerCycle = birds * feedCost * feedImprovement;
+    
+    const theftSavingsPerCycle = birds * (theftReduction / 100) * birdValue;
+
+    // Annual savings
+    const mortalitySavings = mortalitySavingsPerCycle * cycles;
+    const feedSavings = feedSavingsPerCycle * cycles;
+    const theftSavings = theftSavingsPerCycle * cycles;
+    const totalSavings = mortalitySavings + feedSavings + theftSavings;
+    
+    // ROI multiple (based on ₦15k/month = ₦180k/year)
+    const subscriptionCost = 180000;
+    const roiMultiple = totalSavings / subscriptionCost;
+
+    // Update results
+    document.getElementById('mortalitySavings').innerHTML = formatMoney(mortalitySavings);
+    document.getElementById('feedSavings').innerHTML = formatMoney(feedSavings);
+    document.getElementById('theftSavings').innerHTML = formatMoney(theftSavings);
+    document.getElementById('totalSavings').innerHTML = formatMoney(totalSavings);
+    
+    // Max possible savings (for bar scaling) - based on 50K birds, 25% mortality
+    const maxPossible = 50000 * 10000 * 6 * 0.8;
+    const savingsPercent = Math.min(100, (totalSavings / maxPossible) * 100);
+    
+    document.getElementById('mortalityBar').style.width = Math.min(100, (mortalitySavings / totalSavings) * 100) + '%';
+    document.getElementById('feedBar').style.width = Math.min(100, (feedSavings / totalSavings) * 100) + '%';
+    document.getElementById('theftBar').style.width = Math.min(100, (theftSavings / totalSavings) * 100) + '%';
+    document.getElementById('totalBar').style.width = Math.min(100, savingsPercent) + '%';
+    
+    document.getElementById('roiPercent').innerHTML = roiMultiple.toFixed(1) + 'x';
+  };
+
+  // Attach event listeners
+  const inputs = ['birdCount', 'mortalityRate', 'feedCost', 'birdValue', 'cycles', 'theftRate'];
+  inputs.forEach(id => {
+    document.getElementById(id).addEventListener('input', calculateROI);
+  });
+
+  // Initial calculation
+  calculateROI();
+
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('active');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal-up').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

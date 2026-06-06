@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load humanize %}
 {% block title %}Admin Dashboard{% endblock %}
 {% block breadcrumb %}Admin Dashboard{% endblock %}
 
@@ -184,8 +185,8 @@
     </div>
     <div class="sa-metric">
       <div class="sa-metric-lbl">Monthly Recurring Revenue</div>
-      <div class="sa-metric-val" style="color:#3d5a99">₦{{ mrr_naira }}</div>
-      <div class="sa-metric-sub">Avg ticket: ₦{{ avg_ticket }}</div>
+      <div class="sa-metric-val" style="color:#3d5a99">₦{{ mrr_naira|intcomma }}</div>
+      <div class="sa-metric-sub">Avg ticket: ₦{{ avg_ticket|intcomma }}</div>
     </div>
   </div>
 
@@ -225,7 +226,7 @@
           <span class="sa-health-dot" style="background:#16a34a"></span>
           Total Payments
         </span>
-        <span class="sa-health-val">₦{{ mrr_naira }} MTD</span>
+        <span class="sa-health-val">₦{{ mrr_naira|intcomma }} MTD</span>
       </div>
       <div class="sa-health-row">
         <span class="sa-health-label">

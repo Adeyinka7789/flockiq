@@ -1,0 +1,509 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlockIQ — About Us | Precision Poultry Intelligence</title>
+  <meta name="description" content="FlockIQ bridges the gap between neural computing and West African poultry farming. Built by ADM Tech Hub in Lagos.">
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1e3a8a',
+            'primary-mid': '#2d5be3',
+            'primary-light': '#eff6ff',
+            secondary: '#16a34a',
+            'secondary-light': '#dcfce7',
+            'surface': '#f7f9ff',
+            'surface-container-low': '#f1f4fb',
+            'surface-container-lowest': '#ffffff',
+            'surface-container-high': '#e5e8ef',
+            'on-surface': '#181c21',
+            'on-surface-variant': '#444650',
+            'active-intel': '#8bc87a',
+            'deep-navy': '#3d5a99',
+          },
+          fontFamily: {
+            'headline': ['Manrope', 'sans-serif'],
+            'display': ['Manrope', 'sans-serif'],
+            'body': ['Inter', 'sans-serif'],
+          },
+          borderRadius: {
+            'xl': '1.5rem',
+            '2xl': '2rem',
+            '3xl': '3rem',
+          },
+          animation: {
+            'spin-slow': 'spin 20s linear infinite',
+            'spin-reverse': 'spin 15s linear infinite reverse',
+            'scan': 'scan 6s ease-in-out infinite',
+            'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+          keyframes: {
+            scan: {
+              '0%': { top: '0%', opacity: '0' },
+              '10%': { opacity: '0.8' },
+              '90%': { opacity: '0.8' },
+              '100%': { top: '100%', opacity: '0' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* ── ADDED: NAV styles matching FlockIQ Landing.html ── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(247, 249, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(196, 198, 210, 0.2);
+      padding: 0 6%;
+      height: 68px;
+      display: flex;
+      align-items: center;
+    }
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo-mark {
+      width: 36px;
+      height: 36px;
+      background: #1e3a8a;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: -0.5px;
+    }
+    .nav-logo-text {
+      font-size: 17px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.4px;
+      font-family: 'Manrope', sans-serif;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 14px;
+      color: #475569;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover {
+      color: #1e3a8a;
+    }
+    .nav-cta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-ghost {
+      padding: 8px 18px;
+      border-radius: 9999px;
+      border: 1.5px solid #e2e8f0;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.15s;
+      background: white;
+    }
+    .btn-ghost:hover {
+      border-color: #1e3a8a;
+      color: #1e3a8a;
+    }
+    .btn-navy {
+      padding: 9px 20px;
+      border-radius: 9999px;
+      background: #1e3a8a;
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .btn-navy:hover {
+      background: #1e40af;
+      transform: translateY(-1px);
+    }
+
+    /* your existing styles below (unchanged) */
+    .circuit-overlay {
+      background-image: radial-gradient(circle at 2px 2px, rgba(139, 200, 122, 0.15) 1px, transparent 0);
+      background-size: 32px 32px;
+    }
+    .hero-gradient {
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+    }
+    .core-gradient {
+      background: linear-gradient(180deg, #0a0c10 0%, #111827 100%);
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .glass-card-light {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .reveal-up {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .reveal-up.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body class="bg-surface font-body text-on-surface overflow-x-hidden">
+
+<!-- NAV (matching FlockIQ Landing.html exactly) -->
+<nav class="nav">
+  <div class="nav-container">
+    <a href="/" class="nav-logo">
+      <div class="nav-logo-mark">FQ</div>
+      <span class="nav-logo-text">FlockIQ</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/#features">Features</a></li>
+      <li><a href="/#how">How it works</a></li>
+      <li><a href="/#pricing">Pricing</a></li>
+      <li><a href="/about/">About</a></li>
+    </ul>
+    <div class="nav-cta">
+      <a href="/login/" class="btn-ghost">Sign in</a>
+      <a href="/signup/" class="btn-navy">Get Started →</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <!-- Premium Hero Section -->
+  <section class="relative min-h-screen flex items-center overflow-hidden hero-gradient text-white">
+    <div class="absolute inset-0 circuit-overlay opacity-30 pointer-events-none"></div>
+    <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-primary/20 to-transparent blur-3xl pointer-events-none"></div>
+    
+    <div class="max-w-7xl mx-auto px-8 w-full grid lg:grid-cols-2 gap-12 items-center py-32 relative z-10">
+      <div class="reveal-up">
+        <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md mb-8">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-active-intel opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-active-intel"></span>
+          </span>
+          <span class="text-xs font-bold tracking-[0.3em] uppercase text-active-intel">Neural Backbone v4.2</span>
+        </div>
+        <h1 class="font-headline text-6xl md:text-8xl font-extrabold leading-[0.95] tracking-tighter mb-8">
+          The <span class="text-active-intel">Architects</span><br>of Precision
+        </h1>
+        <p class="text-xl text-primary-fixed/80 max-w-lg leading-relaxed mb-10">
+          We are bridging the gap between high-stakes neural computing and the grounded realities of West African agriculture. Engineering resilience into every data point.
+        </p>
+        <button class="bg-active-intel text-primary px-8 py-4 rounded-full font-bold flex items-center gap-3 group hover:bg-white transition-all hover:scale-105 shadow-2xl shadow-active-intel/20">
+          Explore the Core Engine
+          <span class="group-hover:translate-x-1 transition-transform">→</span>
+        </button>
+      </div>
+      
+      <div class="relative reveal-up" style="transition-delay: 0.2s">
+        <div class="relative w-full aspect-square">
+          <div class="absolute inset-0 rounded-3xl overflow-hidden border border-white/20 shadow-2xl rotate-3 translate-x-4 translate-y-4 bg-primary/20"></div>
+          <div class="relative h-full rounded-3xl overflow-hidden border-2 border-white/20">
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5TrDbuypfinT4_AWHs-t6AhMMQSYSizx_mtPxqa7DlfChWVMNxqyVTI2e3DnS7vRIkSUXvaolktvsMBGrlBRs9u4P5tYyT5D3UiqJF52ht7eAPAOzpw98LTKTj6S47iwe_zJvNB6lc0M_tGz4pUbW8NGvLnt9mrq4ew0cuTnK0ESeIzC_sMF4YD02QAX8p7En5qy0RYFDKRV1SfOU42EbfVnp_SqBFmziJLzh1RVAwAI7clL7N6M6IySWy5aL4soHSIuKwqLiD7IE" alt="AI Poultry Monitoring" class="w-full h-full object-cover">
+            <div class="scanning-line absolute w-full h-px bg-gradient-to-r from-transparent via-active-intel to-transparent animate-scan"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20"></div>
+            
+            <div class="absolute top-8 left-8 glass-card rounded-xl p-4 min-w-[180px]">
+              <div class="text-[10px] text-active-intel mb-2 flex justify-between">
+                <span class="font-mono">LIVE_FEED_01</span>
+                <span class="animate-pulse">REC</span>
+              </div>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between"><span>POULTRY_H:</span> <span class="text-active-intel">98.4%</span></div>
+                <div class="flex justify-between"><span>TEMP_SYS:</span> <span>24.5°C</span></div>
+              </div>
+            </div>
+            <div class="absolute bottom-8 right-8 glass-card rounded-xl p-3 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-lg bg-active-intel/20 flex items-center justify-center">
+                <span class="text-active-intel text-xl animate-spin-slow">📡</span>
+              </div>
+              <div>
+                <div class="text-[10px] text-white/60 uppercase font-bold tracking-wider">Real-time Vision</div>
+                <div class="text-xs text-active-intel font-mono">Analyzing biometrics...</div>
+              </div>
+            </div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 border-2 border-active-intel/40 rounded-sm">
+              <div class="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-active-intel"></div>
+              <div class="absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 border-active-intel"></div>
+              <div class="absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 border-active-intel"></div>
+              <div class="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-active-intel"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Engine Section -->
+  <section class="py-40 px-8 core-gradient text-white relative overflow-hidden">
+    <div class="absolute inset-0 circuit-overlay opacity-10 pointer-events-none"></div>
+    <div class="max-w-7xl mx-auto relative z-10">
+      <div class="flex flex-col lg:flex-row gap-24 items-center">
+        <div class="lg:w-5/12 reveal-up">
+          <span class="text-active-intel font-mono text-xs tracking-[0.4em] uppercase mb-6 block font-bold">System Architecture</span>
+          <h2 class="font-headline text-5xl md:text-6xl font-extrabold mb-10 leading-tight tracking-tighter">The FlockIQ<br>Core Engine</h2>
+          <p class="text-xl text-white/60 mb-12 leading-relaxed">Our proprietary tech stack leverages specialized neural networks trained on regional agricultural datasets to predict outcomes before they happen.</p>
+          <div class="space-y-8">
+            <div class="group flex gap-5 p-5 rounded-2xl transition-all hover:bg-white/5 border border-transparent hover:border-white/10">
+              <div class="w-14 h-14 rounded-xl bg-active-intel/10 flex items-center justify-center border border-active-intel/20 group-hover:scale-110 transition-transform">
+                <span class="text-active-intel text-2xl">🧠</span>
+              </div>
+              <div>
+                <h4 class="font-bold text-xl mb-2 group-hover:text-active-intel transition-colors">Neural Forecasting</h4>
+                <p class="text-white/50 text-sm">Predictive mortality models that identify health risks 72 hours before symptoms appear.</p>
+              </div>
+            </div>
+            <div class="group flex gap-5 p-5 rounded-2xl transition-all hover:bg-white/5 border border-transparent hover:border-white/10">
+              <div class="w-14 h-14 rounded-xl bg-active-intel/10 flex items-center justify-center border border-active-intel/20 group-hover:scale-110 transition-transform">
+                <span class="text-active-intel text-2xl">👁️</span>
+              </div>
+              <div>
+                <h4 class="font-bold text-xl mb-2 group-hover:text-active-intel transition-colors">Edge Vision Systems</h4>
+                <p class="text-white/50 text-sm">Real-time computer vision processing directly at the farm level, eliminating cloud latency.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="lg:w-7/12 relative flex justify-center reveal-up" style="transition-delay: 0.2s">
+          <div class="relative w-80 h-80">
+            <div class="absolute inset-0 bg-active-intel/20 rounded-full blur-3xl animate-pulse"></div>
+            <div class="relative w-full h-full rounded-full border border-white/10 flex items-center justify-center">
+              <div class="absolute inset-6 rounded-full border border-active-intel/30 animate-spin-slow"></div>
+              <div class="absolute inset-12 rounded-full border border-white/10 animate-spin-reverse"></div>
+              <div class="relative z-10 glass-card w-40 h-40 rounded-2xl flex items-center justify-center shadow-inner border-white/20">
+                <span class="text-active-intel text-6xl animate-pulse-slow">⚙️</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Values -->
+  <section class="py-40 px-8 bg-surface-container-low overflow-hidden">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex flex-col md:flex-row md:items-end justify-between mb-24 gap-8 reveal-up">
+        <div class="max-w-2xl">
+          <h2 class="font-headline text-5xl md:text-6xl font-extrabold text-primary mb-6 tracking-tighter">The Architects' <span class="text-active-intel">Principles</span></h2>
+          <p class="text-xl text-on-surface-variant/70">Engineering a framework for sustainable agricultural dominance.</p>
+        </div>
+        <div class="h-0.5 w-24 bg-active-intel mb-4 hidden md:block"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+        <div class="glass-card-light rounded-3xl p-10 reveal-up group hover:bg-white hover:shadow-2xl transition-all">
+          <div class="w-14 h-14 bg-primary rounded-xl flex items-center justify-center mb-6 shadow-xl group-hover:bg-active-intel group-hover:scale-110 transition-all">
+            <span class="text-white text-2xl">🎯</span>
+          </div>
+          <h3 class="font-headline text-2xl font-bold text-primary mb-4">Algorithmic Precision</h3>
+          <p class="text-on-surface-variant leading-relaxed">Zero-loss reporting and millisecond insights. We treat every bird as a critical data point in a larger ecosystem of resilience. Precision is not a goal; it's our standard.</p>
+        </div>
+        <div class="glass-card-light rounded-3xl p-10 bg-primary text-white border-none reveal-up md:-translate-y-6 group hover:scale-[1.02] transition-all">
+          <div class="w-14 h-14 bg-active-intel rounded-xl flex items-center justify-center mb-6 shadow-xl group-hover:scale-110 transition-all">
+            <span class="text-primary text-2xl">🔒</span>
+          </div>
+          <h3 class="font-headline text-2xl font-bold mb-4">Sovereign Data</h3>
+          <p class="text-white/80 leading-relaxed">We champion digital autonomy. Your agricultural data remains your property, secured by encryption standards matching high-stakes finance. We build the walls that protect your growth.</p>
+        </div>
+        <div class="glass-card-light rounded-3xl p-10 reveal-up group hover:bg-white hover:shadow-2xl transition-all">
+          <div class="w-14 h-14 bg-primary rounded-xl flex items-center justify-center mb-6 shadow-xl group-hover:bg-active-intel group-hover:scale-110 transition-all">
+            <span class="text-white text-2xl">🌍</span>
+          </div>
+          <h3 class="font-headline text-2xl font-bold text-primary mb-4">Local Resilience</h3>
+          <p class="text-on-surface-variant leading-relaxed">Built for West Africa, optimized for local growth. Our engineering accounts for regional climate variables and infrastructural realities that others overlook.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Leadership / Command Center -->
+  <section class="py-40 px-8 relative overflow-hidden">
+    <div class="max-w-7xl mx-auto relative z-10">
+      <div class="mb-24 flex flex-col md:flex-row items-center justify-between reveal-up">
+        <div class="text-center md:text-left mb-8 md:mb-0">
+          <h2 class="font-headline text-5xl md:text-6xl font-extrabold text-primary mb-4 tracking-tighter uppercase">Command Center</h2>
+          <p class="text-xl text-on-surface-variant font-medium">Visionary leadership meeting technical excellence.</p>
+        </div>
+        <div class="flex flex-col items-end">
+          <span class="text-active-intel font-mono text-2xl font-bold">EST. 2018</span>
+          <span class="text-on-surface-variant/40 text-xs tracking-widest uppercase">Global R&amp;D Hub</span>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="reveal-up group" style="transition-delay: 0.1s">
+          <div class="relative aspect-[3/4] rounded-2xl overflow-hidden mb-5 bg-surface-container-high">
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLhAiRKdyLhGCLMVK9_jPxcSGVnL_-HvbgyjU0irJByFucPVXN6JOh3QO7LSBn3qwUmQBVscfPk63oTGBpZXWRIvpJzyk5zAZtRv5gOYUSdI1QZSpINApdNvjNosMHHQOvrgqWUW-W3O8UM6krfOThYEvomy1_VeU9iRnwNsU-VvomKNLlCBuwyetPh_eW8hu34hOb0uv20qPrc3SgV0Phq0TNInhD311h5upjTUmCepADZZpgUKMfHABVQLTI4RIedfgbcR71JOl9" alt="Dr. Amara Kone" class="w-full h-full object-cover grayscale brightness-90 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700 group-hover:scale-105">
+            <div class="absolute inset-0 bg-gradient-to-t from-primary/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
+            <div class="absolute bottom-5 left-5 right-5 glass-card rounded-xl p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-500">
+              <div class="text-[10px] text-active-intel font-mono mb-1 uppercase tracking-wider">Active_Node: CEO</div>
+              <div class="text-white text-xs font-medium">Systems Integration Expert</div>
+            </div>
+          </div>
+          <div class="px-2">
+            <h4 class="font-headline text-xl font-bold text-primary mb-1">Dr. Amara Kone</h4>
+            <p class="text-xs uppercase tracking-[0.25em] text-active-intel font-extrabold">Founder &amp; CEO</p>
+          </div>
+        </div>
+        <div class="reveal-up group md:translate-y-6" style="transition-delay: 0.2s">
+          <div class="relative aspect-[3/4] rounded-2xl overflow-hidden mb-5 bg-surface-container-high">
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiJ3I85Uv8aE0fMk7eY4hlsKYSrSY0dPs7VDKsT7ZUaGwNhpWTnm1_ysku5Tyv0_PtBcSgL9l95rINWRqVkgYWN8em2BnG1Y4SiW_kLAnqkOYj7hsnLNgW5v4NZ9-gn6szPCImFf7tISkDPC22-0GpID2qMfxM25ivmuNBoqheZWviZPaY53C698dGGsN_XxUInhFZ2pDKBNX9uQinw2pwgf0RgEeyNMYIUjJ1ehvE55DIPRRQPKZ60xDpled6twReAgsZw97tjn4I" alt="Kwesi Mensah" class="w-full h-full object-cover grayscale brightness-90 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700 group-hover:scale-105">
+            <div class="absolute inset-0 bg-gradient-to-t from-primary/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
+            <div class="absolute bottom-5 left-5 right-5 glass-card rounded-xl p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-500">
+              <div class="text-[10px] text-active-intel font-mono mb-1 uppercase tracking-wider">Active_Node: CTO</div>
+              <div class="text-white text-xs font-medium">Edge Computing Pioneer</div>
+            </div>
+          </div>
+          <div class="px-2">
+            <h4 class="font-headline text-xl font-bold text-primary mb-1">Kwesi Mensah</h4>
+            <p class="text-xs uppercase tracking-[0.25em] text-active-intel font-extrabold">Chief Technologist</p>
+          </div>
+        </div>
+        <div class="reveal-up group" style="transition-delay: 0.3s">
+          <div class="relative aspect-[3/4] rounded-2xl overflow-hidden mb-5 bg-surface-container-high">
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUCIvnPuew9prkI1N_hUo2zJLGDE661nzz2XFOrVZ3HkXJwX2We8cz6NBoHcAVzyQt0EL_QIpLV5Odbc6wjUguyeaXkWIUPX77TyiFMxCzG93ok8CsBlmTKP4YmtVjwjkFdhskmW7aqix-bCGdahGDiuz--LoDgLm8g6u4llzo4ipZQtzEWeQrP6do5dmtS7z20gjOTH0gdj5V7jRWfxTOOO4HUQg16l2A2UHrrvADZQv0IcBP3aaIXrQK3NFkhHD_xP5ztWmldXhv" alt="Fatima Bah" class="w-full h-full object-cover grayscale brightness-90 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700 group-hover:scale-105">
+            <div class="absolute inset-0 bg-gradient-to-t from-primary/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
+            <div class="absolute bottom-5 left-5 right-5 glass-card rounded-xl p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-500">
+              <div class="text-[10px] text-active-intel font-mono mb-1 uppercase tracking-wider">Active_Node: DATA</div>
+              <div class="text-white text-xs font-medium">Neural Architecture Lead</div>
+            </div>
+          </div>
+          <div class="px-2">
+            <h4 class="font-headline text-xl font-bold text-primary mb-1">Fatima Bah</h4>
+            <p class="text-xs uppercase tracking-[0.25em] text-active-intel font-extrabold">Head of Data Science</p>
+          </div>
+        </div>
+        <div class="reveal-up group md:translate-y-6" style="transition-delay: 0.4s">
+          <div class="relative aspect-[3/4] rounded-2xl overflow-hidden mb-5 bg-surface-container-high">
+            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuOgg5fvX2FbGCG7mcv6EnZqz-7hnEp8r01GJzjb26IEDndZ7-toqHp3BBsfwrCFkdf44b6Eqp0hNWmVQ1hm0KoZydEuWAl7ahm3bksJHG5FzWRQ_dkYVE5eeo898HbY19nTjGfsJNyyoL4WBwar5bGtih1FT9QunRF9LzdM4vpMl1qfAeobEG0eCeR-2dCzxVolboMbQaQ8Nyl6n7QJf5-ZsHSiwHUiw3Uuiw-siL0BIMMSqxWkKQaj_xEqNu7oJBxbJYNhKoGXAr" alt="Oluwaseun Adeyemi" class="w-full h-full object-cover grayscale brightness-90 group-hover:grayscale-0 group-hover:brightness-100 transition-all duration-700 group-hover:scale-105">
+            <div class="absolute inset-0 bg-gradient-to-t from-primary/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
+            <div class="absolute bottom-5 left-5 right-5 glass-card rounded-xl p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-500">
+              <div class="text-[10px] text-active-intel font-mono mb-1 uppercase tracking-wider">Active_Node: OPS</div>
+              <div class="text-white text-xs font-medium">Strategic Scaling Director</div>
+            </div>
+          </div>
+          <div class="px-2">
+            <h4 class="font-headline text-xl font-bold text-primary mb-1">Oluwaseun Adeyemi</h4>
+            <p class="text-xs uppercase tracking-[0.25em] text-active-intel font-extrabold">Operations Director</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Premium CTA Section -->
+  <section class="py-40 px-8 relative overflow-hidden">
+    <div class="max-w-7xl mx-auto rounded-3xl md:rounded-[4rem] p-12 md:p-20 bg-[#0a0c10] shadow-2xl border border-white/5 relative overflow-hidden">
+      <div class="absolute inset-0 circuit-overlay opacity-20 pointer-events-none"></div>
+      <div class="absolute -top-1/2 -left-1/4 w-full h-full bg-active-intel/5 blur-3xl rounded-full pointer-events-none"></div>
+      <div class="relative z-10 text-center reveal-up">
+        <h2 class="font-headline text-4xl md:text-7xl font-extrabold text-white mb-8 tracking-tighter">Ready for the <span class="text-active-intel">Intelligence Revolution?</span></h2>
+        <p class="text-xl text-white/60 mb-12 max-w-2xl mx-auto leading-relaxed">Join the pioneers who have seen a 40% increase in yield through precision engineering. The future of pastoralism is automated.</p>
+        <div class="flex flex-wrap justify-center gap-5">
+          <button class="bg-active-intel text-primary px-8 md:px-12 py-4 md:py-5 rounded-full font-bold text-lg hover:bg-white hover:scale-105 transition-all shadow-2xl shadow-active-intel/30">Deploy FlockIQ Today →</button>
+          <button class="bg-transparent border border-white/20 text-white px-8 md:px-12 py-4 md:py-5 rounded-full font-bold text-lg hover:bg-white/10 backdrop-blur-md transition-all">Request Engine Specs</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- FOOTER -->
+<footer class="bg-[#0f172a] py-16 px-8 border-t border-white/10">
+  <div class="max-w-7xl mx-auto">
+    <div class="grid md:grid-cols-5 gap-10 mb-12">
+      <div class="md:col-span-2">
+        <div class="flex items-center gap-2 mb-5">
+          <span class="w-8 h-8 bg-primary-mid rounded-lg flex items-center justify-center">
+            <span class="text-white text-sm">🐔</span>
+          </span>
+          <span class="text-white font-headline font-bold text-xl">FlockIQ</span>
+        </div>
+        <p class="text-white/40 text-sm leading-relaxed max-w-sm">Defining the intersection of high-stakes data science and pastoral tradition in West Africa. Rooted in sovereignty, driven by precision engineering.</p>
+      </div>
+      <div>
+        <h5 class="text-white/50 text-xs uppercase tracking-wider font-bold mb-5">Platform Architecture</h5>
+        <ul class="space-y-3 text-white/40 text-sm">
+          <li><a href="#" class="hover:text-active-intel transition-colors">Core Engine</a></li>
+          <li><a href="#" class="hover:text-active-intel transition-colors">Vision Systems</a></li>
+          <li><a href="#" class="hover:text-active-intel transition-colors">Mortality Models</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5 class="text-white/50 text-xs uppercase tracking-wider font-bold mb-5">Company Vision</h5>
+        <ul class="space-y-3 text-white/40 text-sm">
+          <li><a href="#" class="text-active-intel hover:underline">About Our Vision</a></li>
+          <li><a href="#" class="hover:text-active-intel transition-colors">Technical Case Studies</a></li>
+          <li><a href="#" class="hover:text-active-intel transition-colors">Careers at FlockIQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5 class="text-white/50 text-xs uppercase tracking-wider font-bold mb-5">Legal</h5>
+        <ul class="space-y-3 text-white/40 text-sm">
+          <li><a href="#" class="hover:text-active-intel transition-colors">Privacy Policy</a></li>
+          <li><a href="#" class="hover:text-active-intel transition-colors">Terms of Service</a></li>
+          <li><a href="#" class="hover:text-active-intel transition-colors">Security Portfolio</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-5">
+      <p class="text-white/30 text-sm">© 2026 FlockIQ / ADM Tech Hub. All rights reserved.</p>
+      <p class="text-white/30 text-sm">Built in Lagos, Nigeria 🇳🇬</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('active');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -50px 0px' });
+  document.querySelectorAll('.reveal-up').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

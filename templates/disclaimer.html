@@ -1,0 +1,673 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlockIQ — AI & Veterinary Disclaimer</title>
+  <meta name="description" content="FlockIQ AI provides insights, not veterinary diagnosis. Read our legal disclaimer and understand the limits of AI in poultry farming.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* FlockIQ base colors */
+      --navy: #1e3a8a;
+      --navy-mid: #2d5be3;
+      --navy-light: #eff6ff;
+      --green: #16a34a;
+      --green-light: #dcfce7;
+      --text: #0f172a;
+      --text2: #475569;
+      --text3: #94a3b8;
+      --border: #e2e8f0;
+      --bg: #f8fafc;
+      --white: #ffffff;
+
+      /* Precision Pastoral additions (tonal layering) */
+      --surface: #f7f9ff;
+      --surface-container-low: #f1f4fb;
+      --surface-container-lowest: #ffffff;
+      --surface-container-high: #e5e8ef;
+      --on-surface: #181c21;
+      --on-surface-variant: #444650;
+      --outline-variant: #c4c6d2;
+      --primary-fixed: #d9e2ff;
+      --on-primary-fixed: #001945;
+      --secondary: #336a28;
+      --secondary-container: #b1f09e;
+      --on-secondary-container: #376f2c;
+      --error: #ba1a1a;
+      --error-container: #ffdad6;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--surface);
+      color: var(--on-surface);
+    }
+
+    /* ── NAV (inherited from FlockIQ, slightly polished) ── */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(247, 249, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(196, 198, 210, 0.2);
+      padding: 0 6%;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo-mark {
+      width: 36px;
+      height: 36px;
+      background: var(--navy);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 900;
+      font-size: 13px;
+      letter-spacing: -0.5px;
+    }
+
+    .nav-logo-text {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.4px;
+      font-family: 'Manrope', sans-serif;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      color: var(--text2);
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
+    .nav-links a:hover {
+      color: var(--navy);
+    }
+
+    .nav-cta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-ghost {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      color: var(--text2);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.15s;
+      background: white;
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--navy);
+      color: var(--navy);
+    }
+
+    .btn-navy {
+      padding: 9px 20px;
+      border-radius: 8px;
+      background: var(--navy);
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .btn-navy:hover {
+      background: #1e40af;
+      transform: translateY(-1px);
+    }
+
+    /* ── MAIN CONTENT (no sidebar, centered) ── */
+    .disclaimer-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 48px 6% 80px;
+    }
+
+    /* Critical warning header */
+    .warning-header {
+      background: var(--navy);
+      border-radius: 1.5rem;
+      padding: 2rem 2rem;
+      margin-bottom: 3rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.08);
+    }
+
+    .warning-header-inner {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 2rem;
+      align-items: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .warning-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 0.25rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 1rem;
+    }
+
+    .warning-header h1 {
+      font-family: 'Manrope', sans-serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      color: white;
+      margin-bottom: 1rem;
+    }
+
+    .warning-header p {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.85);
+      max-width: 90%;
+    }
+
+    .warning-icon {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .warning-icon-circle {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+    }
+
+    /* Two-column grid */
+    .disclaimer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    /* Cards — Precision Pastoral style (no borders, tonal layering) */
+    .legal-card {
+      background: var(--surface-container-lowest);
+      border-radius: 1.5rem;
+      padding: 1.75rem;
+      transition: all 0.2s ease;
+    }
+
+    .legal-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--navy-light);
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .legal-card h3 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .legal-card p, .legal-card li {
+      font-size: 0.875rem;
+      line-height: 1.65;
+      color: var(--text2);
+    }
+
+    .legal-card ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+      margin: 0.75rem 0;
+    }
+
+    .legal-card li {
+      margin-bottom: 0.5rem;
+    }
+
+    .strong-callout {
+      font-weight: 700;
+      color: var(--navy);
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    /* Full-width editorial panel */
+    .editorial-panel {
+      background: var(--surface-container-low);
+      border-radius: 1.5rem;
+      padding: 2rem;
+      margin: 2rem 0;
+      border-left: 6px solid var(--navy);
+    }
+
+    .editorial-panel h4 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--navy);
+      margin-bottom: 1rem;
+    }
+
+    .editorial-flex {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .editorial-flex {
+        flex-direction: row;
+        gap: 2rem;
+      }
+      .editorial-text {
+        flex: 2;
+      }
+      .editorial-meta {
+        flex: 1;
+        border-left: 1px solid rgba(0, 0, 0, 0.08);
+        padding-left: 1.5rem;
+      }
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--navy);
+      color: white;
+      padding: 0.75rem 1.75rem;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 0.875rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: #1e40af;
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--surface-container-high);
+      color: var(--on-surface);
+      padding: 0.75rem 1.75rem;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface-container-lowest);
+    }
+
+    /* Footer (inherited from FlockIQ) */
+    .footer {
+      background: #0f172a;
+      padding: 52px 6% 28px;
+      margin-top: 60px;
+    }
+
+    .footer-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 32px;
+      flex-wrap: wrap;
+      margin-bottom: 44px;
+    }
+
+    .footer-brand {
+      max-width: 200px;
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .footer-logo-mark {
+      width: 30px;
+      height: 30px;
+      background: var(--navy-mid);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 900;
+      font-size: 11px;
+    }
+
+    .footer-logo-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: white;
+      font-family: 'Manrope', sans-serif;
+    }
+
+    .footer-tagline {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.35);
+      line-height: 1.6;
+    }
+
+    .footer-col-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 14px;
+    }
+
+    .footer-links {
+      list-style: none;
+    }
+
+    .footer-links li {
+      margin-bottom: 10px;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.5);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-links a:hover {
+      color: white;
+    }
+
+    .footer-bottom {
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      padding-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .footer-copy {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Reveal animation */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 768px) {
+      .warning-header-inner {
+        grid-template-columns: 1fr;
+      }
+      .warning-icon {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV (inherited from FlockIQ Landing) -->
+<nav class="nav">
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-mark">FQ</div>
+    <span class="nav-logo-text">FlockIQ</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/#how">How it works</a></li>
+    <li><a href="/#pricing">Pricing</a></li>
+    <li><a href="/#about">About</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="/login/" class="btn-ghost">Sign in</a>
+    <a href="/signup/" class="btn-navy">Get Started →</a>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT (no sidebar) -->
+<div class="disclaimer-container">
+  <!-- Critical Safeguard Header -->
+  <div class="warning-header reveal">
+    <div class="warning-header-inner">
+      <div>
+        <div class="warning-badge">
+          <span>⚠️</span> CRITICAL SAFEGUARD
+        </div>
+        <h1>AI is an Assistant,<br>Not a Veterinarian.</h1>
+        <p>FlockIQ's AI insights provide predictive trends and anomaly detection based on data patterns. These results are mathematical probabilities and do not constitute professional veterinary diagnosis, treatment, or medical advice.</p>
+      </div>
+      <div class="warning-icon">
+        <div class="warning-icon-circle">
+          <span>🐔</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Two-column legal cards -->
+  <div class="disclaimer-grid">
+    <!-- Anomaly Detection Limits -->
+    <div class="legal-card reveal">
+      <div class="card-header">
+        <div class="card-icon">📊</div>
+        <h3>Anomaly Detection Limits</h3>
+      </div>
+      <p>Our anomaly detection algorithms monitor behavioral and physiological data points. While highly accurate in identifying statistical outliers, they may:</p>
+      <ul>
+        <li>Produce false positives during environmental shifts.</li>
+        <li>Miss non-symptomatic or rapid-onset conditions.</li>
+        <li>Be influenced by sensor hardware calibration errors.</li>
+      </ul>
+      <p class="strong-callout">Always verify system alerts with physical inspection and professional consultation.</p>
+    </div>
+
+    <!-- Limitation of Liability -->
+    <div class="legal-card reveal">
+      <div class="card-header">
+        <div class="card-icon">⚖️</div>
+        <h3>Limitation of Liability</h3>
+      </div>
+      <p>FlockIQ / ADM Tech Hub shall not be held liable for any livestock loss, economic damages, or indirect consequences resulting from:</p>
+      <ul>
+        <li>Reliance on AI-generated health scores.</li>
+        <li>Failure to seek professional veterinary aid.</li>
+        <li>Interruption of data transmission services.</li>
+      </ul>
+      <p class="strong-callout">By using the FlockIQ dashboard, you acknowledge that you maintain sole responsibility for animal welfare.</p>
+    </div>
+  </div>
+
+  <!-- Editorial Panel (Precision Pastoral Standards) -->
+  <div class="editorial-panel reveal">
+    <div class="editorial-flex">
+      <div class="editorial-text">
+        <h4>Precision Pastoral Standards</h4>
+        <p style="font-size: 0.95rem; line-height: 1.65; color: var(--text2); margin-bottom: 1.25rem;">
+          Our platform is designed to augment human expertise, not replace it. The fusion of traditional pastoral knowledge and precision data creates the most resilient agricultural outcomes.
+        </p>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+          <a href="#" class="btn-primary">📄 Download Full Legal Framework</a>
+          <a href="#" class="btn-secondary">✉️ Contact Legal Dept.</a>
+        </div>
+      </div>
+      <div class="editorial-meta">
+        <div style="margin-bottom: 1rem;">
+          <p style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3);">Last Updated</p>
+          <p style="font-size: 1.25rem; font-weight: 700; font-family: 'Manrope', sans-serif;">May 20, 2026</p>
+        </div>
+        <div>
+          <p style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3);">Version</p>
+          <p style="font-size: 1.25rem; font-weight: 700; font-family: 'Manrope', sans-serif;">v2.1.0-Legal</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Final contextual note -->
+  <div class="reveal" style="background: var(--surface-container-low); border-radius: 1rem; padding: 1.5rem; text-align: center; margin-top: 1rem;">
+    <p style="font-size: 0.875rem; color: var(--text2);">
+      <strong style="color: var(--navy);">🐔 A note from FlockIQ:</strong> We build technology to empower farmers, not to replace trained professionals. Always consult a licensed veterinarian for medical decisions affecting your flock.
+    </p>
+  </div>
+</div>
+
+<!-- FOOTER (inherited from FlockIQ) -->
+<footer class="footer">
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="footer-logo">
+        <div class="footer-logo-mark">FQ</div>
+        <span class="footer-logo-name">FlockIQ</span>
+      </div>
+      <p class="footer-tagline">Empowering the standard of global food production through high-frequency avian intelligence.</p>
+    </div>
+    <div>
+      <div class="footer-col-title">Platform</div>
+      <ul class="footer-links">
+        <li><a href="/#features">Neural Engine</a></li>
+        <li><a href="/#features">AI Inference</a></li>
+        <li><a href="/#features">Drone Hub</a></li>
+        <li><a href="/#features">Security IQ</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Company</div>
+      <ul class="footer-links">
+        <li><a href="/#about">About ADM Tech Hub</a></li>
+        <li><a href="#">Investor Relations</a></li>
+        <li><a href="#">News & Press</a></li>
+        <li><a href="#">Careers</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Legal</div>
+      <ul class="footer-links">
+        <li><a href="#">Privacy Policy</a></li>
+        <li><a href="#">Terms of Service</a></li>
+        <li><a href="#">Data Security</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-title">Support</div>
+      <ul class="footer-links">
+        <li><a href="#">Documentation</a></li>
+        <li><a href="https://wa.me/2348000000000">WhatsApp Support</a></li>
+        <li><a href="#">System Status</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy">© 2026 FlockIQ / ADM Tech Hub. All rights reserved.</div>
+    <div class="footer-copy">Built in Lagos, Nigeria 🇳🇬</div>
+  </div>
+</footer>
+
+<script>
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Micro-interactions (button press)
+  document.querySelectorAll('a, button').forEach(btn => {
+    btn.addEventListener('mousedown', () => btn.style.transform = 'scale(0.96)');
+    btn.addEventListener('mouseup', () => btn.style.transform = '');
+    btn.addEventListener('mouseleave', () => btn.style.transform = '');
+  });
+</script>
+
+</body>
+</html>

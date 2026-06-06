@@ -12,7 +12,7 @@
 
     /* LEFT PANEL */
     .left {
-      width: 45%;
+      width: 40%;
       background: linear-gradient(160deg, #2d4578 0%, #3d5a99 60%, #4a6db5 100%);
       padding: 48px;
       display: flex; flex-direction: column;
@@ -31,7 +31,7 @@
       position: absolute;
       width: 250px; height: 250px; border-radius: 50%;
       background: rgba(139,200,122,0.08);
-      left: -60px; bottom: -60px;
+      left: -60px; bottom: -20px;
     }
 
     .brand { position: relative; z-index: 1; }
@@ -43,11 +43,11 @@
       margin-bottom: 12px;
     }
     .brand-name {
-      font-size: 24px; font-weight: 800; color: white;
+      font-size: 34px; font-weight: 800; color: white;
       letter-spacing: -0.3px; margin-bottom: 6px;
     }
     .brand-tag {
-      font-size: 14px; color: rgba(255,255,255,0.6);
+      font-size: 18px; color: rgba(255,255,255,0.6);
       line-height: 1.5;
     }
 
@@ -71,7 +71,7 @@
       background: #8bc87a;
     }
     .trial-badge-text {
-      font-size: 13px; color: rgba(255,255,255,0.85);
+      font-size: 14px; color: rgba(255,255,255,0.85);
       font-weight: 600;
     }
 
@@ -92,12 +92,12 @@
       color: #8bc87a;
     }
     .feature-text {
-      font-size: 14px; color: rgba(255,255,255,0.75);
+      font-size: 16px; color: rgba(255,255,255,0.75);
       line-height: 1.5;
     }
 
     .left-footer {
-      font-size: 12px; color: rgba(255,255,255,0.3);
+      font-size: 13px; color: rgba(255,255,255,0.3);
       position: relative; z-index: 1;
     }
 
@@ -111,7 +111,7 @@
     }
 
     .form-box {
-      width: 100%; max-width: 440px;
+      width: 100%; max-width: 520px;
     }
 
     .form-title {
@@ -201,6 +201,90 @@
       margin-top: 5px; font-weight: 500; min-height: 16px;
     }
 
+    /* ===== PLAN SELECTOR (4 cards, simple style) ===== */
+    .plan-section {
+      margin: 24px 0 20px;
+    }
+    .plan-label {
+      display: block;
+      font-size: 12px; font-weight: 700;
+      color: #4a5568; margin-bottom: 12px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .plan-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .plan-card {
+      cursor: pointer;
+      display: block;
+      position: relative;
+    }
+    .plan-card input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .plan-card-inner {
+      background: #f8fafd;
+      border: 2px solid #e9edf2;
+      border-radius: 14px;
+      padding: 12px 10px;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+    .plan-card input:checked + .plan-card-inner {
+      background: white;
+      border-color: #3d5a99;
+      box-shadow: 0 4px 12px rgba(61,90,153,0.15);
+    }
+    .plan-card:hover .plan-card-inner {
+      border-color: #cbd5e1;
+      background: #ffffff;
+    }
+    .plan-name {
+      font-weight: 800;
+      font-size: 0.9rem;
+      color: #1a2744;
+      margin-bottom: 4px;
+    }
+    .plan-price {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #2d4578;
+    }
+    .plan-price small {
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: #7f8ea3;
+    }
+    .plan-period {
+      font-size: 0.7rem;
+      color: #6c7a91;
+      margin-top: 4px;
+    }
+    /* for yearly highlight */
+    .popular-badge {
+      position: absolute;
+      top: -8px;
+      right: 6px;
+      background: #2d4578;
+      color: white;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+
+    @media (max-width: 640px) {
+      .plan-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    }
+    @media (max-width: 480px) {
+      .plan-grid { grid-template-columns: 1fr; }
+    }
+
     .legal {
       font-size: 12px; color: #8a96a8;
       margin-bottom: 16px; line-height: 1.5;
@@ -221,27 +305,20 @@
       background: #2d4578;
       transform: translateY(-1px);
     }
-
-    @media (max-width: 768px) {
-      .left { display: none; }
-      body { background: #f4f7fe; }
-      .two-col { grid-template-columns: 1fr; }
-    }
   </style>
 </head>
 <body>
 
-  <!-- LEFT PANEL -->
+  <!-- LEFT PANEL (unchanged) -->
   <div class="left">
     <div class="brand">
       <div class="brand-icon">FQ</div>
       <div class="brand-name">FlockIQ</div>
       <div class="brand-tag">
         AI-powered poultry farm management<br>
-        for Nigerian farmers
+        for Nigerian farmers.Empower your poultry <br> farm with precision data.</br>
       </div>
     </div>
-
     <div class="left-middle">
       <div class="trial-badge">
         <div class="trial-badge-dot"></div>
@@ -252,50 +329,24 @@
         <span>Smarter every day.</span>
       </div>
       <ul class="feature-list">
-        <li>
-          <div class="feature-dot"></div>
-          <div class="feature-text">
-            Breed-specific tracking for layers and broilers
-          </div>
-        </li>
-        <li>
-          <div class="feature-dot"></div>
-          <div class="feature-text">
-            AI anomaly detection catches disease outbreaks early
-          </div>
-        </li>
-        <li>
-          <div class="feature-dot"></div>
-          <div class="feature-text">
-            Automatic vaccination schedules with SMS reminders
-          </div>
-        </li>
-        <li>
-          <div class="feature-dot"></div>
-          <div class="feature-text">
-            Full P&amp;L, break-even analysis, and theft detection
-          </div>
-        </li>
-        <li>
-          <div class="feature-dot"></div>
-          <div class="feature-text">
-            Works offline — syncs when internet is restored
-          </div>
-        </li>
+        <li><div class="feature-dot"></div><div class="feature-text">Breed-specific tracking for layers and broilers</div></li>
+        <li><div class="feature-dot"></div><div class="feature-text">AI anomaly detection catches disease outbreaks early</div></li>
+        <li><div class="feature-dot"></div><div class="feature-text">Automatic vaccination schedules with SMS reminders</div></li>
+        <li><div class="feature-dot"></div><div class="feature-text">Full P&amp;L, break-even analysis, and theft detection</div></li>
+        <li><div class="feature-dot"></div><div class="feature-text">Works offline — syncs when internet is restored</div></li>
       </ul>
     </div>
-
     <div class="left-footer">
-      &copy; 2026 FlockIQ / ADM Tech Hub &middot; Lagos, Nigeria &#127475;&#127468;
+      &copy; 2026 FlockIQ / ADM Tech Hub &middot; Lagos, Nigeria 🇳🇬
     </div>
   </div>
 
-  <!-- RIGHT PANEL -->
+  <!-- RIGHT PANEL with 4-card plan selector -->
   <div class="right">
     <div class="form-box">
-      <div class="form-title">Start your free trial</div>
+      <div class="form-title">Create your account</div>
       <div class="form-sub">
-        Already have an account? <a href="/login/">Sign in</a>
+        Already have an organization? <a href="/login/">Sign in</a>
       </div>
 
       <div class="form-card">
@@ -381,7 +432,7 @@
               {% endif %}
             </div>
           </div>
-
+          
           <div class="legal">
             By signing up you agree to our
             <a href="#">Terms of Service</a> and
@@ -413,6 +464,5 @@
     const existing = document.getElementById('subdomain-input').value;
     if (existing) updateSubdomain(existing);
   </script>
-
 </body>
 </html>

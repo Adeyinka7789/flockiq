@@ -1,4 +1,5 @@
 {% load static %}
+{% load humanize %}
 <div class="exp-layout">
 
   <!-- LEFT: Main content -->
@@ -7,7 +8,7 @@
     <!-- Monthly trend chart -->
     <div class="exp-trend-card">
       <div class="exp-trend-eyebrow">Monthly Spending Trend</div>
-      <div class="exp-total">₦{{ total_naira|floatformat:0 }}</div>
+      <div class="exp-total">₦{{ total_naira|intcomma }}</div>
 
       {% if change_pct is not None %}
       <div class="exp-change {% if change_pct > 0 %}up{% elif change_pct < 0 %}down{% else %}neutral{% endif %}">
@@ -76,7 +77,7 @@
           </div>
         </div>
         <div style="text-align:right">
-          <div class="exp-row-amount">₦{{ expense.amount_naira|floatformat:0 }}</div>
+          <div class="exp-row-amount">₦{{ expense.amount_naira|intcomma }}</div>
           <span class="exp-status">Logged</span>
         </div>
       </div>
@@ -109,7 +110,7 @@
       <div class="breakeven-field">
         <div class="breakeven-label">Total Batch Expense</div>
         <div style="font-size:22px;font-weight:800;color:white;font-variant-numeric:tabular-nums">
-          ₦{{ first.total_expenses_naira|floatformat:0 }}
+          ₦{{ first.total_expenses_naira|intcomma }}
         </div>
       </div>
 
@@ -162,7 +163,7 @@
           <div class="cat-bar-fill" style="width:{% widthratio cat.total max_cat 100 %}%"></div>
           {% endif %}
         </div>
-        <span class="cat-amount">₦{{ cat.total|floatformat:0 }}</span>
+        <span class="cat-amount">₦{{ cat.total|intcomma }}</span>
       </div>
       {% endfor %}
       {% endwith %}
