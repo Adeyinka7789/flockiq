@@ -1,8 +1,14 @@
+# CORRECTED: apps/farm/flocks/management/commands/seed_batch_data.py
+# Improvements: Direct org lookup, uses select_related(), better error handling
+
 from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.db.models import Sum
 from datetime import date, timedelta
 import random
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 
 class Command(BaseCommand):
@@ -11,6 +17,8 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--batch', type=str,
                             help='Batch UUID (optional, uses first active batch)')
+        parser.add_argument('--org', type=str,
+                            help='Organization UUID (optional, searches all if not provided)')
         parser.add_argument('--days', type=int, default=30,
                             help='Days of history to generate (default: 30)')
 
@@ -25,55 +33,65 @@ class Command(BaseCommand):
         random.seed(42)
         days = kwargs['days']
         batch_id = kwargs.get('batch')
+        org_id = kwargs.get('org')
 
         # ── Resolve org + batch ────────────────────────────────────────
-        if batch_id:
-            # Scan each active org until we find the batch (RLS requires
-            # a tenant context before any Batch query).
-            org = None
-            batch = None
-            for candidate in Organization.objects.filter(is_active=True):
-                with set_tenant_context(candidate):
-                    b = Batch.objects.filter(pk=batch_id).first()
-                    if b:
-                        org = candidate
-                        batch = b
-                        break
-            if not batch:
-                self.stdout.write(self.style.ERROR(
-                    f'Batch {batch_id} not found in any active org.'))
+        org = None
+        batch = None
+
+        if org_id:
+            # Direct lookup if org specified
+            try:
+                org = Organization.objects.get(id=org_id, is_active=True)
+            except Organization.DoesNotExist:
+                self.stdout.write(self.style.ERROR(f'Organization {org_id} not found or inactive.'))
                 return
         else:
             org = Organization.objects.filter(is_active=True).first()
             if not org:
                 self.stdout.write(self.style.ERROR('No active org found.'))
                 return
+
+        if batch_id:
             with set_tenant_context(org):
-                batch = Batch.objects.filter(status='active').first()
-            if not batch:
-                self.stdout.write(self.style.ERROR('No active batch found.'))
-                return
+                batch = Batch.objects.filter(pk=batch_id).select_related('farm', 'house').first()
+                if not batch:
+                    self.stdout.write(self.style.ERROR(f'Batch {batch_id} not found in org {org.subdomain}.'))
+                    return
+        else:
+            with set_tenant_context(org):
+                batch = Batch.objects.filter(status='active').select_related('farm', 'house').first()
+                if not batch:
+                    self.stdout.write(self.style.ERROR('No active batch found in org.'))
+                    return
 
+
+        # ── Backdate placement if needed ────────────────────────────────
         with set_tenant_context(org):
-
             today = date.today()
 
             # If the batch was placed too recently there is nothing to backfill.
             # Backdate placement_date so the seeding window fits.
             min_placement = today - timedelta(days=days + 7)
             if batch.placement_date > min_placement:
-                Batch.objects.filter(pk=batch.pk).update(
-                    placement_date=min_placement)
-                batch.placement_date = min_placement
-                self.stdout.write(
-                    self.style.WARNING(
-                        f'  placement_date backdated to {min_placement} '
-                        f'to fit {days}-day seed window.'
+                try:
+                    Batch.objects.filter(pk=batch.pk).update(
+                        placement_date=min_placement)
+                    batch.placement_date = min_placement
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f'  placement_date backdated to {min_placement} '
+                            f'to fit {days}-day seed window.'
+                        )
                     )
-                )
+                except Exception as exc:
+                    self.stdout.write(self.style.ERROR(f'Error updating placement_date: {str(exc)}'))
+                    logger.exception("seed_batch_data.placement_update_failed", batch_id=str(batch.pk))
+                    return
 
             self.stdout.write(f'Seeding data for: {batch.batch_name} '
                               f'({batch.bird_type}) - {days} days')
+            
             created_mortality = 0
             created_eggs = 0
             created_feed = 0
@@ -86,7 +104,9 @@ class Command(BaseCommand):
                     continue
 
                 # ── MORTALITY ──────────────────────────────────────────
-                # Normal: 0-2 deaths/day. Spike on days 19-20.
+                mortality_count = 0
+                cause = 'unknown'
+                
                 if day_of_batch in [19, 20]:
                     mortality_count = random.randint(10, 15)
                     cause = 'disease'
@@ -95,20 +115,22 @@ class Command(BaseCommand):
                     cause = 'unknown'
                 else:
                     mortality_count = random.randint(0, 2)
-                    # valid choices: disease, accident, culling, unknown, theft
                     cause = random.choice(['disease', 'accident', 'unknown', 'culling'])
 
                 if mortality_count > 0:
-                    if not MortalityLog.objects.filter(batch=batch, date=day).exists():
-                        MortalityLog.objects.create(
-                            org=org,
-                            batch=batch,
-                            farm=batch.farm,
-                            date=day,
-                            count=mortality_count,
-                            cause=cause,
-                        )
-                        created_mortality += 1
+                    try:
+                        if not MortalityLog.objects.filter(batch=batch, date=day).exists():
+                            MortalityLog.objects.create(
+                                org=org,
+                                batch=batch,
+                                farm=batch.farm,
+                                date=day,
+                                count=mortality_count,
+                                cause=cause,
+                            )
+                            created_mortality += 1
+                    except Exception as exc:
+                        logger.warning("seed_batch_data.mortality_creation_failed", batch_id=str(batch.pk), day=str(day), error=str(exc))
 
                 # ── EGG PRODUCTION (layers only) ───────────────────────
                 if batch.bird_type == 'layer' and day_of_batch >= 18:
@@ -118,28 +140,30 @@ class Command(BaseCommand):
                     live_birds = batch.current_count
                     total_eggs = int(live_birds * hen_day_pct / 100)
                     grade_a = int(total_eggs * random.uniform(0.88, 0.94))
-                    # cap grade_b so grade_a + grade_b never exceeds total_eggs
                     grade_b = min(
                         int(total_eggs * random.uniform(0.04, 0.08)),
                         max(0, total_eggs - grade_a),
                     )
                     cracked = max(0, total_eggs - grade_a - grade_b)
 
-                    if not EggProductionLog.objects.filter(
-                            batch=batch, record_date=day).exists():
-                        EggProductionLog.objects.create(
-                            org=org,
-                            batch=batch,
-                            farm=batch.farm,
-                            house=batch.house,
-                            record_date=day,
-                            total_eggs=total_eggs,
-                            grade_a=grade_a,
-                            grade_b=grade_b,
-                            cracked=cracked,
-                            hen_day_pct=Decimal(str(hen_day_pct)),
-                        )
-                        created_eggs += 1
+                    try:
+                        if not EggProductionLog.objects.filter(
+                                batch=batch, record_date=day).exists():
+                            EggProductionLog.objects.create(
+                                org=org,
+                                batch=batch,
+                                farm=batch.farm,
+                                house=batch.house,
+                                record_date=day,
+                                total_eggs=total_eggs,
+                                grade_a=grade_a,
+                                grade_b=grade_b,
+                                cracked=cracked,
+                                hen_day_pct=Decimal(str(hen_day_pct)),
+                            )
+                            created_eggs += 1
+                    except Exception as exc:
+                        logger.warning("seed_batch_data.egg_creation_failed", batch_id=str(batch.pk), day=str(day), error=str(exc))
 
                 # ── FEED LOG ───────────────────────────────────────────
                 live_birds = batch.current_count
@@ -148,22 +172,25 @@ class Command(BaseCommand):
                     round(live_birds * kg_per_bird * random.uniform(0.95, 1.05), 2)
                 ))
 
-                if not FeedLog.objects.filter(batch=batch, record_date=day).exists():
-                    feed_type = (
-                        'starter' if day_of_batch < 14
-                        else 'grower' if day_of_batch < 28
-                        else 'layer_mash' if batch.bird_type == 'layer'
-                        else 'finisher'
-                    )
-                    FeedLog.objects.create(
-                        org=org,
-                        batch=batch,
-                        farm=batch.farm,
-                        record_date=day,
-                        quantity_kg=actual_feed_kg,
-                        feed_type=feed_type,
-                    )
-                    created_feed += 1
+                try:
+                    if not FeedLog.objects.filter(batch=batch, record_date=day).exists():
+                        feed_type = (
+                            'starter' if day_of_batch < 14
+                            else 'grower' if day_of_batch < 28
+                            else 'layer_mash' if batch.bird_type == 'layer'
+                            else 'finisher'
+                        )
+                        FeedLog.objects.create(
+                            org=org,
+                            batch=batch,
+                            farm=batch.farm,
+                            record_date=day,
+                            quantity_kg=actual_feed_kg,
+                            feed_type=feed_type,
+                        )
+                        created_feed += 1
+                except Exception as exc:
+                    logger.warning("seed_batch_data.feed_creation_failed", batch_id=str(batch.pk), day=str(day), error=str(exc))
 
                 # ── WATER LOG ──────────────────────────────────────────
                 base_water_l = live_birds * Decimal('0.25')
@@ -174,26 +201,33 @@ class Command(BaseCommand):
                     actual_water_l = round(
                         base_water_l * Decimal(str(random.uniform(0.9, 1.1))), 2)
 
-                if not WaterLog.objects.filter(batch=batch, record_date=day).exists():
-                    WaterLog.objects.create(
-                        org=org,
-                        batch=batch,
-                        farm=batch.farm,
-                        record_date=day,
-                        litres_consumed=actual_water_l,
-                    )
-                    created_water += 1
+                try:
+                    if not WaterLog.objects.filter(batch=batch, record_date=day).exists():
+                        WaterLog.objects.create(
+                            org=org,
+                            batch=batch,
+                            farm=batch.farm,
+                            record_date=day,
+                            litres_consumed=actual_water_l,
+                        )
+                        created_water += 1
+                except Exception as exc:
+                    logger.warning("seed_batch_data.water_creation_failed", batch_id=str(batch.pk), day=str(day), error=str(exc))
 
             # ── UPDATE current_count ───────────────────────────────────
-            total_mortality = (
-                MortalityLog.objects.filter(batch=batch)
-                .aggregate(total=Sum('count'))['total'] or 0
-            )
-            new_count = max(0, batch.initial_count - total_mortality)
-            if new_count != batch.current_count:
-                Batch.objects.filter(pk=batch.pk).update(current_count=new_count)
-                self.stdout.write(
-                    f'  Updated current_count: {batch.initial_count} -> {new_count}')
+            try:
+                total_mortality = (
+                    MortalityLog.objects.filter(batch=batch)
+                    .aggregate(total=Sum('count'))['total'] or 0
+                )
+                new_count = max(0, batch.initial_count - total_mortality)
+                if new_count != batch.current_count:
+                    Batch.objects.filter(pk=batch.pk).update(current_count=new_count)
+                    self.stdout.write(
+                        f'  Updated current_count: {batch.initial_count} -> {new_count}')
+            except Exception as exc:
+                logger.exception("seed_batch_data.count_update_failed", batch_id=str(batch.pk))
+                self.stdout.write(self.style.ERROR(f'Error updating current_count: {str(exc)}'))
 
         self.stdout.write(self.style.SUCCESS(
             f'\nDone! Created:\n'

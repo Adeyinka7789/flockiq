@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 from apps.infrastructure.core.views import TenantRequiredMixin
 
@@ -22,11 +23,6 @@ from .services import EggProductionService
 logger = structlog.get_logger(__name__)
 
 
-def _get_org(request):
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organisation found for this user.")
-    return org
 
 
 # ── HTMX Views ──────────────────────────────────────────────────────────────
@@ -422,7 +418,7 @@ class ProductionLogView(LoginRequiredMixin, View):
         from .forms import EggProductionLogForm
 
         form = EggProductionLogForm(request.POST)
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         if form.is_valid():
             cd = form.cleaned_data
@@ -473,7 +469,7 @@ class ProductionTableView(LoginRequiredMixin, View):
     """GET /production/eggs/<batch_pk>/table/ → Returns production table partial."""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         page = int(request.GET.get("page", 1))
 
         with set_tenant_context(org):
@@ -492,7 +488,7 @@ class ProductionChartView(LoginRequiredMixin, View):
     """GET /production/eggs/<batch_pk>/chart/ → Returns chart partial with Chart.js data."""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         days = int(request.GET.get("days", 30))
 
         with set_tenant_context(org):
@@ -514,7 +510,7 @@ class ProductionSummaryCardView(LoginRequiredMixin, View):
     """GET /production/eggs/<batch_pk>/summary/ → Returns summary card fragment."""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         with set_tenant_context(org):
             svc = EggProductionService(org)

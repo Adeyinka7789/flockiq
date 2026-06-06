@@ -1,7 +1,8 @@
 <form hx-post="{% url 'production:log' batch_pk %}"
       hx-target="#production-summary-card"
       hx-swap="outerHTML"
-      class="space-y-4">
+      class="space-y-4"
+      hx-indicator="#htmx-spinner">
   {% csrf_token %}
 
   {% if form.non_field_errors %}
@@ -77,7 +78,8 @@
   </div>
 
   <button type="submit"
-          class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors">
+          class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition-colors"
+        hx-disabled-elt="this">
     Log Production
   </button>
 </form>

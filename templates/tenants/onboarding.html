@@ -218,7 +218,8 @@
           <option value="mixed" selected>Mixed</option>
         </select>
       </div>
-      <button type="submit" class="ob-btn">Continue →</button>
+      <button type="submit" class="ob-btn"
+        hx-disabled-elt="this">Continue →</button>
     </form>
     <a class="ob-skip" href="/?skip=1">Skip for now →</a>
     {% endif %}
@@ -246,7 +247,8 @@
           <option value="mixed" selected>Mixed</option>
         </select>
       </div>
-      <button type="submit" class="ob-btn">Continue →</button>
+      <button type="submit" class="ob-btn"
+        hx-disabled-elt="this">Continue →</button>
     </form>
     <a class="ob-skip" href="/?skip=1">Skip for now →</a>
     {% endif %}
@@ -278,7 +280,8 @@
         <label class="ob-label">Breed name <span style="font-weight:400;color:#94a3b8">(optional)</span></label>
         <input class="ob-input" type="text" name="breed_name" placeholder="e.g. Cobb 500">
       </div>
-      <button type="submit" class="ob-btn">Finish setup →</button>
+      <button type="submit" class="ob-btn"
+        hx-disabled-elt="this">Finish setup →</button>
     </form>
     <a class="ob-skip" href="/?skip=1">Skip for now →</a>
     {% endif %}

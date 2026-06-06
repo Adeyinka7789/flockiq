@@ -6,7 +6,8 @@
 
   <form hx-post="{% url 'water:log' batch.pk %}"
         hx-target="#modal-body"
-        hx-swap="innerHTML">
+        hx-swap="innerHTML"
+      hx-indicator="#htmx-spinner">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -57,7 +58,8 @@
     <button type="submit"
             style="width:100%;padding:12px;background:#3d5a99;color:white;
                    border:none;border-radius:10px;font-size:13px;font-weight:700;
-                   cursor:pointer">
+                   cursor:pointer"
+        hx-disabled-elt="this">
       Log Water Entry
     </button>
   </form>

@@ -1,3 +1,139 @@
+class HarvestTimingOptimizerV2:
+    """
+    Enhanced harvest timing using real weight data, FCR trend,
+    and breed-specific targets.
+    """
+
+    HOLDING_COST_PER_BIRD_DAY = 45  # ₦ feed + overhead
+
+    def __init__(self, org, batch):
+        self.org = org
+        self.batch = batch
+
+    def get_weight_trajectory(self) -> list:
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.health.analytics.breed_benchmarks import get_benchmark
+
+        benchmark = get_benchmark(
+            getattr(self.batch, 'breed_name', None),
+            self.batch.bird_type)
+
+        with set_tenant_context(self.org):
+            try:
+                from apps.farm.flocks.models import WeightRecord
+                records = list(WeightRecord.objects.filter(
+                    batch=self.batch,
+                ).order_by('sample_date').values(
+                    'sample_date', 'avg_weight_kg'))
+
+                if records:
+                    trajectory = []
+                    for r in records:
+                        day = (r['sample_date'] -
+                               self.batch.placement_date).days
+                        trajectory.append({
+                            'day': day,
+                            'weight_kg': float(r['avg_weight_kg']),
+                            'source': 'actual',
+                        })
+                    return trajectory
+            except Exception:
+                pass
+
+        # Fallback: breed growth curve projection
+        daily_gain = benchmark.get('daily_weight_gain_g', 55)
+        current_day = self.batch.cycle_day or 0
+        trajectory = []
+        for day in range(current_day, min(current_day + 14, 56)):
+            trajectory.append({
+                'day': day,
+                'weight_kg': round(daily_gain * day / 1000, 2),
+                'source': 'projected',
+            })
+        return trajectory
+
+    def compute_optimal_harvest_window(self) -> dict:
+        from apps.health.analytics.breed_benchmarks import get_benchmark
+        from apps.health.analytics.feed_efficiency import FeedEfficiencyService
+
+        benchmark = get_benchmark(
+            getattr(self.batch, 'breed_name', None),
+            self.batch.bird_type)
+
+        optimal_day = benchmark.get('optimal_slaughter_day', 42)
+        target_weight = benchmark.get('target_weight_day42_kg', 2.2)
+        current_day = self.batch.cycle_day or 0
+
+        fcr_svc = FeedEfficiencyService(self.org, self.batch)
+        fcr_data = fcr_svc.compute_current_fcr()
+        current_fcr = fcr_data.get('fcr')
+        target_fcr = fcr_data.get('target_fcr', 1.80)
+
+        days_remaining = max(0, optimal_day - current_day)
+        holding_cost_total = (
+            days_remaining *
+            self.HOLDING_COST_PER_BIRD_DAY *
+            self.batch.current_count)
+
+        trajectory = self.get_weight_trajectory()
+        current_weight = (trajectory[-1]['weight_kg']
+                          if trajectory else 1.8)
+
+        if current_day >= optimal_day + 5:
+            recommendation = 'sell_now'
+            urgency = 'critical'
+            reason = (
+                f'Batch is {current_day - optimal_day} days past optimal '
+                f'harvest age. FCR is declining. Every extra day costs '
+                f'₦{self.HOLDING_COST_PER_BIRD_DAY:,}/bird.')
+        elif current_day >= optimal_day - 3:
+            recommendation = 'sell_this_week'
+            urgency = 'high'
+            reason = (
+                f'Batch is approaching optimal harvest window '
+                f'({optimal_day} days). Weight ~{current_weight}kg '
+                f'vs target {target_weight}kg. Book buyers now.')
+        elif current_day >= optimal_day - 7:
+            recommendation = 'prepare_to_sell'
+            urgency = 'medium'
+            reason = (
+                f'{days_remaining} days to optimal harvest. '
+                f'Start contacting buyers and arranging logistics.')
+        else:
+            recommendation = 'continue_growing'
+            urgency = 'low'
+            reason = (
+                f'{days_remaining} days to harvest window. '
+                f'Focus on maintaining FCR below {target_fcr}.')
+
+        # FCR-based override
+        if (current_fcr and
+                current_fcr > target_fcr + 0.30 and
+                current_day >= optimal_day - 5):
+            recommendation = 'sell_now'
+            urgency = 'high'
+            reason = (
+                f'FCR ({current_fcr}) is significantly above target '
+                f'({target_fcr}). Feed costs are outpacing weight gain. '
+                f'Sell now to maximise profit.')
+
+        return {
+            'current_day': current_day,
+            'optimal_day': optimal_day,
+            'days_remaining': days_remaining,
+            'current_weight_kg': current_weight,
+            'target_weight_kg': target_weight,
+            'current_fcr': current_fcr,
+            'target_fcr': target_fcr,
+            'recommendation': recommendation,
+            'urgency': urgency,
+            'reason': reason,
+            'holding_cost_total': holding_cost_total,
+            'breed': benchmark.get('name', 'Standard'),
+            'trajectory': trajectory,
+        }
+
+
 class BroilerExitOptimizer:
     """
     Calculates optimal sell date for broiler batches.

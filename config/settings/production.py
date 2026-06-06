@@ -41,7 +41,7 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "SOCKET_CONNECT_TIMEOUT": 5,
             "SOCKET_TIMEOUT": 5,
-            "IGNORE_EXCEPTIONS": True,  # Degrade gracefully if Redis is down
+            "IGNORE_EXCEPTIONS": True,  # Degrade gracefully if Redis is down 
         },
         "KEY_PREFIX": "flockiq",
         "TIMEOUT": 300,

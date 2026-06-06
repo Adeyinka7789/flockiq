@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views import View
 from django.utils import timezone
 
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 from apps.infrastructure.core.views import TenantRequiredMixin
 
@@ -16,20 +17,13 @@ from .services import TaskService
 logger = structlog.get_logger(__name__)
 
 
-def _get_org(request):
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organisation found for this user.")
-    return org
-
-
 class TaskListView(TenantRequiredMixin, View):
     """GET /tasks/ — Kanban board with To Do / In Progress / Completed columns."""
 
     def get(self, request):
         from apps.farm.tasks.models import FarmTask, TaskTemplate
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         today = datetime.date.today()
         tab = request.GET.get("tab", "all")
 
@@ -73,7 +67,7 @@ class TaskCreateView(TenantRequiredMixin, View):
         from apps.farm.farms.models import Farm
         from apps.farm.flocks.models import Batch
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             farms = list(Farm.objects.filter(is_active=True))
             batches = list(Batch.objects.filter(status="active").select_related("farm"))
@@ -91,7 +85,7 @@ class TaskCreateView(TenantRequiredMixin, View):
     def post(self, request):
         from apps.farm.tasks.models import FarmTask
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         title = request.POST.get("title", "").strip()
         description = request.POST.get("description", "").strip()
         due_date_str = request.POST.get("due_date", "")
@@ -149,7 +143,7 @@ class TaskStatusView(TenantRequiredMixin, View):
         if new_status not in ("pending", "in_progress", "complete"):
             return HttpResponse(status=400)
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             task = get_object_or_404(FarmTask, pk=pk, org=org)
             task.status = new_status
@@ -173,7 +167,7 @@ class TaskDeleteView(TenantRequiredMixin, View):
     def post(self, request, pk):
         from apps.farm.tasks.models import FarmTask
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             task = get_object_or_404(FarmTask, pk=pk, org=org)
             task.delete()
@@ -190,7 +184,7 @@ class TaskCompleteView(LoginRequiredMixin, View):
     """POST /tasks/<uuid>/complete/ — mark task done, refresh Kanban."""
 
     def post(self, request, pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         with set_tenant_context(org):
             try:

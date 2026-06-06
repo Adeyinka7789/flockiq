@@ -6,18 +6,12 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views import View
 
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .services import WaterService
 
 logger = structlog.get_logger(__name__)
-
-
-def _get_org(request):
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organisation found for this user.")
-    return org
 
 
 class WaterLogView(LoginRequiredMixin, View):
@@ -28,7 +22,7 @@ class WaterLogView(LoginRequiredMixin, View):
         from .forms import WaterLogForm
         from apps.farm.flocks.models import Batch
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             batch = get_object_or_404(Batch, pk=batch_pk)
         return render(request, "production/water/_water_log_form.html", {
@@ -43,7 +37,7 @@ class WaterLogView(LoginRequiredMixin, View):
         from apps.farm.flocks.models import Batch
 
         form = WaterLogForm(request.POST)
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         def _error(f, status=422):
             with set_tenant_context(org):
@@ -83,7 +77,7 @@ class WaterTableView(LoginRequiredMixin, View):
     def get(self, request, batch_pk):
         from .models import WaterLog
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         page = int(request.GET.get("page", 1))
 
         with set_tenant_context(org):
@@ -107,7 +101,7 @@ class WaterSummaryCardView(LoginRequiredMixin, View):
     """GET /production/water/<batch_pk>/summary/ → Returns summary card fragment."""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         with set_tenant_context(org):
             summary = WaterService(org).get_water_summary(str(batch_pk))

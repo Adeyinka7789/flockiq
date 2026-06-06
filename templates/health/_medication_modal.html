@@ -27,7 +27,8 @@
 
   <form hx-post="{% url 'health:medication_log' batch_pk %}"
         hx-target="#modal-body"
-        hx-swap="innerHTML">
+        hx-swap="innerHTML"
+      hx-indicator="#htmx-spinner">
     {% csrf_token %}
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;
@@ -214,7 +215,8 @@
                      font-size:13px;font-weight:700;cursor:pointer;
                      transition:background 0.15s"
               onmouseover="this.style.background='#15803d'"
-              onmouseout="this.style.background='#16a34a'">
+              onmouseout="this.style.background='#16a34a'"
+        hx-disabled-elt="this">
         Record Medication
       </button>
     </div>

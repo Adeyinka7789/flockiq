@@ -17,7 +17,8 @@
 
   <form hx-post="{% url 'superadmin:broadcast' %}"
         hx-target="#modal-body"
-        hx-swap="innerHTML">
+        hx-swap="innerHTML"
+      hx-indicator="#htmx-spinner">
     {% csrf_token %}
 
     <div style="margin-bottom:12px">
@@ -100,7 +101,8 @@
                      border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;
                      transition:background 0.15s"
               onmouseover="this.style.background='#2d4578'"
-              onmouseout="this.style.background='#3d5a99'">
+              onmouseout="this.style.background='#3d5a99'"
+        hx-disabled-elt="this">
         &#128226; Send Broadcast
       </button>
     </div>

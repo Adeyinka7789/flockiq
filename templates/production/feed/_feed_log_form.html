@@ -6,7 +6,8 @@
 
   <form hx-post="{% url 'feed:log' batch.pk %}"
         hx-target="#modal-body"
-        hx-swap="innerHTML">
+        hx-swap="innerHTML"
+      hx-indicator="#htmx-spinner">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -84,7 +85,8 @@
                    border:none;border-radius:10px;font-size:13px;font-weight:700;
                    cursor:pointer;transition:background 0.15s"
             onmouseover="this.style.background='#2d4578'"
-            onmouseout="this.style.background='#3d5a99'">
+            onmouseout="this.style.background='#3d5a99'"
+        hx-disabled-elt="this">
       Log Feed Entry
     </button>
   </form>

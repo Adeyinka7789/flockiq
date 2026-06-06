@@ -6,7 +6,8 @@
 <form hx-post="{% url 'health:add_vaccination' %}"
       hx-target="#modal-body"
       hx-swap="innerHTML"
-      class="p-5 grid grid-cols-2 gap-4">
+      class="p-5 grid grid-cols-2 gap-4"
+      hx-indicator="#htmx-spinner">
   {% csrf_token %}
 
   {% if error %}
@@ -64,7 +65,8 @@
     </button>
     <button type="submit"
             class="flex-1 px-4 py-2 text-white text-sm font-semibold rounded-lg transition-colors"
-            style="background:#3d5a99">
+            style="background:#3d5a99"
+        hx-disabled-elt="this">
       Schedule Vaccination
     </button>
   </div>

@@ -1,9 +1,12 @@
+# CORRECTED: apps/infrastructure/farm/weather/services.py
+# This version includes proper exception handling for database operations
+
 from decimal import Decimal
 
 import structlog
 from django.conf import settings
 from django.core.cache import cache
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.utils import timezone
 
 logger = structlog.get_logger(__name__)
@@ -31,6 +34,7 @@ class WeatherService:
             return cached
 
         import requests
+        from django.db import IntegrityError
 
         base_url = getattr(settings, "OPENWEATHERMAP_BASE_URL", _OPENWEATHERMAP_BASE_URL)
         api_key = getattr(settings, "OPENWEATHERMAP_API_KEY", "")
@@ -49,26 +53,43 @@ class WeatherService:
             )
             response.raise_for_status()
             raw_data = response.json()
-        except Exception as exc:
+        except requests.Timeout:
+            logger.warning("weather.fetch_timeout", farm_id=farm_id)
+            return {}
+        except requests.RequestException as exc:
             logger.warning("weather.fetch_failed", farm_id=farm_id, error=str(exc))
+            return {}
+        except ValueError as exc:
+            logger.error("weather.json_decode_error", farm_id=farm_id, error=str(exc))
+            return {}
+        except Exception as exc:
+            logger.exception("weather.fetch_unexpected_error", farm_id=farm_id)
             return {}
 
         from apps.farm.weather.models import WeatherCache
 
-        WeatherCache.objects.update_or_create(
-            farm_id=farm_id,
-            defaults={
-                "lat": Decimal(str(float(lat))),
-                "lng": Decimal(str(float(lng))),
-                "data": raw_data,
-            },
-        )
+        try:
+            WeatherCache.objects.update_or_create(
+                farm_id=farm_id,
+                defaults={
+                    "lat": Decimal(str(float(lat))),
+                    "lng": Decimal(str(float(lng))),
+                    "data": raw_data,
+                },
+            )
+        except IntegrityError as exc:
+            logger.error("weather.cache_integrity_error", farm_id=farm_id, error=str(exc))
+            # Cache still available from Redis, continue
+        except Exception as exc:
+            logger.exception("weather.cache_update_failed", farm_id=farm_id)
+            # Continue without updating DB cache
 
         parsed = self._parse_weather(raw_data)
         cache.set(cache_key, parsed, timeout=WEATHER_CACHE_TTL)
         return parsed
 
     def _parse_weather(self, raw_data: dict) -> dict:
+        """Parse raw OpenWeatherMap API response into internal format."""
         if not raw_data or "list" not in raw_data:
             return {}
 
@@ -95,6 +116,10 @@ class WeatherService:
         }
 
     def evaluate_alerts(self, org, farm, weather_data: dict) -> list:
+        """
+        Evaluate weather data against thresholds and create alerts.
+        Handles notification service failures gracefully.
+        """
         from apps.farm.weather.models import WeatherAlert
         from apps.infrastructure.notifications.services import NotificationService
 
@@ -138,7 +163,9 @@ class WeatherService:
                 "description": f"Heavy rain forecast: {max_rain:.1f}mm in a 3-hour period.",
             })
 
+        # Create alerts and send notifications
         for candidate in candidates:
+            # Check if alert already exists and is unacknowledged
             already_active = WeatherAlert.objects.filter(
                 org=org,
                 farm=farm,
@@ -148,9 +175,18 @@ class WeatherService:
             if already_active:
                 continue
 
-            alert = WeatherAlert.objects.create(org=org, farm=farm, **candidate)
-            created_alerts.append(alert)
+            # Create the alert
+            try:
+                alert = WeatherAlert.objects.create(org=org, farm=farm, **candidate)
+                created_alerts.append(alert)
+            except IntegrityError as exc:
+                logger.warning("weather.alert_duplicate", farm_id=str(farm.id), alert_type=candidate["alert_type"])
+                continue
+            except Exception as exc:
+                logger.exception("weather.alert_creation_failed", farm_id=str(farm.id))
+                continue
 
+            # Send notification for critical alerts
             if candidate["severity"] == WeatherAlert.Severity.CRITICAL:
                 try:
                     with transaction.atomic():
@@ -163,8 +199,9 @@ class WeatherService:
                             severity=candidate["severity"],
                             farm=farm,
                         )
-                except Exception:
-                    logger.exception("weather.notification_failed", farm_id=str(farm.id))
+                except Exception as exc:
+                    logger.exception("weather.notification_failed", farm_id=str(farm.id), alert_type=candidate["alert_type"])
+                    # Alert still created; notification failure shouldn't break alert creation
 
         return created_alerts
 

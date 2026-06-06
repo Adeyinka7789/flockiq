@@ -215,7 +215,8 @@
                 {% csrf_token %}
                 <input type="hidden" name="reason" value="Support session">
                 <button type="submit" class="imp-btn"
-                        onclick="return confirm('Impersonate {{ user.email }}?\nThis action will be logged.')">
+                        onclick="return confirm('Impersonate {{ user.email }}?\nThis action will be logged.')"
+        hx-disabled-elt="this">
                   Impersonate
                 </button>
               </form>

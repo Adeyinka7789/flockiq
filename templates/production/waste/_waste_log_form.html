@@ -1,7 +1,8 @@
 <form hx-post="{% url 'waste:log' farm_pk %}"
       hx-target="#waste-table"
       hx-swap="outerHTML"
-      class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+      class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4"
+      hx-indicator="#htmx-spinner">
   {% csrf_token %}
 
   {% if form.non_field_errors %}
@@ -40,7 +41,8 @@
   </div>
 
   <button type="submit"
-          class="mt-4 px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white text-sm font-medium rounded-lg transition-colors">
+          class="mt-4 px-5 py-2 bg-gray-700 hover:bg-gray-800 text-white text-sm font-medium rounded-lg transition-colors"
+        hx-disabled-elt="this">
     Log Waste
   </button>
 </form>

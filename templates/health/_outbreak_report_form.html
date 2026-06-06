@@ -23,7 +23,8 @@
 
   <form hx-post="{% url 'health:report_outbreak' %}"
         hx-target="#modal-body"
-        hx-swap="innerHTML">
+        hx-swap="innerHTML"
+      hx-indicator="#htmx-spinner">
     {% csrf_token %}
 
     <div style="margin-bottom:12px">
@@ -119,7 +120,8 @@
                      font-size:13px;font-weight:700;cursor:pointer;
                      transition:background 0.15s"
               onmouseover="this.style.background='#b91c1c'"
-              onmouseout="this.style.background='#dc2626'">
+              onmouseout="this.style.background='#dc2626'"
+        hx-disabled-elt="this">
         🚨 Report Outbreak
       </button>
     </div>

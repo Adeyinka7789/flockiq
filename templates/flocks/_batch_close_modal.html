@@ -5,10 +5,12 @@
         action="{% url 'flocks:close' batch.pk %}"
         hx-post="{% url 'flocks:close' batch.pk %}"
         hx-target="#close-result"
-        hx-swap="innerHTML">
+        hx-swap="innerHTML"
+      hx-indicator="#htmx-spinner">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit" class="w-full py-2 bg-red-600 text-white font-medium text-sm rounded-lg mt-4">
+    <button type="submit" class="w-full py-2 bg-red-600 text-white font-medium text-sm rounded-lg mt-4"
+        hx-disabled-elt="this">
       Confirm Close
     </button>
   </form>

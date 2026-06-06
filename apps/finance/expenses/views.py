@@ -15,6 +15,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.infrastructure.core.filters import DateRangeFilter
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 from apps.infrastructure.core.views import TenantRequiredMixin
 
@@ -181,11 +182,6 @@ class ExpenseOverviewView(TenantRequiredMixin, View):
         return render(request, "finance/expenses/expense_overview.html", context)
 
 
-def _get_org(request):
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organisation found for this user.")
-    return org
 
 
 class ExpenseLogView(LoginRequiredMixin, View):
@@ -196,7 +192,7 @@ class ExpenseLogView(LoginRequiredMixin, View):
         from django.shortcuts import get_object_or_404
         from .models import ExpenseRecord
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             batch = get_object_or_404(Batch, pk=batch_pk, org=org)
         return render(request, "expenses/_expense_log_form.html", {
@@ -209,7 +205,7 @@ class ExpenseLogView(LoginRequiredMixin, View):
     def post(self, request, batch_pk):
         from .models import ExpenseRecord
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         data = request.POST
 
         def _error(msg, status=422):
@@ -276,7 +272,7 @@ class ExpenseTableView(LoginRequiredMixin, View):
         from apps.infrastructure.core.filters import DateRangeFilter
         from .models import ExpenseRecord
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         df = DateRangeFilter()
         date_from, date_to = df.get_date_range(request)
         filter_ctx = df.get_filter_context(request)
@@ -317,7 +313,7 @@ class ExpenseBreakdownView(LoginRequiredMixin, View):
     """GET /finance/expenses/<uuid:batch_pk>/breakdown/"""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             breakdown = ExpenseService(org).get_expense_breakdown(batch_id=str(batch_pk))
         return render(
@@ -331,7 +327,7 @@ class ExpenseFarmSummaryView(LoginRequiredMixin, View):
     """GET /finance/expenses/farm/<uuid:farm_pk>/summary/"""
 
     def get(self, request, farm_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         month = request.GET.get("month")
         with set_tenant_context(org):
             summary = ExpenseService(org).get_farm_expenses_summary(
@@ -351,7 +347,7 @@ class ExpenseAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         batch_id = request.query_params.get("batch_id")
         with set_tenant_context(org):
             svc = ExpenseService(org)
@@ -372,7 +368,7 @@ class ExpenseAPIView(APIView):
         return Response({"data": data})
 
     def post(self, request):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         d = request.data
 
         try:

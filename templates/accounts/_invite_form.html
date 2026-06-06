@@ -24,7 +24,8 @@
 
   <form hx-post="{% url 'accounts:team_invite' %}"
         hx-target="#modal-body"
-        style="display:flex;flex-direction:column;gap:14px">
+        style="display:flex;flex-direction:column;gap:14px"
+      hx-indicator="#htmx-spinner">
     {% csrf_token %}
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -93,7 +94,8 @@
     <button type="submit"
             style="width:100%;padding:12px;background:#3d5a99;
                    color:white;border:none;border-radius:10px;
-                   font-size:13px;font-weight:700;cursor:pointer">
+                   font-size:13px;font-weight:700;cursor:pointer"
+        hx-disabled-elt="this">
       Send Invitation
     </button>
   </form>

@@ -9,18 +9,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .services import FeedService
 
 logger = structlog.get_logger(__name__)
-
-
-def _get_org(request):
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organisation found for this user.")
-    return org
 
 
 class FeedLogView(LoginRequiredMixin, View):
@@ -31,7 +25,7 @@ class FeedLogView(LoginRequiredMixin, View):
         from .forms import FeedLogForm
         from apps.farm.flocks.models import Batch
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             batch = get_object_or_404(Batch, pk=batch_pk)
         return render(request, "production/feed/_feed_log_form.html", {
@@ -46,7 +40,7 @@ class FeedLogView(LoginRequiredMixin, View):
         from apps.farm.flocks.models import Batch
 
         form = FeedLogForm(request.POST)
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         def _error(f, status=422):
             with set_tenant_context(org):
@@ -88,7 +82,7 @@ class FeedTableView(LoginRequiredMixin, View):
     def get(self, request, batch_pk):
         from .models import FeedLog
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         page = int(request.GET.get("page", 1))
 
         with set_tenant_context(org):
@@ -112,7 +106,7 @@ class FeedSummaryCardView(LoginRequiredMixin, View):
     """GET /production/feed/<batch_pk>/summary/ → Returns summary card fragment."""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         with set_tenant_context(org):
             summary = FeedService(org).get_feed_summary(str(batch_pk))
@@ -128,7 +122,7 @@ class FeedChartView(LoginRequiredMixin, View):
     """GET /production/feed/<batch_pk>/chart/ → Returns chart partial with Chart.js data."""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         days = int(request.GET.get("days", 30))
 
         with set_tenant_context(org):
@@ -150,7 +144,7 @@ class FeedStockView(LoginRequiredMixin, View):
     """GET /production/feed/<farm_pk>/stock/ → Returns stock panel partial."""
 
     def get(self, request, farm_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         with set_tenant_context(org):
             stocks = FeedService(org).get_stock_levels(str(farm_pk))

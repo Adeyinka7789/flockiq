@@ -16,12 +16,14 @@
     </div>
     <form hx-post="{% url 'superadmin:billing_manage' org.pk %}"
           hx-vals='{"action":"grace_period"}'
-          hx-swap="none">
+          hx-swap="none"
+      hx-indicator="#htmx-spinner">
       {% csrf_token %}
       <label class="bc-field-lbl">Extension End Date</label>
       <input type="date" name="grace_end_date" class="bc-input"
              min="{{ today|date:'Y-m-d' }}">
-      <button type="submit" class="bc-btn-primary">Apply Grace Period</button>
+      <button type="submit" class="bc-btn-primary"
+        hx-disabled-elt="this">Apply Grace Period</button>
     </form>
   </div>
 
@@ -33,7 +35,8 @@
     </div>
     <form hx-post="{% url 'superadmin:billing_manage' org.pk %}"
           hx-vals='{"action":"extend_trial"}'
-          hx-swap="none">
+          hx-swap="none"
+      hx-indicator="#htmx-spinner">
       {% csrf_token %}
       <label class="bc-field-lbl">Extension Duration</label>
       <select name="days" class="bc-input">
@@ -41,7 +44,8 @@
         <option value="14">+14 Days</option>
         <option value="30">+30 Days</option>
       </select>
-      <button type="submit" class="bc-btn-primary green">Extend Trial</button>
+      <button type="submit" class="bc-btn-primary green"
+        hx-disabled-elt="this">Extend Trial</button>
     </form>
   </div>
 
@@ -50,7 +54,8 @@
     <div class="bc-panel-section-title">🔄 Change Account Status</div>
     <form hx-post="{% url 'superadmin:billing_manage' org.pk %}"
           hx-vals='{"action":"change_status"}'
-          hx-swap="none">
+          hx-swap="none"
+      hx-indicator="#htmx-spinner">
       {% csrf_token %}
       <label class="bc-field-lbl">New Status</label>
       <select name="status" class="bc-input">
@@ -60,7 +65,8 @@
         <option value="past_due" {% if org.subscription_status == 'past_due' %}selected{% endif %}>Past Due</option>
         <option value="cancelled" {% if org.subscription_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
       </select>
-      <button type="submit" class="bc-btn-primary">Update Status</button>
+      <button type="submit" class="bc-btn-primary"
+        hx-disabled-elt="this">Update Status</button>
     </form>
   </div>
 

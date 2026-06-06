@@ -22,7 +22,8 @@
     <form hx-post="{% url 'accounts:team_role' member.pk %}"
           hx-target="#member-{{ member.pk }}"
           hx-swap="outerHTML"
-          class="inline-block">
+          class="inline-block"
+      hx-indicator="#htmx-spinner">
       {% csrf_token %}
       <select name="role" class="role-select" onchange="this.form.requestSubmit()">
         <option value="manager" {% if member.role == 'manager' %}selected{% endif %}>Manager</option>

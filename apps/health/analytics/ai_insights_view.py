@@ -8,12 +8,14 @@ class AIInsightsDeepDiveView(TenantRequiredMixin, View):
     """Per-batch AI intelligence deep dive page."""
 
     def get(self, request, batch_pk):
-        from apps.farm.flocks.models import Batch, MortalityLog
+        from apps.farm.flocks.models import Batch, MortalityLog, WeightRecord
         from apps.production.feed.models import FeedLog
         from apps.production.production.models import EggProductionLog
         from apps.health.analytics.farm_memory import FarmMemoryService
         from apps.health.analytics.breed_benchmarks import compare_batch_to_benchmark
         from apps.health.analytics.models import AIDailyBrief, ForecastResult
+        from apps.health.analytics.feed_efficiency import FeedEfficiencyService
+        from apps.health.analytics.proactive_alerts import ProactiveAlertEngine
         from apps.infrastructure.core.rls import set_tenant_context
         from datetime import date, timedelta
         from django.db.models import Sum, Avg
@@ -35,7 +37,17 @@ class AIInsightsDeepDiveView(TenantRequiredMixin, View):
             ).aggregate(total=Sum('count'))['total'] or 0
             mortality_rate = total_mort / max(batch.initial_count, 1) * 100
 
+            # Real weight from WeightRecord — fallback to 1.8 kg
             avg_weight_kg = 1.8
+            try:
+                wr = WeightRecord.objects.filter(
+                    batch=batch,
+                ).order_by('-sample_date').first()
+                if wr and wr.avg_weight_kg:
+                    avg_weight_kg = float(wr.avg_weight_kg)
+            except Exception:
+                pass
+
             total_weight = batch.current_count * avg_weight_kg
             fcr = (round(float(total_feed) / float(total_weight), 2)
                    if total_weight > 0 and total_feed > 0 else None)
@@ -82,6 +94,30 @@ class AIInsightsDeepDiveView(TenantRequiredMixin, View):
                 status='closed',
             ).exclude(pk=batch.pk).order_by('-placement_date')[:5]
 
+            # Phase 2–4: Feed efficiency
+            feed_svc = FeedEfficiencyService(org, batch)
+            fcr_data = feed_svc.compute_current_fcr()
+            weekly_fcr = feed_svc.get_weekly_fcr_trend()
+            feed_recommendations = feed_svc.get_feed_recommendations()
+
+            # Phase 2: Farm history comparison
+            farm_score = memory_service.get_batch_score_vs_farm_history()
+
+            # Phase 4: Harvest timing (broilers only)
+            harvest_timing = None
+            if batch.bird_type == 'broiler':
+                from apps.health.analytics.exit_optimizer import (
+                    HarvestTimingOptimizerV2)
+                optimizer = HarvestTimingOptimizerV2(org, batch)
+                harvest_timing = optimizer.compute_optimal_harvest_window()
+
+            # Phase 3: Proactive alerts for this batch only
+            engine = ProactiveAlertEngine(org)
+            proactive_alerts = [
+                a for a in engine.run_all_checks()
+                if a['batch'].pk == batch.pk
+            ]
+
         context = {
             'batch': batch,
             'fcr': fcr,
@@ -96,5 +132,12 @@ class AIInsightsDeepDiveView(TenantRequiredMixin, View):
             'recent_briefs': recent_briefs,
             'similar_batches': similar_batches,
             'today': today,
+            # Phase 2–4
+            'fcr_data': fcr_data,
+            'weekly_fcr': weekly_fcr,
+            'feed_recommendations': feed_recommendations,
+            'farm_score': farm_score,
+            'harvest_timing': harvest_timing,
+            'proactive_alerts': proactive_alerts,
         }
         return render(request, 'analytics/ai_deep_dive.html', context)

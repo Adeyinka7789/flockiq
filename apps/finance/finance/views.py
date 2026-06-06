@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .services import FinanceService
@@ -17,18 +18,11 @@ from .services import FinanceService
 logger = structlog.get_logger(__name__)
 
 
-def _get_org(request):
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organisation found for this user.")
-    return org
-
-
 class PLSummaryView(LoginRequiredMixin, View):
     """GET /finance/pl/<uuid:batch_pk>/"""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             try:
                 summary = FinanceService(org).get_pl_summary(str(batch_pk))
@@ -46,7 +40,7 @@ class SaleLogView(LoginRequiredMixin, View):
         from django.shortcuts import get_object_or_404
         from .models import SalesRecord
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             batch = get_object_or_404(Batch, pk=batch_pk, org=org)
         return render(request, "finance/_sale_log_form.html", {
@@ -60,7 +54,7 @@ class SaleLogView(LoginRequiredMixin, View):
     def post(self, request, batch_pk):
         from .models import SalesRecord
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         data = request.POST
 
         def _error(msg, status=422):
@@ -123,7 +117,7 @@ class SaleTableView(LoginRequiredMixin, View):
     """GET /finance/sales/<uuid:batch_pk>/table/"""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             from .models import SalesRecord
             sales = SalesRecord.objects.filter(
@@ -136,7 +130,7 @@ class BreakEvenView(LoginRequiredMixin, View):
     """GET /finance/breakeven/<uuid:batch_pk>/"""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             try:
                 data = FinanceService(org).calculate_break_even(str(batch_pk))
@@ -149,7 +143,7 @@ class ROICalculatorView(LoginRequiredMixin, View):
     """GET /finance/roi/<uuid:batch_pk>/"""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             try:
                 data = FinanceService(org).get_roi_calculator_data(str(batch_pk))
@@ -164,7 +158,7 @@ class FinanceSummaryAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         batch_id = request.query_params.get("batch_id")
         if not batch_id:
             return Response({"error": "batch_id is required"}, status=400)
@@ -182,7 +176,7 @@ class SalesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         batch_id = request.query_params.get("batch_id")
         with set_tenant_context(org):
             from .models import SalesRecord
@@ -205,7 +199,7 @@ class SalesAPIView(APIView):
         return Response({"data": data})
 
     def post(self, request):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         d = request.data
         try:
             unit_price_kobo = int(float(d.get("unit_price_naira", 0)) * 100)
@@ -232,7 +226,7 @@ class BreakEvenAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             try:
                 data = FinanceService(org).calculate_break_even(str(batch_pk))

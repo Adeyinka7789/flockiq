@@ -2,7 +2,8 @@
   {% if error %}<p class="text-red-600 mb-2">{{ error }}</p>{% endif %}
   <form hx-post="{% url 'health:symptom_log' batch_pk %}"
         hx-target="#symptom-result"
-        hx-swap="outerHTML">
+        hx-swap="outerHTML"
+      hx-indicator="#htmx-spinner">
     {% csrf_token %}
     <div class="mb-3">
       <label class="block text-sm font-medium">Affected Birds</label>
@@ -33,7 +34,8 @@
       <textarea name="treatment_notes" rows="2"
                 class="w-full border rounded px-2 py-1 text-sm"></textarea>
     </div>
-    <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm">
+    <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 text-sm"
+        hx-disabled-elt="this">
       Log Symptoms
     </button>
   </form>

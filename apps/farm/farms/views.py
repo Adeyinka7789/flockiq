@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .forms import FarmCreateForm, HouseCreateForm
@@ -25,12 +26,6 @@ from .services import FarmService
 logger = structlog.get_logger(__name__)
 
 
-def _get_org(request):
-    """Returns the org from the authenticated user. Raises Http404 if none."""
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organization found for this user.")
-    return org
 
 
 # ── HTMX views ────────────────────────────────────────────────────────────────
@@ -47,7 +42,7 @@ class FarmListView(TenantRequiredMixin, View):
 
         from apps.farm.flocks.models import MortalityLog
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         is_htmx = request.headers.get("HX-Request") == "true"
 
         with set_tenant_context(org):
@@ -135,7 +130,7 @@ class FarmCreateView(LoginRequiredMixin, View):
 
     def post(self, request):
         form = FarmCreateForm(request.POST)
-        org = _get_org(request)
+        org = get_org_or_404(request)
         is_htmx = request.headers.get("HX-Request") == "true"
 
         from apps.infrastructure.billing.features import get_plan_features
@@ -205,7 +200,7 @@ class FarmDetailView(TenantRequiredMixin, View):
         from apps.infrastructure.notifications.models import NotificationLog
         from apps.production.production.models import EggProductionLog
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         with set_tenant_context(org):
             try:
@@ -315,7 +310,7 @@ class HouseCreateView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         form = HouseCreateForm(request.POST)
-        org = _get_org(request)
+        org = get_org_or_404(request)
         is_htmx = request.headers.get("HX-Request") == "true"
 
         if form.is_valid():
@@ -360,7 +355,7 @@ class FarmSummaryCardView(LoginRequiredMixin, View):
     """GET /farms/<uuid>/summary-card/  → HTMX fragment for dashboard lazy loading."""
 
     def get(self, request, pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             try:
                 summary = FarmService(org).get_farm_summary(str(pk))

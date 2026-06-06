@@ -6,18 +6,12 @@ from django.http import Http404
 from django.shortcuts import render
 from django.views import View
 
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .services import WasteService
 
 logger = structlog.get_logger(__name__)
-
-
-def _get_org(request):
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organisation found for this user.")
-    return org
 
 
 class WasteLogView(LoginRequiredMixin, View):
@@ -27,7 +21,7 @@ class WasteLogView(LoginRequiredMixin, View):
         from .forms import WasteLogForm
 
         form = WasteLogForm(request.POST)
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         if form.is_valid():
             cd = form.cleaned_data
@@ -77,7 +71,7 @@ class WasteTableView(LoginRequiredMixin, View):
     def get(self, request, farm_pk):
         from .models import WasteLog
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         page = int(request.GET.get("page", 1))
 
         with set_tenant_context(org):

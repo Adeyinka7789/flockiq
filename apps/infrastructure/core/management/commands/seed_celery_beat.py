@@ -125,6 +125,12 @@ class Command(BaseCommand):
                 'schedule': at630am,
                 'schedule_type': 'crontab',
             },
+            {
+                'name': 'Run proactive alerts all orgs',
+                'task': 'apps.health.analytics.tasks.run_proactive_alerts_all_orgs',
+                'schedule': every6h,
+                'schedule_type': 'crontab',
+            },
         ]
 
         created = 0

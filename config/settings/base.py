@@ -1,6 +1,7 @@
 from pathlib import Path
 from decouple import config, Csv
 import dj_database_url
+from django.utils.translation import gettext_lazy as _
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -72,13 +73,14 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "apps.infrastructure.core.middleware.ImpersonationMiddleware",
     "apps.infrastructure.core.middleware.HtmxSessionExpiredMiddleware",
-    "apps.infrastructure.core.middleware.TenantMiddleware",  # Phase 1C — RLS live
+    "apps.infrastructure.core.middleware.TenantMiddleware",
     "apps.infrastructure.tenants.middleware.TrialEnforcementMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -128,6 +130,10 @@ CACHES = {
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
 
+thirty_minutes = 1800
+SESSION_COOKIE_AGE = thirty_minutes   #time before cookie expires
+SESSION_SAVE_EVERY_REQUEST = True  # Resets the 30-minute timer on every mouse click/HTMX hit
+
 # --- Auth ---
 AUTH_USER_MODEL = "accounts.CustomUser"
 LOGIN_URL = "/login/"
@@ -150,6 +156,16 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Africa/Lagos"
 USE_I18N = True
 USE_TZ = True
+
+LANGUAGES = [
+    ("en", _("English")),
+    ("fr", _("French")),
+    ("es", _("Spanish")),
+]
+
+LOCALE_PATHS = [
+    BASE_DIR / "locale",
+]
 
 # --- Static files ---
 STATIC_URL = "/static/"

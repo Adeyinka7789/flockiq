@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.farm.flocks.models import Batch
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 from apps.infrastructure.core.views import TenantRequiredMixin
 
@@ -30,11 +31,6 @@ from .services import (
 logger = structlog.get_logger(__name__)
 
 
-def _get_org(request):
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organisation found for this user.")
-    return org
 
 
 def _get_batch(org, batch_pk):
@@ -59,7 +55,7 @@ class ForecastChartView(LoginRequiredMixin, View):
         if not waffle.switch_is_active("ai_egg_forecast"):
             return _coming_soon(request)
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         batch = _get_batch(org, batch_pk)
 
         with set_tenant_context(org):
@@ -75,7 +71,7 @@ class AnomalyFeedView(LoginRequiredMixin, View):
         if not waffle.switch_is_active("ai_anomaly_detection"):
             return _coming_soon(request)
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         batch = _get_batch(org, batch_pk)
 
         with set_tenant_context(org):
@@ -92,7 +88,7 @@ class AnomalyResolveView(LoginRequiredMixin, View):
     """POST /analytics/anomalies/<uuid:pk>/resolve/ — Mark anomaly resolved."""
 
     def post(self, request, pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         with set_tenant_context(org):
             record = AnomalyDetectionService(org).resolve_anomaly(
@@ -116,7 +112,7 @@ class TheftReportView(LoginRequiredMixin, View):
         if not waffle.switch_is_active("ai_theft_detection"):
             return _coming_soon(request)
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         batch = _get_batch(org, batch_pk)
 
         with set_tenant_context(org):
@@ -132,7 +128,7 @@ class SaleTimingView(LoginRequiredMixin, View):
         if not waffle.switch_is_active("ai_sale_timing"):
             return _coming_soon(request)
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         batch = _get_batch(org, batch_pk)
 
         with set_tenant_context(org):
@@ -152,7 +148,7 @@ class DiagnosisView(LoginRequiredMixin, View):
         from django.db.models import Avg
         from datetime import date, timedelta
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         symptoms = request.POST.getlist("symptoms")
         batch_id = request.POST.get("batch_id")
 
@@ -249,7 +245,7 @@ class AlertListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             anomalies = AnomalyDetectionService(org).get_active_anomalies()
             serializer = AnomalyRecordSerializer(anomalies, many=True)
@@ -262,7 +258,7 @@ class AlertAcknowledgeAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             record = AnomalyDetectionService(org).resolve_anomaly(
                 anomaly_id=pk, note=request.data.get("note", "")
@@ -277,7 +273,7 @@ class ForecastAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         batch = _get_batch(org, batch_pk)
         with set_tenant_context(org):
             data = ProphetForecastService(org).forecast_egg_production(batch)
@@ -290,7 +286,7 @@ class TheftAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         batch = _get_batch(org, batch_pk)
         with set_tenant_context(org):
             data = TheftDetectionService(org).reconcile_batch(batch)
@@ -303,7 +299,7 @@ class SaleTimingAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         batch = _get_batch(org, batch_pk)
         with set_tenant_context(org):
             data = SaleTimingService(org).get_recommendation(batch)

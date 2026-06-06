@@ -207,6 +207,74 @@ class FarmMemoryService:
         patterns.sort(key=lambda x: severity_order.get(x['severity'], 99))
         return patterns
 
+    def get_batch_score_vs_farm_history(self) -> dict:
+        from apps.farm.flocks.models import Batch, MortalityLog
+        from apps.infrastructure.core.rls import set_tenant_context
+        from django.db.models import Sum
+
+        if not self.batch:
+            return {}
+
+        with set_tenant_context(self.org):
+            historical = Batch.objects.filter(
+                bird_type=self.batch.bird_type,
+                status='closed',
+            ).exclude(pk=self.batch.pk)
+
+            if not historical.exists():
+                return {
+                    'has_history': False,
+                    'message': (
+                        'Complete your first batch to unlock '
+                        'farm-specific performance scoring.'),
+                }
+
+            hist_mort_rates = []
+            for hb in historical[:10]:
+                total_mort = MortalityLog.objects.filter(
+                    batch=hb,
+                ).aggregate(t=Sum('count'))['t'] or 0
+                rate = total_mort / max(hb.initial_count, 1) * 100
+                hist_mort_rates.append(rate)
+
+            avg_hist_mort = (
+                sum(hist_mort_rates) / len(hist_mort_rates)
+                if hist_mort_rates else 0)
+
+            total_curr_mort = MortalityLog.objects.filter(
+                batch=self.batch,
+            ).aggregate(t=Sum('count'))['t'] or 0
+            curr_mort_rate = (
+                total_curr_mort / max(self.batch.initial_count, 1) * 100)
+
+            mort_vs_farm = round(curr_mort_rate - avg_hist_mort, 2)
+
+            if mort_vs_farm < -0.5:
+                verdict = 'better_than_usual'
+                verdict_text = (
+                    f'Mortality {abs(mort_vs_farm):.1f}% LOWER than your farm '
+                    f'average. Best-in-farm performance so far.')
+            elif mort_vs_farm > 1.0:
+                verdict = 'worse_than_usual'
+                verdict_text = (
+                    f'Mortality {mort_vs_farm:.1f}% HIGHER than your farm '
+                    f'average. Investigate housing, feed, or biosecurity.')
+            else:
+                verdict = 'on_track'
+                verdict_text = (
+                    f'Mortality rate is consistent with your farm '
+                    f'average of {avg_hist_mort:.1f}%.')
+
+            return {
+                'has_history': True,
+                'historical_batches': historical.count(),
+                'avg_hist_mort_rate': round(avg_hist_mort, 2),
+                'curr_mort_rate': round(curr_mort_rate, 2),
+                'mort_vs_farm': mort_vs_farm,
+                'verdict': verdict,
+                'verdict_text': verdict_text,
+            }
+
     def get_batch_performance_grade(self, fcr=None, mortality_rate=None, hen_day_pct=None) -> dict:
         from apps.health.analytics.breed_benchmarks import compare_batch_to_benchmark
 

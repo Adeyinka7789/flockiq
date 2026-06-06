@@ -145,6 +145,39 @@ def run_theft_detection_all_orgs():
         run_theft_detection_for_org.delay(str(org_id))
 
 
+@shared_task(name='analytics.run_proactive_alerts_all_orgs')
+def run_proactive_alerts_all_orgs():
+    """Beat: every 6 hours. Fan-out proactive alert checks to all active orgs."""
+    from apps.infrastructure.core.rls import no_tenant_context
+
+    with no_tenant_context():
+        from apps.infrastructure.tenants.models import Organization
+        org_ids = list(
+            Organization.objects.filter(
+                is_active=True,
+                subscription_status__in=['active', 'trial'],
+            ).values_list('id', flat=True)
+        )
+
+    total_fired = 0
+    for org_id in org_ids:
+        try:
+            from apps.infrastructure.tenants.models import Organization
+            from apps.infrastructure.core.rls import set_tenant_context
+            from apps.health.analytics.proactive_alerts import ProactiveAlertEngine
+
+            with set_tenant_context(org_id):
+                org = Organization.objects.get(id=org_id)
+
+            engine = ProactiveAlertEngine(org)
+            fired = engine.fire_alerts()
+            total_fired += fired
+        except Exception:
+            continue
+
+    return f'Proactive alerts: {total_fired} fired across {len(org_ids)} orgs'
+
+
 @shared_task(name="analytics.run_theft_detection_for_org")
 def run_theft_detection_for_org(org_id: str):
     """Reconciles all active batches for one org."""

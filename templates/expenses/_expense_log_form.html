@@ -37,7 +37,8 @@
 <form hx-post="{% url 'expenses:log' batch_pk %}"
       hx-target="#modal-body"
       hx-swap="innerHTML"
-      style="padding:0 20px 20px;display:flex;flex-direction:column;gap:10px">
+      style="padding:0 20px 20px;display:flex;flex-direction:column;gap:10px"
+      hx-indicator="#htmx-spinner">
   {% csrf_token %}
   <input type="hidden" name="batch_id" value="{{ batch_pk }}">
 
@@ -141,7 +142,8 @@
             style="flex:2;padding:11px;background:#3d5a99;color:white;border:none;
                    border-radius:10px;font-size:13px;font-weight:700;cursor:pointer"
             onmouseover="this.style.background='#2d4578'"
-            onmouseout="this.style.background='#3d5a99'">
+            onmouseout="this.style.background='#3d5a99'"
+        hx-disabled-elt="this">
       Record Expense
     </button>
   </div>

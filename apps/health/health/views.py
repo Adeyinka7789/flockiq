@@ -12,18 +12,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .services import HealthService
 
 logger = structlog.get_logger(__name__)
-
-
-def _get_org(request):
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organisation found for this user.")
-    return org
 
 
 class VaccinationCalendarView(TenantRequiredMixin, View):
@@ -34,7 +28,7 @@ class VaccinationCalendarView(TenantRequiredMixin, View):
         from .models import VaccinationSchedule
 
         today = date.today()
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         status_filter = request.GET.get("status", "upcoming")
         farm_id = request.GET.get("farm")
@@ -127,7 +121,7 @@ class VaccinationCalendarPDFExportView(TenantRequiredMixin, View):
         if not flag_is_active(request, 'pdf_export'):
             return HttpResponse('PDF export requires an upgraded plan.', status=403)
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         today = date.today()
         with set_tenant_context(org):
             from .models import VaccinationSchedule
@@ -161,7 +155,7 @@ class VaccinationCalendarExcelExportView(TenantRequiredMixin, View):
         if not flag_is_active(request, 'excel_export'):
             return HttpResponse('Excel export requires an upgraded plan.', status=403)
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         today = date.today()
         with set_tenant_context(org):
             from .models import VaccinationSchedule
@@ -194,7 +188,7 @@ class VaccinationCompleteView(LoginRequiredMixin, View):
     """POST /health/vaccinations/<uuid>/complete/ — Marks vaccination administered."""
 
     def post(self, request, pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         with set_tenant_context(org):
             try:
@@ -236,7 +230,7 @@ class MedicationLogView(LoginRequiredMixin, View):
         import datetime
         from decimal import Decimal
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         data = request.POST
 
         required = ["drug_name", "drug_type", "start_date", "duration_days",
@@ -287,7 +281,7 @@ class MedicationListView(LoginRequiredMixin, View):
     """GET /health/medications/<uuid:batch_pk>/list/ → HTMX medication list fragment."""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             meds = HealthService(org).get_health_summary(str(batch_pk))["active_medications"]
         return render(
@@ -321,7 +315,7 @@ class SymptomLogView(LoginRequiredMixin, View):
         })
 
     def post(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         data = request.POST
 
         symptoms = data.getlist("symptoms")
@@ -365,7 +359,7 @@ class HealthSummaryView(LoginRequiredMixin, View):
     """GET /health/summary/<uuid:batch_pk>/ — HTMX fragment for batch health tab."""
 
     def get(self, request, batch_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         with set_tenant_context(org):
             summary = HealthService(org).get_health_summary(str(batch_pk))
@@ -385,7 +379,7 @@ class OutbreakAlertView(TenantRequiredMixin, View):
 
         from .models import OutbreakAlert
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         this_month = date.today().replace(day=1)
 
         with set_tenant_context(org):
@@ -413,7 +407,7 @@ class OutbreakReportView(TenantRequiredMixin, View):
     def get(self, request):
         from apps.farm.farms.models import Farm
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             farms = list(Farm.objects.filter(org=org, is_active=True))
         return render(
@@ -429,7 +423,7 @@ class OutbreakReportView(TenantRequiredMixin, View):
 
         from .models import OutbreakAlert
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         farm_id = request.POST.get("farm", "").strip()
         disease_name = request.POST.get("disease_name", "").strip()
         description = request.POST.get("description", "").strip()
@@ -508,7 +502,7 @@ class OutbreakResolveView(TenantRequiredMixin, View):
 
         from .models import OutbreakAlert
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             alert = get_object_or_404(OutbreakAlert, pk=pk, org=org)
             alert.is_active = False
@@ -531,7 +525,7 @@ class AddVaccinationView(TenantRequiredMixin, View):
     def get(self, request):
         from apps.farm.flocks.models import Batch
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             batches = list(Batch.objects.filter(status="active").select_related("farm"))
         return render(request, "health/_add_vaccination_form.html", {"batches": batches})
@@ -543,7 +537,7 @@ class AddVaccinationView(TenantRequiredMixin, View):
 
         from .models import VaccinationSchedule
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         batch_id = request.POST.get("batch_id")
         vaccine_name = request.POST.get("vaccine_name", "").strip()
         due_date_str = request.POST.get("due_date")
@@ -861,7 +855,7 @@ class HealthDashboardView(TenantRequiredMixin, View):
             VaccinationSchedule,
         )
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         today = date.today()
         last_30 = today - timedelta(days=30)
 

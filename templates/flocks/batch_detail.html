@@ -1054,7 +1054,8 @@
       <form hx-post="{% url 'analytics:diagnose' %}"
             hx-target="#ai-diagnosis-result"
             hx-swap="innerHTML"
-            style="display:flex;flex-direction:column;gap:10px">
+            style="display:flex;flex-direction:column;gap:10px"
+      hx-indicator="#htmx-spinner">
         {% csrf_token %}
         <input type="hidden" name="batch_id" value="{{ batch.pk }}">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -1078,7 +1079,8 @@
         <button type="submit"
                 style="padding:11px;background:#3d5a99;color:white;
                        border:none;border-radius:10px;font-size:13px;
-                       font-weight:700;cursor:pointer;margin-top:4px">
+                       font-weight:700;cursor:pointer;margin-top:4px"
+        hx-disabled-elt="this">
           Analyze Symptoms →
         </button>
       </form>

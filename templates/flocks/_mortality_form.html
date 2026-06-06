@@ -3,6 +3,7 @@
       hx-post="{% url 'flocks:mortality' batch_pk %}"
       hx-target="#mortality-table"
       hx-swap="innerHTML"
+      hx-indicator="#htmx-spinner"
       class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
   {% csrf_token %}
   {% if form.non_field_errors %}
@@ -28,15 +29,9 @@
     <label class="block text-xs font-medium text-gray-500 mb-1">Notes</label>
     {{ form.notes }}
   </div>
-  <button hx-post="{% url 'flocks:mortality_log' batch.pk %}"
-        hx-indicator="#loading-spinner"
-        hx-disabled-elt="this"
+  <button hx-disabled-elt="this"
         class="btn btn-primary"
         type="submit">
-    <span hx-indicator="this" class="hidden">
-      <svg class="inline animate-spin h-4 w-4 mr-2" ...></svg>
-      Processing...
-    </span>
-    <span hx-indicator="none">Record Mortality</span>
+    Record Mortality
   </button>
 </form>

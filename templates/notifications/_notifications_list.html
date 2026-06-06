@@ -6,11 +6,13 @@
   {% if unread %}
   <form hx-post="{% url 'notifications:mark_all_read_page' %}"
         hx-target="#notifications-list"
-        hx-swap="innerHTML">
+        hx-swap="innerHTML"
+      hx-indicator="#htmx-spinner">
     {% csrf_token %}
     <button type="submit"
             style="padding:8px 16px;background:#3d5a99;color:white;border:none;
-                   border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">
+                   border-radius:8px;font-size:13px;font-weight:600;cursor:pointer"
+        hx-disabled-elt="this">
       Mark all read
     </button>
   </form>

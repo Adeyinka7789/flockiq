@@ -30,7 +30,8 @@
 
   <form hx-post="{% url 'health:symptom_log' batch_pk %}"
         hx-target="#modal-body"
-        hx-swap="innerHTML">
+        hx-swap="innerHTML"
+      hx-indicator="#htmx-spinner">
     {% csrf_token %}
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;
@@ -130,7 +131,8 @@
                      font-size:13px;font-weight:700;cursor:pointer;
                      transition:background 0.15s"
               onmouseover="this.style.background='#b45309'"
-              onmouseout="this.style.background='#d97706'">
+              onmouseout="this.style.background='#d97706'"
+        hx-disabled-elt="this">
         Log Observation
       </button>
     </div>

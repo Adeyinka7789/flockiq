@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .exceptions import (
@@ -33,11 +34,6 @@ from .services import BatchService
 logger = structlog.get_logger(__name__)
 
 
-def _get_org(request):
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organisation found for this user.")
-    return org
 
 
 # ── HTMX views ─────────────────────────────────────────────────────────────────
@@ -50,7 +46,7 @@ class BatchListView(TenantRequiredMixin, View):
         from django.core.paginator import Paginator
         from django.db.models import Q, Sum
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         today = date.today()
 
         farm_id = request.GET.get("farm", "")
@@ -143,7 +139,7 @@ class BatchCreateView(LoginRequiredMixin, View):
     """POST /farms/<uuid>/batches/create/ → Creates batch; returns toast + detail redirect."""
 
     def get(self, request, farm_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         preselected_house = None
         initial = {"farm_id": farm_pk}
         house_id = request.GET.get("house")
@@ -163,7 +159,7 @@ class BatchCreateView(LoginRequiredMixin, View):
 
     def post(self, request, farm_pk):
         form = BatchCreateForm(request.POST)
-        org = _get_org(request)
+        org = get_org_or_404(request)
         is_htmx = request.headers.get("HX-Request") == "true"
 
         from apps.infrastructure.billing.features import get_plan_features
@@ -255,7 +251,7 @@ class BatchDetailView(TenantRequiredMixin, View):
     """GET /batches/<uuid>/ → Full batch detail page with Alpine.js tabs."""
 
     def get(self, request, pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         weight_data_json = "[]"
 
         with set_tenant_context(org):
@@ -412,7 +408,7 @@ class ExitOptimizerPartialView(TenantRequiredMixin, View):
     def get(self, request, pk):
         from apps.health.analytics.exit_optimizer import BroilerExitOptimizer
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             batch = get_object_or_404(Batch, id=pk)
         price = int(request.GET.get("price_per_kg", 1850))
@@ -430,7 +426,7 @@ class MortalityRecentView(LoginRequiredMixin, View):
     def get(self, request, pk):
         from datetime import datetime as dt
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         date_from_str = request.GET.get("date_from", "")
         date_to_str = request.GET.get("date_to", "")
         cause = request.GET.get("cause", "")
@@ -479,7 +475,7 @@ class MortalityLogView(LoginRequiredMixin, View):
 
     def get(self, request, pk):
         from datetime import date
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             batch = get_object_or_404(Batch, id=pk)
         form = MortalityLogForm()
@@ -489,7 +485,7 @@ class MortalityLogView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         form = MortalityLogForm(request.POST)
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         if form.is_valid():
             cd = form.cleaned_data
@@ -543,7 +539,7 @@ class WeightRecordView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         form = WeightRecordForm(request.POST)
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         if form.is_valid():
             cd = form.cleaned_data
@@ -592,7 +588,7 @@ class BatchCloseView(LoginRequiredMixin, View):
     """POST /batches/<uuid>/close/ → Closes batch, shows reconciliation result."""
 
     def get(self, request, pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             try:
                 batch = Batch.objects.get(id=pk)
@@ -603,7 +599,7 @@ class BatchCloseView(LoginRequiredMixin, View):
 
     def post(self, request, pk):
         form = BatchCloseForm(request.POST)
-        org = _get_org(request)
+        org = get_org_or_404(request)
         is_htmx = request.headers.get("HX-Request") == "true"
 
         if form.is_valid():
@@ -653,7 +649,7 @@ class BatchMetricsCardView(LoginRequiredMixin, View):
     """GET /batches/<uuid>/metrics/ → HTMX fragment for skeleton loader pattern."""
 
     def get(self, request, pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             try:
                 data = BatchService(org).get_batch_dashboard_data(str(pk))
@@ -680,7 +676,7 @@ class BatchPDFExportView(LoginRequiredMixin, View):
             })
             return response
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             batch = get_object_or_404(Batch.objects.select_related('farm', 'house'), id=pk)
 
@@ -709,7 +705,7 @@ class BatchExcelExportView(LoginRequiredMixin, View):
             })
             return response
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         with set_tenant_context(org):
             batch = get_object_or_404(Batch.objects.select_related('farm', 'house'), id=pk)
 

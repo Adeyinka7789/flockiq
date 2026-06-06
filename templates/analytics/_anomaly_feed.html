@@ -17,9 +17,11 @@
     <form method="post" action="{% url 'analytics:resolve' pk=anomaly.id %}"
           hx-post="{% url 'analytics:resolve' pk=anomaly.id %}"
           hx-target="closest ul"
-          hx-swap="outerHTML">
+          hx-swap="outerHTML"
+      hx-indicator="#htmx-spinner">
       {% csrf_token %}
-      <button type="submit" class="text-xs text-indigo-600 hover:text-indigo-800">Resolve</button>
+      <button type="submit" class="text-xs text-indigo-600 hover:text-indigo-800"
+        hx-disabled-elt="this">Resolve</button>
     </form>
   </li>
   {% endfor %}

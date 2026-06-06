@@ -6,7 +6,8 @@
   </div>
   <form hx-post="{% url 'market:record_price' %}"
         hx-target="#modal-body"
-        class="space-y-4">
+        class="space-y-4"
+      hx-indicator="#htmx-spinner">
     {% csrf_token %}
     <div>
       <label class="block text-xs font-medium text-gray-500 mb-1">Product</label>
@@ -50,7 +51,8 @@
     {% endif %}
     <button type="submit"
             class="w-full py-2.5 rounded-xl text-white text-sm font-semibold mt-2"
-            style="background:#3d5a99">
+            style="background:#3d5a99"
+        hx-disabled-elt="this">
       Save Price
     </button>
   </form>

@@ -3,7 +3,8 @@
       hx-post="{% url 'flocks:weight' batch_pk %}"
       hx-target="#weight-table"
       hx-swap="innerHTML"
-      class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+      class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4"
+      hx-indicator="#htmx-spinner">
   {% csrf_token %}
   {% if form.non_field_errors %}
   <div class="mb-3 p-3 bg-red-50 text-red-700 text-sm rounded-lg">
@@ -28,5 +29,6 @@
       {{ form.notes }}
     </div>
   </div>
-  <button type="submit" class="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg">Save Weight</button>
+  <button type="submit" class="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg"
+        hx-disabled-elt="this">Save Weight</button>
 </form>

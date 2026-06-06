@@ -371,7 +371,8 @@
                      font-size:12px;font-weight:700;
                      cursor:pointer;transition:all 0.15s"
               onmouseover="this.style.background='rgba(0,0,0,0.35)'"
-              onmouseout="this.style.background='rgba(0,0,0,0.2)'">
+              onmouseout="this.style.background='rgba(0,0,0,0.2)'"
+        hx-disabled-elt="this">
         🔓 Release Session → Return to Admin
       </button>
     </form>
@@ -961,6 +962,22 @@
     [{% for msg in messages %}{"message":"{{ msg|escapejs }}","type":"{% if msg.level >= 40 %}error{% elif msg.level >= 30 %}warning{% else %}success{% endif %}"}{% if not forloop.last %},{% endif %}{% endfor %}]
   </script>
   {% endif %}
+
+  <!-- Global HTMX loading spinner -->
+  <div id="htmx-spinner"
+       class="htmx-indicator fixed inset-0 z-[9998] flex items-center justify-center
+              pointer-events-none">
+    <div class="bg-white/90 rounded-2xl shadow-xl px-6 py-4 flex items-center gap-3
+                border border-earth-100 pointer-events-auto">
+      <svg class="animate-spin h-5 w-5 text-navy" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10"
+                stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+      </svg>
+      <span class="text-sm font-medium text-earth-700">Saving…</span>
+    </div>
+  </div>
 
   <!-- Service Worker -->
   <script>

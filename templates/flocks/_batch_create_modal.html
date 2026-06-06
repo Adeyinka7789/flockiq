@@ -23,7 +23,8 @@
           action="{% url 'flocks:create' farm_pk %}"
           hx-post="{% url 'flocks:create' farm_pk %}"
           hx-target="#modal-container"
-          hx-swap="innerHTML">
+          hx-swap="innerHTML"
+      hx-indicator="#htmx-spinner">
       {% csrf_token %}
       {% if form.non_field_errors %}
       <div class="mb-3 p-3 bg-red-50 text-red-700 text-sm rounded-lg">
@@ -73,7 +74,8 @@
       <div class="mt-5 flex gap-3">
         <button type="submit"
                 class="flex-1 py-2.5 text-white font-semibold text-sm rounded-xl"
-                style="background:#3d5a99">
+                style="background:#3d5a99"
+        hx-disabled-elt="this">
           Place Batch
         </button>
         <button type="button"

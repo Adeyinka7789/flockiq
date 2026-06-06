@@ -5,6 +5,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views import View
 
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .models import WeatherAlert
@@ -13,18 +14,11 @@ from .services import WeatherService
 logger = structlog.get_logger(__name__)
 
 
-def _get_org(request):
-    org = getattr(request.user, "org", None)
-    if org is None:
-        raise Http404("No organisation found for this user.")
-    return org
-
-
 class WeatherStripView(LoginRequiredMixin, View):
     """GET /weather/farm/<uuid>/strip/ → 4-day forecast strip fragment for farm cards."""
 
     def get(self, request, farm_pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         with set_tenant_context(org):
             from apps.farm.farms.models import Farm
@@ -48,7 +42,7 @@ class WeatherAlertsPageView(LoginRequiredMixin, View):
         from apps.farm.farms.models import Farm
         from apps.finance.market.seasonal_advisor import SeasonalAdvisor
 
-        org = _get_org(request)
+        org = get_org_or_404(request)
         weather_data = []
         alerts = []
 
@@ -117,7 +111,7 @@ class WeatherAlertAcknowledgeView(LoginRequiredMixin, View):
     """POST /weather/alerts/<uuid>/acknowledge/ → Dismiss alert from UI."""
 
     def post(self, request, pk):
-        org = _get_org(request)
+        org = get_org_or_404(request)
 
         with set_tenant_context(org):
             try:
