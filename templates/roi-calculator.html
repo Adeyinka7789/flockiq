@@ -1,89 +1,66 @@
+{% extends "landing_base.html" %}
 {% load static %}
 {% load humanize %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlockIQ — ROI Calculator | See Your Savings</title>
-  <meta name="description" content="Calculate how much FlockIQ can save your poultry farm. Reduce mortality, optimize feed, and prevent losses with AI.">
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#1e3a8a',
-            'primary-mid': '#2d5be3',
-            secondary: '#16a34a',
-            'active-intel': '#8bc87a',
-          },
-          fontFamily: {
-            'headline': ['Manrope', 'sans-serif'],
-            'body': ['Inter', 'sans-serif'],
-          },
-          borderRadius: {
-            'xl': '1.5rem',
-          }
+
+{% block title %}FlockIQ — ROI Calculator | See Your Savings{% endblock %}
+{% block description %}Calculate how much FlockIQ can save your poultry farm. Reduce mortality, optimize feed, and prevent losses with AI.{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: '#1e3a8a',
+          'primary-mid': '#2d5be3',
+          secondary: '#16a34a',
+          'active-intel': '#8bc87a',
+        },
+        fontFamily: {
+          'headline': ['Manrope', 'sans-serif'],
+          'body': ['Inter', 'sans-serif'],
+        },
+        borderRadius: {
+          'xl': '1.5rem',
         }
       }
     }
-  </script>
-  <style>
-    input[type="range"] {
-      -webkit-appearance: none;
-      background: #e2e8f0;
-      height: 6px;
-      border-radius: 10px;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 18px;
-      height: 18px;
-      background: #1e3a8a;
-      border-radius: 50%;
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
-    input[type="range"]::-webkit-slider-thumb:hover {
-      background: #2d5be3;
-      transform: scale(1.2);
-    }
-    .reveal-up {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-    }
-    .reveal-up.active {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  </style>
-</head>
-<body class="bg-[#f7f9ff] font-body">
+  }
+</script>
+<style>
+  input[type="range"] {
+    -webkit-appearance: none;
+    background: #e2e8f0;
+    height: 6px;
+    border-radius: 10px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #1e3a8a;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    background: #2d5be3;
+    transform: scale(1.2);
+  }
+  .reveal-up {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .reveal-up.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+{% endblock %}
 
-<!-- NAV -->
-<nav class="bg-white/80 backdrop-blur-xl border-b border-[#e2e8f0]/20 sticky top-0 z-50">
-  <div class="flex justify-between items-center px-6 md:px-12 py-4 max-w-7xl mx-auto">
-    <a href="/" class="flex items-center gap-3">
-      <div class="w-9 h-9 bg-primary rounded-lg flex items-center justify-center">
-        <span class="text-white font-bold text-sm">FQ</span>
-      </div>
-      <span class="text-xl font-headline font-extrabold text-primary tracking-tight">FlockIQ</span>
-    </a>
-    <div class="hidden md:flex items-center gap-8">
-      <a href="/#features" class="text-sm text-[#475569] hover:text-primary font-medium">Features</a>
-      <a href="/#pricing" class="text-sm text-[#475569] hover:text-primary font-medium">Pricing</a>
-      <a href="/about/" class="text-sm text-[#475569] hover:text-primary font-medium">About</a>
-    </div>
-    <div class="flex items-center gap-3">
-      <a href="/login/" class="text-sm font-semibold text-[#475569] hover:text-primary">Sign in</a>
-      <a href="/signup/" class="bg-primary text-white px-5 py-2 rounded-full text-sm font-bold hover:bg-[#1e40af] transition-all">Get Started</a>
-    </div>
-  </div>
-</nav>
-
+{% block content %}
 <main class="max-w-6xl mx-auto px-6 py-12 md:py-20">
   <!-- Header -->
   <div class="text-center mb-12 reveal-up">
@@ -96,7 +73,7 @@
     <!-- Left: Inputs -->
     <div class="bg-white rounded-xl p-6 md:p-8 shadow-lg reveal-up" style="transition-delay: 0.1s">
       <h2 class="font-headline text-xl font-bold text-primary mb-6">Your Farm Profile</h2>
-      
+
       <div class="space-y-6">
         <!-- Farm Size -->
         <div>
@@ -173,7 +150,7 @@
     <!-- Right: Results -->
     <div class="bg-gradient-to-br from-primary to-primary-mid rounded-xl p-6 md:p-8 text-white shadow-xl reveal-up" style="transition-delay: 0.2s">
       <h2 class="font-headline text-xl font-bold mb-6 opacity-90">Your Projected Annual Savings</h2>
-      
+
       <div class="space-y-6">
         <!-- Mortality Savings -->
         <div class="bg-white/10 rounded-xl p-4">
@@ -241,21 +218,15 @@
     </a>
   </div>
 </main>
+{% endblock %}
 
-<!-- FOOTER -->
-<footer class="bg-[#0f172a] mt-20 py-12 px-6">
-  <div class="max-w-7xl mx-auto text-center text-white/40 text-sm">
-    <p>© 2026 FlockIQ / ADM Tech Hub. All rights reserved. Built in Lagos, Nigeria 🇳🇬</p>
-  </div>
-</footer>
-
+{% block extra_scripts %}
 <script>
   const formatMoney = (value) => {
     return '₦' + Math.round(value).toLocaleString();
   };
 
   const calculateROI = () => {
-    // Get values
     const birds = parseInt(document.getElementById('birdCount').value);
     const mortalityRate = parseFloat(document.getElementById('mortalityRate').value);
     const feedCost = parseFloat(document.getElementById('feedCost').value);
@@ -263,7 +234,6 @@
     const cycles = parseInt(document.getElementById('cycles').value);
     const theftRate = parseFloat(document.getElementById('theftRate').value);
 
-    // Update displays
     document.getElementById('birdCountVal').innerText = birds.toLocaleString();
     document.getElementById('mortalityVal').innerText = mortalityRate.toFixed(1);
     document.getElementById('feedCostVal').innerHTML = '₦' + feedCost.toLocaleString();
@@ -271,69 +241,56 @@
     document.getElementById('cyclesVal').innerText = cycles;
     document.getElementById('theftVal').innerText = theftRate.toFixed(1);
 
-    // Assumptions (FlockIQ improvements)
-    const improvedMortality = Math.max(2, mortalityRate * 0.45); // 55% reduction
+    const improvedMortality = Math.max(2, mortalityRate * 0.45);
     const mortalityReduction = mortalityRate - improvedMortality;
-    const feedImprovement = 0.07; // 7% feed efficiency gain
-    const theftReduction = Math.min(theftRate, theftRate * 0.75); // 75% reduction
+    const feedImprovement = 0.07;
+    const theftReduction = Math.min(theftRate, theftRate * 0.75);
 
-    // Calculate savings per cycle
-    const birdsLost = birds * (mortalityRate / 100);
     const birdsSaved = birds * (mortalityReduction / 100);
     const mortalitySavingsPerCycle = birdsSaved * birdValue;
-    
     const feedSavingsPerCycle = birds * feedCost * feedImprovement;
-    
     const theftSavingsPerCycle = birds * (theftReduction / 100) * birdValue;
 
-    // Annual savings
     const mortalitySavings = mortalitySavingsPerCycle * cycles;
     const feedSavings = feedSavingsPerCycle * cycles;
     const theftSavings = theftSavingsPerCycle * cycles;
     const totalSavings = mortalitySavings + feedSavings + theftSavings;
-    
-    // ROI multiple (based on ₦15k/month = ₦180k/year)
+
     const subscriptionCost = 180000;
     const roiMultiple = totalSavings / subscriptionCost;
 
-    // Update results
     document.getElementById('mortalitySavings').innerHTML = formatMoney(mortalitySavings);
     document.getElementById('feedSavings').innerHTML = formatMoney(feedSavings);
     document.getElementById('theftSavings').innerHTML = formatMoney(theftSavings);
     document.getElementById('totalSavings').innerHTML = formatMoney(totalSavings);
-    
-    // Max possible savings (for bar scaling) - based on 50K birds, 25% mortality
+
     const maxPossible = 50000 * 10000 * 6 * 0.8;
     const savingsPercent = Math.min(100, (totalSavings / maxPossible) * 100);
-    
+
     document.getElementById('mortalityBar').style.width = Math.min(100, (mortalitySavings / totalSavings) * 100) + '%';
     document.getElementById('feedBar').style.width = Math.min(100, (feedSavings / totalSavings) * 100) + '%';
     document.getElementById('theftBar').style.width = Math.min(100, (theftSavings / totalSavings) * 100) + '%';
     document.getElementById('totalBar').style.width = Math.min(100, savingsPercent) + '%';
-    
+
     document.getElementById('roiPercent').innerHTML = roiMultiple.toFixed(1) + 'x';
   };
 
-  // Attach event listeners
   const inputs = ['birdCount', 'mortalityRate', 'feedCost', 'birdValue', 'cycles', 'theftRate'];
   inputs.forEach(id => {
     document.getElementById(id).addEventListener('input', calculateROI);
   });
 
-  // Initial calculation
   calculateROI();
 
-  // Scroll reveal
-  const observer = new IntersectionObserver((entries) => {
+  // Scroll reveal for reveal-up elements (about-us style)
+  const roiObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('active');
-        observer.unobserve(entry.target);
+        roiObserver.unobserve(entry.target);
       }
     });
   }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal-up').forEach(el => observer.observe(el));
+  document.querySelectorAll('.reveal-up').forEach(el => roiObserver.observe(el));
 </script>
-
-</body>
-</html>
+{% endblock %}

@@ -1,620 +1,313 @@
+{% extends "landing_base.html" %}
 {% load static %}
 {% load humanize %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlockIQ — Farm Setup Wizard</title>
-  <meta name="description" content="Set up your poultry farm on FlockIQ in minutes. Configure GPS, register batches, and activate AI intelligence for your flock.">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    :root {
-      /* FlockIQ base colors */
-      --navy: #1e3a8a;
-      --navy-mid: #2d5be3;
-      --navy-light: #eff6ff;
-      --green: #16a34a;
-      --green-light: #dcfce7;
-      --text: #0f172a;
-      --text2: #475569;
-      --text3: #94a3b8;
-      --border: #e2e8f0;
-      --bg: #f8fafc;
-      --white: #ffffff;
-
-      /* Precision Pastoral additions */
-      --surface: #f7f9ff;
-      --surface-container-low: #f1f4fb;
-      --surface-container-lowest: #ffffff;
-      --surface-container-high: #e5e8ef;
-      --on-surface: #181c21;
-      --on-surface-variant: #444650;
-      --outline-variant: #c4c6d2;
-      --secondary: #336a28;
-      --secondary-container: #b1f09e;
-      --on-secondary-container: #376f2c;
-      --primary-container: #3d5a99;
-      --on-primary-container: #c5d4ff;
-    }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--surface);
-      color: var(--on-surface);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* ── NAV (inherited from FlockIQ Landing) ── */
-    .nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(247, 249, 255, 0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(196, 198, 210, 0.2);
-      padding: 0 6%;
-      height: 68px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-    }
-
-    .nav-logo-mark {
-      width: 36px;
-      height: 36px;
-      background: var(--navy);
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 13px;
-      letter-spacing: -0.5px;
-    }
-
-    .nav-logo-text {
-      font-size: 17px;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -0.4px;
-      font-family: 'Manrope', sans-serif;
-    }
-
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      list-style: none;
-    }
-
-    .nav-links a {
-      font-size: 14px;
-      color: var(--text2);
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.15s;
-    }
-
-    .nav-links a:hover {
-      color: var(--navy);
-    }
-
-    .nav-cta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .btn-ghost {
-      padding: 8px 18px;
-      border-radius: 9999px;
-      border: 1.5px solid var(--border);
-      color: var(--text2);
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.15s;
-      background: white;
-    }
-
-    .btn-ghost:hover {
-      border-color: var(--navy);
-      color: var(--navy);
-    }
-
-    .btn-navy {
-      padding: 9px 20px;
-      border-radius: 9999px;
-      background: var(--navy);
-      color: white;
-      font-size: 13px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: all 0.15s;
-    }
-
-    .btn-navy:hover {
-      background: #1e40af;
-      transform: translateY(-1px);
-    }
-
-    /* ── MAIN CONTENT (no sidebar) ── */
-    .setup-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 48px 6% 80px;
-    }
-
-    /* Welcome header */
-    .welcome-header {
-      margin-bottom: 32px;
-    }
-
-    .welcome-badge {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      color: var(--green);
-      margin-bottom: 0.75rem;
-      display: inline-block;
-    }
-
-    .welcome-header h1 {
-      font-family: 'Manrope', sans-serif;
-      font-size: clamp(1.75rem, 4vw, 2.5rem);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: var(--on-surface);
-      margin-bottom: 0.75rem;
-    }
-
-    .welcome-header p {
-      font-size: 1rem;
-      color: var(--text2);
-      max-width: 500px;
-    }
-
-    /* Progress card */
-    .progress-card {
-      background: var(--surface-container-lowest);
-      border-radius: 1rem;
-      padding: 1.25rem;
-      margin-bottom: 2rem;
-      box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
-    }
-
-    .progress-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.75rem;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-
-    .progress-label {
-      font-size: 0.875rem;
-      font-weight: 700;
-      color: var(--navy);
-    }
-
-    .progress-steps {
-      font-size: 0.75rem;
-      color: var(--text3);
-    }
-
-    .progress-bar-bg {
-      height: 8px;
-      background: var(--surface-container-high);
-      border-radius: 9999px;
-      overflow: hidden;
-    }
-
-    .progress-bar-fill {
-      height: 100%;
-      background: var(--navy);
-      border-radius: 9999px;
-      width: 33%;
-      transition: width 0.3s ease;
-    }
-
-    /* Bento grid */
-    .bento-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-    }
-
-    @media (min-width: 768px) {
-      .bento-grid {
-        grid-template-columns: repeat(12, 1fr);
-      }
-    }
-
-    /* Step card styling */
-    .step-card {
-      background: var(--surface-container-low);
-      border-radius: 1rem;
-      padding: 1.5rem;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .step-card.large {
-      grid-column: span 8;
-    }
-
-    .step-card.small {
-      grid-column: span 4;
-    }
-
-    .step-card.full {
-      grid-column: span 12;
-    }
-
-    .step-number {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .step-circle {
-      width: 40px;
-      height: 40px;
-      background: var(--navy);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 700;
-      font-size: 1.125rem;
-    }
-
-    .step-circle.inactive {
-      background: var(--surface-container-high);
-      color: var(--text3);
-    }
-
-    .step-number h2 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--on-surface);
-    }
-
-    /* Option grid inside steps */
-    .options-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1rem;
-      margin-top: 0.5rem;
-    }
-
-    @media (min-width: 640px) {
-      .options-grid {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-
-    .option-card {
-      background: var(--surface-container-lowest);
-      border-radius: 0.75rem;
-      padding: 1rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      border: 1px solid transparent;
-    }
-
-    .option-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0px 8px 20px rgba(35, 66, 128, 0.08);
-    }
-
-    .option-card.selected {
-      border-color: var(--navy);
-      background: var(--navy-light);
-    }
-
-    .option-icon {
-      font-size: 1.75rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .option-card h4 {
-      font-weight: 700;
-      font-size: 0.875rem;
-      margin-bottom: 0.25rem;
-    }
-
-    .option-card p {
-      font-size: 0.75rem;
-      color: var(--text2);
-    }
-
-    /* Status badge */
-    .status-badge {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--green);
-    }
-
-    /* AI toggles */
-    .ai-toggle-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem 0;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    .ai-toggle-item:last-child {
-      border-bottom: none;
-    }
-
-    .toggle-switch {
-      position: relative;
-      display: inline-block;
-      width: 44px;
-      height: 24px;
-    }
-
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .toggle-slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: var(--surface-container-high);
-      transition: 0.3s;
-      border-radius: 9999px;
-    }
-
-    .toggle-slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: 0.3s;
-      border-radius: 50%;
-    }
-
-    input:checked + .toggle-slider {
-      background-color: var(--navy);
-    }
-
-    input:checked + .toggle-slider:before {
-      transform: translateX(20px);
-    }
-
-    /* Resource card */
-    .resource-card {
-      background: var(--navy);
-      border-radius: 1rem;
-      padding: 1.5rem;
-      color: white;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .resource-card h3 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: 1rem;
-    }
-
-    .resource-list {
-      list-style: none;
-    }
-
-    .resource-list li {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-
-    .resource-list li:hover {
-      transform: translateX(4px);
-    }
-
-    .resource-icon {
-      width: 32px;
-      height: 32px;
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 0.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-    }
-
-    /* Launch button */
-    .launch-btn {
-      background: var(--navy);
-      color: white;
-      border: none;
-      padding: 1rem 2rem;
-      border-radius: 9999px;
-      font-weight: 700;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      width: 100%;
-    }
-
-    .launch-btn:hover {
-      background: #1e40af;
-      transform: translateY(-2px);
-    }
-
-    /* Footer */
-    .footer {
-      background: #0f172a;
-      padding: 52px 6% 28px;
-    }
-
-    .footer-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 32px;
-      flex-wrap: wrap;
-      margin-bottom: 44px;
-    }
-
-    .footer-brand {
-      max-width: 200px;
-    }
-
-    .footer-logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .footer-logo-mark {
-      width: 30px;
-      height: 30px;
-      background: var(--navy-mid);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 11px;
-    }
-
-    .footer-logo-name {
-      font-size: 15px;
-      font-weight: 800;
-      color: white;
-      font-family: 'Manrope', sans-serif;
-    }
-
-    .footer-tagline {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.35);
-      line-height: 1.6;
-    }
-
-    .footer-col-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.4);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 14px;
-    }
-
-    .footer-links {
-      list-style: none;
-    }
-
-    .footer-links li {
-      margin-bottom: 10px;
-    }
-
-    .footer-links a {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.5);
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-
-    .footer-links a:hover {
-      color: white;
-    }
-
-    .footer-bottom {
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
-      padding-top: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .footer-copy {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.25);
-    }
-
-    /* Reveal animation */
-    .reveal {
-      opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  </style>
-</head>
-<body>
-
-<!-- NAV (inherited from FlockIQ) -->
-<nav class="nav">
-  <a href="/" class="nav-logo">
-    <div class="nav-logo-mark">FQ</div>
-    <span class="nav-logo-text">FlockIQ</span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="/#features">Features</a></li>
-    <li><a href="/#how">How it works</a></li>
-    <li><a href="/#pricing">Pricing</a></li>
-    <li><a href="/#about">About</a></li>
-  </ul>
-  <div class="nav-cta">
-    <a href="/login/" class="btn-ghost">Sign in</a>
-    <a href="/signup/" class="btn-navy">Get Started →</a>
-  </div>
-</nav>
-
-<!-- MAIN CONTENT -->
+
+{% block title %}FlockIQ — Farm Setup Wizard{% endblock %}
+{% block description %}Set up your poultry farm on FlockIQ in minutes. Configure GPS, register batches, and activate AI intelligence for your flock.{% endblock %}
+
+{% block extra_head %}
+<style>
+  body {
+    background: var(--surface);
+    color: var(--on-surface);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .setup-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 48px 6% 80px;
+  }
+
+  .welcome-header { margin-bottom: 32px; }
+
+  .welcome-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--green);
+    margin-bottom: 0.75rem;
+    display: inline-block;
+  }
+
+  .welcome-header h1 {
+    font-family: 'Manrope', sans-serif;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--on-surface);
+    margin-bottom: 0.75rem;
+  }
+
+  .welcome-header p {
+    font-size: 1rem;
+    color: var(--text2);
+    max-width: 500px;
+  }
+
+  .progress-card {
+    background: var(--surface-container-lowest);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    margin-bottom: 2rem;
+    box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
+  }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .progress-label {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .progress-steps {
+    font-size: 0.75rem;
+    color: var(--text3);
+  }
+
+  .progress-bar-bg {
+    height: 8px;
+    background: var(--surface-container-high);
+    border-radius: 9999px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--navy);
+    border-radius: 9999px;
+    width: 33%;
+    transition: width 0.3s ease;
+  }
+
+  .bento-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .bento-grid { grid-template-columns: repeat(12, 1fr); }
+  }
+
+  .step-card {
+    background: var(--surface-container-low);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .step-card.large { grid-column: span 8; }
+  .step-card.small { grid-column: span 4; }
+  .step-card.full { grid-column: span 12; }
+
+  .step-number {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .step-circle {
+    width: 40px;
+    height: 40px;
+    background: var(--navy);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1.125rem;
+  }
+
+  .step-circle.inactive {
+    background: var(--surface-container-high);
+    color: var(--text3);
+  }
+
+  .step-number h2 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--on-surface);
+  }
+
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  @media (min-width: 640px) {
+    .options-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .option-card {
+    background: var(--surface-container-lowest);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+  }
+
+  .option-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0px 8px 20px rgba(35, 66, 128, 0.08);
+  }
+
+  .option-card.selected {
+    border-color: var(--navy);
+    background: var(--navy-light);
+  }
+
+  .option-icon {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .option-card h4 {
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .option-card p {
+    font-size: 0.75rem;
+    color: var(--text2);
+  }
+
+  .status-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--green);
+  }
+
+  .ai-toggle-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .ai-toggle-item:last-child { border-bottom: none; }
+
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+  }
+
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--surface-container-high);
+    transition: 0.3s;
+    border-radius: 9999px;
+  }
+
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+
+  input:checked + .toggle-slider { background-color: var(--navy); }
+  input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+  .resource-card {
+    background: var(--navy);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .resource-card h3 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+
+  .resource-list { list-style: none; }
+
+  .resource-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .resource-list li:hover { transform: translateX(4px); }
+
+  .resource-icon {
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+  }
+
+  .launch-btn {
+    background: var(--navy);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .launch-btn:hover {
+    background: #1e40af;
+    transform: translateY(-2px);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
 <div class="setup-container">
   <!-- Welcome header -->
   <div class="welcome-header reveal">
@@ -718,7 +411,7 @@
       </div>
     </div>
 
-    <!-- Resources sidebar equivalent (no sidebar, but a card) -->
+    <!-- Resources card -->
     <div class="step-card small reveal">
       <div class="step-number">
         <div class="step-circle" style="background: var(--green);">📚</div>
@@ -750,60 +443,10 @@
     <button class="launch-btn" id="launchBtn" onclick="launchDashboard()">🚀 Launch Dashboard →</button>
   </div>
 </div>
+{% endblock %}
 
-<!-- FOOTER (inherited from FlockIQ) -->
-<footer class="footer">
-  <div class="footer-top">
-    <div class="footer-brand">
-      <div class="footer-logo">
-        <div class="footer-logo-mark">FQ</div>
-        <span class="footer-logo-name">FlockIQ</span>
-      </div>
-      <p class="footer-tagline">Empowering the standard of global food production through high-frequency avian intelligence.</p>
-    </div>
-    <div>
-      <div class="footer-col-title">Platform</div>
-      <ul class="footer-links">
-        <li><a href="/#features">Neural Engine</a></li>
-        <li><a href="/#features">AI Inference</a></li>
-        <li><a href="/#features">Drone Hub</a></li>
-        <li><a href="/#features">Security IQ</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Company</div>
-      <ul class="footer-links">
-        <li><a href="/#about">About ADM Tech Hub</a></li>
-        <li><a href="#">Investor Relations</a></li>
-        <li><a href="#">News & Press</a></li>
-        <li><a href="#">Careers</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Legal</div>
-      <ul class="footer-links">
-        <li><a href="/privacy/">Privacy Policy</a></li>
-        <li><a href="/terms/">Terms of Service</a></li>
-        <li><a href="#">Data Security</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Support</div>
-      <ul class="footer-links">
-        <li><a href="/help/">Help Center</a></li>
-        <li><a href="https://wa.me/2348003562747">WhatsApp Support</a></li>
-        <li><a href="#">System Status</a></li>
-      </ul>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <div class="footer-copy">© 2026 FlockIQ / ADM Tech Hub. All rights reserved.</div>
-    <div class="footer-copy">Built in Lagos, Nigeria 🇳🇬</div>
-  </div>
-</footer>
-
+{% block extra_scripts %}
 <script>
-  // Track completed steps
   let completedSteps = {
     step1: true,
     step2: false,
@@ -826,7 +469,6 @@
       card.classList.remove('selected');
     });
     element.classList.add('selected');
-    // Mark step 1 as complete
     if (!completedSteps.step1) {
       completedSteps.step1 = true;
       updateProgress();
@@ -873,18 +515,5 @@
       alert('Please complete all setup steps before launching your dashboard.');
     }
   }
-
-  // Scroll reveal
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 </script>
-
-</body>
-</html>
+{% endblock %}

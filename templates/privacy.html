@@ -1,659 +1,338 @@
+{% extends "landing_base.html" %}
 {% load static %}
 {% load humanize %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlockIQ — Privacy Policy</title>
-  <meta name="description" content="FlockIQ's privacy policy: Your farm data is protected with multi-tenant isolation, encryption, and strict access controls. Built for Nigerian poultry farmers.">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
 
-    :root {
-      /* FlockIQ base colors */
-      --navy: #1e3a8a;
-      --navy-mid: #2d5be3;
-      --navy-light: #eff6ff;
-      --green: #16a34a;
-      --green-light: #dcfce7;
-      --text: #0f172a;
-      --text2: #475569;
-      --text3: #94a3b8;
-      --border: #e2e8f0;
-      --bg: #f8fafc;
-      --white: #ffffff;
+{% block title %}FlockIQ — Privacy Policy{% endblock %}
+{% block description %}FlockIQ's privacy policy: Your farm data is protected with multi-tenant isolation, encryption, and strict access controls. Built for Nigerian poultry farmers.{% endblock %}
 
-      /* Precision Pastoral additions */
-      --surface: #f7f9ff;
-      --surface-container-low: #f1f4fb;
-      --surface-container-lowest: #ffffff;
-      --surface-container-high: #e5e8ef;
-      --on-surface: #181c21;
-      --on-surface-variant: #444650;
-      --outline-variant: #c4c6d2;
-      --secondary: #336a28;
-      --secondary-container: #b1f09e;
-      --secondary-fixed: #b4f3a0;
-      --primary-fixed: #d9e2ff;
-      --primary-container: #3d5a99;
-      --on-primary-container: #c5d4ff;
-    }
+{% block extra_head %}
+<style>
+  body { background: var(--surface); color: var(--on-surface); }
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--surface);
-      color: var(--on-surface);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+  .privacy-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 6% 80px;
+  }
 
-    /* ── NAV (inherited from FlockIQ Landing) ── */
-    .nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(247, 249, 255, 0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(196, 198, 210, 0.2);
-      padding: 0 6%;
-      height: 68px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+  .privacy-hero { margin-bottom: 48px; }
 
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-    }
+  .privacy-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--green);
+    margin-bottom: 1rem;
+    display: inline-block;
+  }
 
-    .nav-logo-mark {
-      width: 36px;
-      height: 36px;
-      background: var(--navy);
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 13px;
-      letter-spacing: -0.5px;
-    }
+  .privacy-hero h1 {
+    font-family: 'Manrope', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 3.75rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--on-surface);
+    line-height: 1.15;
+    margin-bottom: 1rem;
+  }
 
-    .nav-logo-text {
-      font-size: 17px;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -0.4px;
-      font-family: 'Manrope', sans-serif;
-    }
+  .privacy-hero h1 span { color: var(--navy); }
 
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      list-style: none;
-    }
+  .privacy-hero p {
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: var(--text2);
+    max-width: 650px;
+  }
 
-    .nav-links a {
-      font-size: 14px;
-      color: var(--text2);
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.15s;
-    }
+  .vault-section {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
 
-    .nav-links a:hover {
-      color: var(--navy);
-    }
+  @media (min-width: 768px) {
+    .vault-section { grid-template-columns: 2fr 1fr; }
+  }
 
-    .nav-cta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+  .vault-card {
+    background: var(--navy);
+    border-radius: 1rem;
+    padding: 2rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+  }
 
-    .btn-ghost {
-      padding: 8px 18px;
-      border-radius: 9999px;
-      border: 1.5px solid var(--border);
-      color: var(--text2);
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.15s;
-      background: white;
-    }
+  .vault-card h3 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
 
-    .btn-ghost:hover {
-      border-color: var(--navy);
-      color: var(--navy);
-    }
+  .vault-card p {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    max-width: 80%;
+  }
 
-    .btn-navy {
-      padding: 9px 20px;
-      border-radius: 9999px;
-      background: var(--navy);
-      color: white;
-      font-size: 13px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: all 0.15s;
-    }
+  .vault-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
 
-    .btn-navy:hover {
-      background: #1e40af;
-      transform: translateY(-1px);
-    }
+  .vault-badge {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
 
-    /* ── MAIN CONTENT (no sidebar) ── */
-    .privacy-container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 48px 6% 80px;
-    }
+  .vault-icon {
+    position: absolute;
+    bottom: -30px;
+    right: -30px;
+    font-size: 140px;
+    opacity: 0.1;
+    pointer-events: none;
+  }
 
-    /* Hero header */
-    .privacy-hero {
-      margin-bottom: 48px;
-    }
+  .stat-card {
+    background: var(--surface-container-high);
+    border-radius: 1rem;
+    padding: 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
 
-    .privacy-badge {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      color: var(--green);
-      margin-bottom: 1rem;
-      display: inline-block;
-    }
+  .stat-icon {
+    width: 56px;
+    height: 56px;
+    background: var(--secondary-container);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.75rem;
+  }
 
-    .privacy-hero h1 {
-      font-family: 'Manrope', sans-serif;
-      font-size: clamp(2.5rem, 5vw, 3.75rem);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: var(--on-surface);
-      line-height: 1.15;
-      margin-bottom: 1rem;
-    }
+  .stat-card h4 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
 
-    .privacy-hero h1 span {
-      color: var(--navy);
-    }
+  .stat-card p { font-size: 0.875rem; color: var(--text2); }
 
-    .privacy-hero p {
-      font-size: 1.125rem;
-      line-height: 1.6;
-      color: var(--text2);
-      max-width: 650px;
-    }
+  .policy-section { margin-bottom: 3rem; }
 
-    /* Multi-tenant vault (featured section) */
-    .vault-section {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-      margin-bottom: 3rem;
-    }
+  .section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
 
-    @media (min-width: 768px) {
-      .vault-section {
-        grid-template-columns: 2fr 1fr;
-      }
-    }
-
-    .vault-card {
-      background: var(--navy);
-      border-radius: 1rem;
-      padding: 2rem;
-      color: white;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .vault-card h3 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 1rem;
-    }
-
-    .vault-card p {
-      color: rgba(255, 255, 255, 0.8);
-      line-height: 1.6;
-      margin-bottom: 1.5rem;
-      max-width: 80%;
-    }
-
-    .vault-badges {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-    }
-
-    .vault-badge {
-      background: rgba(255, 255, 255, 0.15);
-      padding: 0.5rem 1rem;
-      border-radius: 9999px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .vault-icon {
-      position: absolute;
-      bottom: -30px;
-      right: -30px;
-      font-size: 140px;
-      opacity: 0.1;
-      pointer-events: none;
-    }
-
-    .stat-card {
-      background: var(--surface-container-high);
-      border-radius: 1rem;
-      padding: 2rem;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .stat-icon {
-      width: 56px;
-      height: 56px;
-      background: var(--secondary-container);
-      border-radius: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 1rem;
-      font-size: 1.75rem;
-    }
-
-    .stat-card h4 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.125rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    .stat-card p {
-      font-size: 0.875rem;
-      color: var(--text2);
-    }
-
-    /* Section styling (numbered) */
-    .policy-section {
-      margin-bottom: 3rem;
-    }
-
+  @media (min-width: 768px) {
+    .policy-section { display: flex; gap: 3rem; }
     .section-header {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
+      flex: 1;
+      position: sticky;
+      top: 100px;
+      align-self: flex-start;
     }
+    .section-content { flex: 2; }
+  }
 
-    @media (min-width: 768px) {
-      .policy-section {
-        display: flex;
-        gap: 3rem;
-      }
-      .section-header {
-        flex: 1;
-        position: sticky;
-        top: 100px;
-        align-self: flex-start;
-      }
-      .section-content {
-        flex: 2;
-      }
-    }
+  .section-number {
+    font-family: 'Manrope', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--navy);
+    letter-spacing: -0.02em;
+  }
 
-    .section-number {
-      font-family: 'Manrope', sans-serif;
-      font-size: 2rem;
-      font-weight: 800;
-      color: var(--navy);
-      letter-spacing: -0.02em;
-    }
+  .section-header h2 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--on-surface);
+  }
 
-    .section-header h2 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--on-surface);
-    }
+  .section-divider {
+    width: 48px;
+    height: 4px;
+    background: var(--green);
+    margin-top: 0.5rem;
+  }
 
-    .section-divider {
-      width: 48px;
-      height: 4px;
-      background: var(--green);
-      margin-top: 0.5rem;
-    }
+  .section-content p {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text2);
+    margin-bottom: 1.25rem;
+  }
 
-    .section-content p {
-      font-size: 1rem;
-      line-height: 1.7;
-      color: var(--text2);
-      margin-bottom: 1.25rem;
-    }
+  .feature-list { list-style: none; margin-top: 1rem; }
 
-    .feature-list {
-      list-style: none;
-      margin-top: 1rem;
-    }
+  .feature-list li {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: var(--surface-container-low);
+    border-radius: 0.75rem;
+  }
 
-    .feature-list li {
-      display: flex;
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-      padding: 1rem;
-      background: var(--surface-container-low);
-      border-radius: 0.75rem;
-    }
+  .feature-list li .check {
+    color: var(--green);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
 
-    .feature-list li .check {
-      color: var(--green);
-      font-weight: 700;
-      flex-shrink: 0;
-    }
+  .feature-list li strong {
+    color: var(--navy);
+    font-weight: 700;
+    display: block;
+    margin-bottom: 0.25rem;
+  }
 
-    .feature-list li strong {
-      color: var(--navy);
-      font-weight: 700;
-      display: block;
-      margin-bottom: 0.25rem;
-    }
+  .retention-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
 
-    .retention-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1rem;
-      margin-top: 1rem;
-    }
+  @media (min-width: 640px) {
+    .retention-grid { grid-template-columns: 1fr 1fr; }
+  }
 
-    @media (min-width: 640px) {
-      .retention-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
+  .retention-item {
+    background: var(--surface-container-low);
+    border-radius: 0.75rem;
+    padding: 1rem;
+  }
 
-    .retention-item {
-      background: var(--surface-container-low);
-      border-radius: 0.75rem;
-      padding: 1rem;
-    }
+  .retention-item .label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--green);
+    margin-bottom: 0.5rem;
+    display: block;
+  }
 
-    .retention-item .label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--green);
-      margin-bottom: 0.5rem;
-      display: block;
-    }
+  .retention-item p { margin-bottom: 0; font-size: 0.875rem; }
 
-    .retention-item p {
-      margin-bottom: 0;
-      font-size: 0.875rem;
-    }
+  .protection-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
 
-    /* Protection bento grid */
-    .protection-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1rem;
-      margin-top: 1rem;
-    }
+  @media (min-width: 768px) {
+    .protection-grid { grid-template-columns: repeat(2, 1fr); }
+  }
 
-    @media (min-width: 768px) {
-      .protection-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
+  .protection-card {
+    background: var(--surface-container-lowest);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    transition: all 0.2s;
+  }
 
-    .protection-card {
-      background: var(--surface-container-lowest);
-      border-radius: 0.75rem;
-      padding: 1.25rem;
-      transition: all 0.2s;
-    }
+  .protection-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0px 8px 20px rgba(35, 66, 128, 0.06);
+  }
 
-    .protection-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0px 8px 20px rgba(35, 66, 128, 0.06);
-    }
+  .protection-icon { font-size: 2rem; margin-bottom: 0.75rem; }
 
-    .protection-icon {
-      font-size: 2rem;
-      margin-bottom: 0.75rem;
-    }
+  .protection-card h4 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.5rem;
+  }
 
-    .protection-card h4 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--navy);
-      margin-bottom: 0.5rem;
-    }
+  .protection-card p { font-size: 0.875rem; color: var(--text2); line-height: 1.6; }
 
-    .protection-card p {
-      font-size: 0.875rem;
-      color: var(--text2);
-      line-height: 1.6;
-    }
+  .privacy-cta {
+    background: var(--surface-container-low);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    text-align: center;
+    margin-top: 3rem;
+  }
 
-    /* CTA section */
-    .privacy-cta {
-      background: var(--surface-container-low);
-      border-radius: 1.5rem;
-      padding: 2rem;
-      text-align: center;
-      margin-top: 3rem;
-    }
+  .privacy-cta h3 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--on-surface);
+    margin-bottom: 0.5rem;
+  }
 
-    .privacy-cta h3 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--on-surface);
-      margin-bottom: 0.5rem;
-    }
+  .privacy-cta p { color: var(--text2); margin-bottom: 1.5rem; }
 
-    .privacy-cta p {
-      color: var(--text2);
-      margin-bottom: 1.5rem;
-    }
+  .cta-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+  }
 
-    .cta-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      justify-content: center;
-    }
+  .btn-primary {
+    background: var(--navy);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+  }
 
-    .btn-primary {
-      background: var(--navy);
-      color: white;
-      padding: 0.75rem 1.5rem;
-      border-radius: 9999px;
-      text-decoration: none;
-      font-weight: 700;
-      font-size: 0.875rem;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      transition: all 0.2s;
-    }
+  .btn-primary:hover { background: #1e40af; transform: translateY(-2px); }
 
-    .btn-primary:hover {
-      background: #1e40af;
-      transform: translateY(-2px);
-    }
+  .btn-secondary {
+    background: var(--surface-container-high);
+    color: var(--on-surface);
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+  }
 
-    .btn-secondary {
-      background: var(--surface-container-high);
-      color: var(--on-surface);
-      padding: 0.75rem 1.5rem;
-      border-radius: 9999px;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 0.875rem;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      transition: all 0.2s;
-    }
+  .btn-secondary:hover { background: var(--surface-container-lowest); transform: translateY(-2px); }
+</style>
+{% endblock %}
 
-    .btn-secondary:hover {
-      background: var(--surface-container-lowest);
-      transform: translateY(-2px);
-    }
-
-    /* Footer */
-    .footer {
-      background: #0f172a;
-      padding: 52px 6% 28px;
-    }
-
-    .footer-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 32px;
-      flex-wrap: wrap;
-      margin-bottom: 44px;
-    }
-
-    .footer-brand {
-      max-width: 200px;
-    }
-
-    .footer-logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .footer-logo-mark {
-      width: 30px;
-      height: 30px;
-      background: var(--navy-mid);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 11px;
-    }
-
-    .footer-logo-name {
-      font-size: 15px;
-      font-weight: 800;
-      color: white;
-      font-family: 'Manrope', sans-serif;
-    }
-
-    .footer-tagline {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.35);
-      line-height: 1.6;
-    }
-
-    .footer-col-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.4);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 14px;
-    }
-
-    .footer-links {
-      list-style: none;
-    }
-
-    .footer-links li {
-      margin-bottom: 10px;
-    }
-
-    .footer-links a {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.5);
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-
-    .footer-links a:hover {
-      color: white;
-    }
-
-    .footer-bottom {
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
-      padding-top: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .footer-copy {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.25);
-    }
-
-    /* Reveal animation */
-    .reveal {
-      opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  </style>
-</head>
-<body>
-
-<!-- NAV (inherited from FlockIQ) -->
-<nav class="nav">
-  <a href="/" class="nav-logo">
-    <div class="nav-logo-mark">FQ</div>
-    <span class="nav-logo-text">FlockIQ</span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="/#features">Features</a></li>
-    <li><a href="/#how">How it works</a></li>
-    <li><a href="/#pricing">Pricing</a></li>
-    <li><a href="/#about">About</a></li>
-  </ul>
-  <div class="nav-cta">
-    <a href="/login/" class="btn-ghost">Sign in</a>
-    <a href="/signup/" class="btn-navy">Get Started →</a>
-  </div>
-</nav>
-
-<!-- MAIN CONTENT -->
+{% block content %}
 <div class="privacy-container">
   <!-- Hero header -->
   <div class="privacy-hero reveal">
@@ -789,70 +468,6 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
-<!-- FOOTER (inherited from FlockIQ) -->
-<footer class="footer">
-  <div class="footer-top">
-    <div class="footer-brand">
-      <div class="footer-logo">
-        <div class="footer-logo-mark">FQ</div>
-        <span class="footer-logo-name">FlockIQ</span>
-      </div>
-      <p class="footer-tagline">Empowering the standard of global food production through high-frequency avian intelligence.</p>
-    </div>
-    <div>
-      <div class="footer-col-title">Platform</div>
-      <ul class="footer-links">
-        <li><a href="/#features">Neural Engine</a></li>
-        <li><a href="/#features">AI Inference</a></li>
-        <li><a href="/#features">Drone Hub</a></li>
-        <li><a href="/#features">Security IQ</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Company</div>
-      <ul class="footer-links">
-        <li><a href="/#about">About ADM Tech Hub</a></li>
-        <li><a href="#">Investor Relations</a></li>
-        <li><a href="#">News & Press</a></li>
-        <li><a href="#">Careers</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Legal</div>
-      <ul class="footer-links">
-        <li><a href="/privacy/">Privacy Policy</a></li>
-        <li><a href="/terms/">Terms of Service</a></li>
-        <li><a href="#">Data Security</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Support</div>
-      <ul class="footer-links">
-        <li><a href="/help/">Help Center</a></li>
-        <li><a href="https://wa.me/2348003562747">WhatsApp Support</a></li>
-        <li><a href="#">System Status</a></li>
-      </ul>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <div class="footer-copy">© 2026 FlockIQ / ADM Tech Hub. All rights reserved.</div>
-    <div class="footer-copy">Built in Lagos, Nigeria 🇳🇬</div>
-  </div>
-</footer>
-
-<script>
-  // Scroll reveal
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-</script>
-
-</body>
-</html>
+{% block extra_scripts %}{% endblock %}

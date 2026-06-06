@@ -25,6 +25,7 @@ EVENT_TYPE_CHOICES = [
     ("medication_withdrawal", "Medication Withdrawal"),
     ("ai_anomaly", "AI Anomaly"),
     ("announcement", "Announcement"),
+    ("support_reply", "Support Reply"),
 ]
 
 SEVERITY_CHOICES = [
@@ -170,6 +171,112 @@ class BroadcastNotification(models.Model):
 
     def __str__(self):
         return f'{self.title} ({self.sent_at.date()})'
+
+
+class ContactMessage(models.Model):
+    """Public contact form submissions — not tenant-scoped."""
+
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='contact_messages',
+    )
+    name = models.CharField(max_length=200, blank=True)
+    email = models.EmailField(blank=True)
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'notifications_contactmessage'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.subject} ({self.email or self.sender})"
+
+
+class AdminNotification(models.Model):
+    """In-app alerts for superadmin users — not tenant-scoped."""
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='admin_notifications',
+    )
+    title = models.CharField(max_length=200)
+    body = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'notifications_adminnotification'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} → {self.recipient}"
+
+
+class SupportTicket(models.Model):
+    class Priority(models.TextChoices):
+        LOW = 'low', 'Low'
+        MEDIUM = 'medium', 'Medium'
+        HIGH = 'high', 'High'
+
+    class Status(models.TextChoices):
+        OPEN = 'open', 'Open'
+        IN_PROGRESS = 'in_progress', 'In Progress'
+        RESOLVED = 'resolved', 'Resolved'
+
+    org = models.ForeignKey(
+        'tenants.Organization',
+        on_delete=models.CASCADE,
+        related_name='support_tickets',
+    )
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='support_tickets_submitted',
+    )
+    subject = models.CharField(max_length=255)
+    message = models.TextField()
+    priority = models.CharField(max_length=10, choices=Priority.choices, default=Priority.MEDIUM)
+    status = models.CharField(max_length=15, choices=Status.choices, default=Status.OPEN)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_read_by_admin = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = 'notifications_supportticket'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.subject} [{self.priority}] ({self.org})"
+
+
+class SupportTicketReply(models.Model):
+    ticket = models.ForeignKey(
+        SupportTicket,
+        on_delete=models.CASCADE,
+        related_name='replies',
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'notifications_supportticketreply'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Reply on #{self.ticket_id} by {self.author}"
 
 
 DEFAULT_ALERT_RULES = [

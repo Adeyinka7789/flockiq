@@ -751,3 +751,134 @@ class AuditTrailView(SuperAdminMixin, View):
         if request.headers.get('HX-Request'):
             return render(request, 'superadmin/_audit_table.html', context)
         return render(request, 'superadmin/audit_trail.html', context)
+
+
+class SupportTicketsView(SuperAdminMixin, View):
+    def get(self, request):
+        from apps.infrastructure.notifications.models import SupportTicket
+
+        status_filter = request.GET.get('status', 'all')
+        priority_filter = request.GET.get('priority', 'all')
+
+        tickets = SupportTicket.objects.select_related('org', 'submitted_by').order_by('-created_at')
+
+        if status_filter != 'all':
+            tickets = tickets.filter(status=status_filter)
+        if priority_filter != 'all':
+            tickets = tickets.filter(priority=priority_filter)
+
+        paginator = Paginator(tickets, 20)
+        page_obj = paginator.get_page(request.GET.get('page', 1))
+
+        context = {
+            'page_obj': page_obj,
+            'total_count': paginator.count,
+            'unread_count': SupportTicket.objects.filter(is_read_by_admin=False).count(),
+            'open_count': SupportTicket.objects.filter(status='open').count(),
+            'high_priority_count': SupportTicket.objects.filter(priority='high', status__in=['open', 'in_progress']).count(),
+            'active_status': status_filter,
+            'active_priority': priority_filter,
+        }
+        return render(request, 'superadmin/support_tickets.html', context)
+
+
+class SupportTicketMarkReadView(SuperAdminMixin, View):
+    def post(self, request, pk):
+        from apps.infrastructure.notifications.models import SupportTicket
+
+        ticket = get_object_or_404(SupportTicket, pk=pk)
+        ticket.is_read_by_admin = not ticket.is_read_by_admin
+        ticket.save(update_fields=['is_read_by_admin'])
+
+        label = 'Marked as read' if ticket.is_read_by_admin else 'Marked as unread'
+        response = HttpResponse(status=204)
+        response['HX-Trigger'] = json.dumps({'showToast': {'message': label, 'type': 'success'}})
+        response['HX-Refresh'] = 'true'
+        return response
+
+
+class SupportTicketDetailView(SuperAdminMixin, View):
+    def get(self, request, pk):
+        from apps.infrastructure.notifications.models import SupportTicket
+
+        ticket = get_object_or_404(SupportTicket, pk=pk)
+        if not ticket.is_read_by_admin:
+            ticket.is_read_by_admin = True
+            ticket.save(update_fields=['is_read_by_admin'])
+
+        replies = ticket.replies.select_related('author').all()
+        context = {
+            'ticket': ticket,
+            'replies': replies,
+        }
+        return render(request, 'superadmin/support_ticket_detail.html', context)
+
+
+class SupportTicketReplyView(SuperAdminMixin, View):
+    def post(self, request, pk):
+        from django.core.mail import send_mail
+        from django.conf import settings as django_settings
+        from apps.infrastructure.notifications.models import (
+            SupportTicket, SupportTicketReply, NotificationLog,
+        )
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        ticket = get_object_or_404(SupportTicket, pk=pk)
+        message = request.POST.get('message', '').strip()
+        new_status = request.POST.get('status', '').strip()
+
+        if not message:
+            replies = ticket.replies.select_related('author').all()
+            return render(
+                request,
+                'superadmin/_ticket_replies.html',
+                {'ticket': ticket, 'replies': replies, 'error': 'Reply cannot be empty.'},
+                status=422,
+            )
+
+        reply = SupportTicketReply.objects.create(
+            ticket=ticket,
+            author=request.user,
+            message=message,
+        )
+
+        if new_status in ('open', 'in_progress', 'resolved'):
+            ticket.status = new_status
+            ticket.save(update_fields=['status', 'updated_at'])
+
+        if ticket.submitted_by:
+            try:
+                send_mail(
+                    subject=f"[FlockIQ] Re: {ticket.subject}",
+                    message=(
+                        f"{message}\n\n"
+                        f"---\nLog in to view your full ticket history: "
+                        f"{django_settings.SITE_URL if hasattr(django_settings, 'SITE_URL') else 'https://app.flockiq.com'}"
+                        f"/support/my-tickets/{ticket.pk}/"
+                    ),
+                    from_email=django_settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[ticket.submitted_by.email],
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
+            # Write to NotificationLog (tenant-scoped) so the user's bell lights up.
+            # AdminNotification is for superadmin-only; tenant users' bells read NotificationLog.
+            with set_tenant_context(ticket.org):
+                NotificationLog.objects.create(
+                    org=ticket.org,
+                    event_type='support_reply',
+                    title=f"Support ticket update — {ticket.subject}",
+                    body=f"Admin replied: {reply.message[:200]}",
+                    severity='info',
+                    channel='in_app',
+                    recipient=ticket.submitted_by,
+                )
+
+        replies = ticket.replies.select_related('author').all()
+        return render(
+            request,
+            'superadmin/_ticket_replies.html',
+            {'ticket': ticket, 'replies': replies},
+        )

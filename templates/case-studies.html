@@ -1,414 +1,148 @@
+{% extends "landing_base.html" %}
 {% load static %}
 {% load humanize %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlockIQ — Case Studies | Farmer Success Stories</title>
-  <meta name="description" content="Real results from Nigerian poultry farmers using FlockIQ. See how AI reduced mortality, increased profits, and transformed farm management.">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
 
-    :root {
-      --navy: #1e3a8a;
-      --navy-mid: #2d5be3;
-      --navy-light: #eff6ff;
-      --green: #16a34a;
-      --green-light: #dcfce7;
-      --text: #0f172a;
-      --text2: #475569;
-      --text3: #94a3b8;
-      --border: #e2e8f0;
-      --bg: #f8fafc;
-      --white: #ffffff;
-      --surface: #f7f9ff;
-      --surface-container-low: #f1f4fb;
-      --surface-container-lowest: #ffffff;
-      --surface-container-high: #e5e8ef;
-      --on-surface: #181c21;
-      --on-surface-variant: #444650;
-      --active-intel: #8bc87a;
-    }
+{% block title %}FlockIQ — Case Studies | Farmer Success Stories{% endblock %}
+{% block description %}Real results from Nigerian poultry farmers using FlockIQ. See how AI reduced mortality, increased profits, and transformed farm management.{% endblock %}
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--surface);
-      color: var(--on-surface);
-    }
+{% block extra_head %}
+<style>
+  body { background: var(--surface); color: var(--on-surface); }
 
-    /* ── NAV ── */
-    .nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(247, 249, 255, 0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(196, 198, 210, 0.2);
-      padding: 0 6%;
-      height: 68px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+  .cases-hero {
+    text-align: center;
+    padding: 60px 6% 40px;
+  }
 
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-    }
+  .cases-hero h1 {
+    font-family: 'Manrope', sans-serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    color: var(--navy);
+    margin-bottom: 16px;
+  }
 
-    .nav-logo-mark {
-      width: 36px;
-      height: 36px;
-      background: var(--navy);
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 13px;
-      letter-spacing: -0.5px;
-    }
+  .cases-hero p {
+    color: var(--text2);
+    max-width: 600px;
+    margin: 0 auto;
+    font-size: 1rem;
+  }
 
-    .nav-logo-text {
-      font-size: 17px;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -0.4px;
-      font-family: 'Manrope', sans-serif;
-    }
+  .cases-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 6% 80px;
+  }
 
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      list-style: none;
-    }
+  .cases-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 32px;
+  }
 
-    .nav-links a {
-      font-size: 14px;
-      color: var(--text2);
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.15s;
-    }
+  .case-card {
+    background: var(--surface-container-lowest);
+    border-radius: 1.5rem;
+    overflow: hidden;
+    transition: all 0.3s;
+    box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
+  }
 
-    .nav-links a:hover {
-      color: var(--navy);
-    }
+  .case-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0px 20px 40px rgba(35, 66, 128, 0.1);
+  }
 
-    .nav-cta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+  .case-image {
+    height: 200px;
+    background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+  }
 
-    .btn-ghost {
-      padding: 8px 18px;
-      border-radius: 9999px;
-      border: 1.5px solid var(--border);
-      color: var(--text2);
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.15s;
-      background: white;
-    }
+  .case-content { padding: 24px; }
 
-    .btn-ghost:hover {
-      border-color: var(--navy);
-      color: var(--navy);
-    }
+  .farm-badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--green);
+    margin-bottom: 12px;
+  }
 
-    .btn-navy {
-      padding: 9px 20px;
-      border-radius: 9999px;
-      background: var(--navy);
-      color: white;
-      font-size: 13px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: all 0.15s;
-    }
+  .case-card h3 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 12px;
+  }
 
-    .btn-navy:hover {
-      background: #1e40af;
-      transform: translateY(-1px);
-    }
+  .case-stats {
+    display: flex;
+    gap: 16px;
+    margin: 16px 0;
+    flex-wrap: wrap;
+  }
 
-    /* Hero */
-    .cases-hero {
-      text-align: center;
-      padding: 60px 6% 40px;
-    }
+  .stat {
+    background: var(--navy-light);
+    padding: 6px 12px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
 
-    .cases-hero h1 {
-      font-family: 'Manrope', sans-serif;
-      font-size: clamp(2rem, 4vw, 3rem);
-      font-weight: 800;
-      color: var(--navy);
-      margin-bottom: 16px;
-    }
+  .case-card p {
+    font-size: 0.875rem;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
 
-    .cases-hero p {
-      color: var(--text2);
-      max-width: 600px;
-      margin: 0 auto;
-      font-size: 1rem;
-    }
+  .read-more {
+    color: var(--navy);
+    font-weight: 700;
+    font-size: 0.875rem;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: gap 0.2s;
+  }
 
-    /* Case study grid */
-    .cases-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 24px 6% 80px;
-    }
+  .read-more:hover { gap: 10px; }
 
-    .cases-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-      gap: 32px;
-    }
+  .cases-cta {
+    text-align: center;
+    margin-top: 64px;
+    padding: 48px;
+    background: var(--surface-container-low);
+    border-radius: 1.5rem;
+  }
 
-    .case-card {
-      background: var(--surface-container-lowest);
-      border-radius: 1.5rem;
-      overflow: hidden;
-      transition: all 0.3s;
-      box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
-    }
+  .cases-cta h3 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 12px;
+  }
 
-    .case-card:hover {
-      transform: translateY(-6px);
-      box-shadow: 0px 20px 40px rgba(35, 66, 128, 0.1);
-    }
+  .cases-cta p {
+    color: var(--text2);
+    margin-bottom: 24px;
+  }
+</style>
+{% endblock %}
 
-    .case-image {
-      height: 200px;
-      background: linear-gradient(135deg, var(--navy), var(--navy-mid));
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 4rem;
-    }
-
-    .case-content {
-      padding: 24px;
-    }
-
-    .farm-badge {
-      display: inline-block;
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--green);
-      margin-bottom: 12px;
-    }
-
-    .case-card h3 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--navy);
-      margin-bottom: 12px;
-    }
-
-    .case-stats {
-      display: flex;
-      gap: 16px;
-      margin: 16px 0;
-      flex-wrap: wrap;
-    }
-
-    .stat {
-      background: var(--navy-light);
-      padding: 6px 12px;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--navy);
-    }
-
-    .case-card p {
-      font-size: 0.875rem;
-      color: var(--text2);
-      line-height: 1.6;
-      margin-bottom: 16px;
-    }
-
-    .read-more {
-      color: var(--navy);
-      font-weight: 700;
-      font-size: 0.875rem;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: gap 0.2s;
-    }
-
-    .read-more:hover {
-      gap: 10px;
-    }
-
-    /* CTA */
-    .cases-cta {
-      text-align: center;
-      margin-top: 64px;
-      padding: 48px;
-      background: var(--surface-container-low);
-      border-radius: 1.5rem;
-    }
-
-    .cases-cta h3 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--navy);
-      margin-bottom: 12px;
-    }
-
-    .cases-cta p {
-      color: var(--text2);
-      margin-bottom: 24px;
-    }
-
-    /* Footer */
-    .footer {
-      background: #0f172a;
-      padding: 52px 6% 28px;
-    }
-
-    .footer-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 32px;
-      flex-wrap: wrap;
-      margin-bottom: 44px;
-    }
-
-    .footer-brand {
-      max-width: 200px;
-    }
-
-    .footer-logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .footer-logo-mark {
-      width: 30px;
-      height: 30px;
-      background: var(--navy-mid);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 11px;
-    }
-
-    .footer-logo-name {
-      font-size: 15px;
-      font-weight: 800;
-      color: white;
-      font-family: 'Manrope', sans-serif;
-    }
-
-    .footer-tagline {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.35);
-      line-height: 1.6;
-    }
-
-    .footer-col-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.4);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 14px;
-    }
-
-    .footer-links {
-      list-style: none;
-    }
-
-    .footer-links li {
-      margin-bottom: 10px;
-    }
-
-    .footer-links a {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.5);
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-
-    .footer-links a:hover {
-      color: white;
-    }
-
-    .footer-bottom {
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
-      padding-top: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .footer-copy {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.25);
-    }
-
-    .reveal {
-      opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  </style>
-</head>
-<body>
-
-<!-- NAV -->
-<nav class="nav">
-  <a href="/" class="nav-logo">
-    <div class="nav-logo-mark">FQ</div>
-    <span class="nav-logo-text">FlockIQ</span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="/#features">Features</a></li>
-    <li><a href="/#how">How it works</a></li>
-    <li><a href="/#pricing">Pricing</a></li>
-    <li><a href="/about/">About</a></li>
-  </ul>
-  <div class="nav-cta">
-    <a href="/login/" class="btn-ghost">Sign in</a>
-    <a href="/signup/" class="btn-navy">Get Started →</a>
-  </div>
-</nav>
-
+{% block content %}
 <!-- Hero -->
 <div class="cases-hero reveal">
   <h1>📖 Farmer Success Stories</h1>
@@ -417,7 +151,7 @@
 
 <div class="cases-container">
   <div class="cases-grid">
-    
+
     <!-- Case Study 1 -->
     <div class="case-card reveal">
       <div class="case-image">🐔 🇳🇬</div>
@@ -522,67 +256,6 @@
     <a href="/signup/" class="btn-navy" style="display: inline-block;">Start Your Free Trial →</a>
   </div>
 </div>
+{% endblock %}
 
-<!-- FOOTER -->
-<footer class="footer">
-  <div class="footer-top">
-    <div class="footer-brand">
-      <div class="footer-logo">
-        <div class="footer-logo-mark">FQ</div>
-        <span class="footer-logo-name">FlockIQ</span>
-      </div>
-      <p class="footer-tagline">Empowering poultry farmers with AI-driven intelligence. Built in Lagos, for Nigeria.</p>
-    </div>
-    <div>
-      <div class="footer-col-title">Platform</div>
-      <ul class="footer-links">
-        <li><a href="/#features">Neural Engine</a></li>
-        <li><a href="/#features">AI Inference</a></li>
-        <li><a href="/#features">Security IQ</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Company</div>
-      <ul class="footer-links">
-        <li><a href="/about/">About ADM Tech Hub</a></li>
-        <li><a href="#">Careers</a></li>
-        <li><a href="#">Press</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Legal</div>
-      <ul class="footer-links">
-        <li><a href="/privacy/">Privacy Policy</a></li>
-        <li><a href="/terms/">Terms of Service</a></li>
-        <li><a href="/cookie/">Cookie Policy</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Support</div>
-      <ul class="footer-links">
-        <li><a href="/help/">Help Center</a></li>
-        <li><a href="#">WhatsApp Support</a></li>
-        <li><a href="#">System Status</a></li>
-      </ul>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <div class="footer-copy">© 2026 FlockIQ / ADM Tech Hub. All rights reserved.</div>
-    <div class="footer-copy">Built in Lagos, Nigeria 🇳🇬</div>
-  </div>
-</footer>
-
-<script>
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-</script>
-
-</body>
-</html>
+{% block extra_scripts %}{% endblock %}

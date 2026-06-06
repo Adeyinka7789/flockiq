@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Support Tickets{% endblock %}
+{% block breadcrumb %}Support Tickets{% endblock %}
+
+{% block content %}
+<style>
+  .sa-wrap { max-width: 1100px; margin: 0 auto; }
+  .sa-card { background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;margin-bottom:16px; }
+  .sa-card-hd { display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #f1f5f9; }
+  .sa-card-title { font-size:14px;font-weight:700;color:#1a2744; }
+  .sa-table { width:100%;border-collapse:collapse; }
+  .sa-table th { text-align:left;padding:10px 16px;font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;letter-spacing:0.07em;background:#fafafa;border-bottom:1px solid #e2e8f0; }
+  .sa-table td { padding:14px 16px;font-size:13px;border-bottom:1px solid #f8faff;color:#1a2744;vertical-align:middle; }
+  .sa-table tr:last-child td { border-bottom:none; }
+  .sa-table tr:hover td { background:#fafbff; }
+  .sa-filters { display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #f1f5f9;flex-wrap:wrap;background:#fafafa; }
+  .sa-filter-select { padding:7px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:12px;color:#1a2744;background:white;outline:none;cursor:pointer; }
+  .pill { padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase; }
+  .pill-low    { background:#f1f5f9;color:#475569; }
+  .pill-medium { background:#fef3c7;color:#92400e; }
+  .pill-high   { background:#fee2e2;color:#dc2626; }
+  .pill-open        { background:#e8eef8;color:#2d4578; }
+  .pill-in_progress { background:#fef3c7;color:#92400e; }
+  .pill-resolved    { background:#edfae8;color:#166534; }
+  .unread-dot { width:8px;height:8px;border-radius:50%;background:#3d5a99;display:inline-block;margin-right:6px; }
+  .read-btn { padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid #e2e8f0;background:white;color:#3d5a99;transition:all 0.15s; }
+  .read-btn:hover { background:#e8eef8; }
+</style>
+
+<div class="sa-wrap">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+    <div>
+      <div style="font-size:11px;font-weight:700;color:#8a96a8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Platform Oversight</div>
+      <div style="font-size:24px;font-weight:800;color:#1a2744;letter-spacing:-0.5px">Support Tickets</div>
+      <div style="font-size:13px;color:#8a96a8">
+        {{ total_count }} ticket{{ total_count|pluralize }}
+        {% if unread_count %}&nbsp;·&nbsp;<span style="color:#3d5a99;font-weight:700">{{ unread_count }} unread</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary chips -->
+  <div style="display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:11px;padding:12px 18px;min-width:130px;">
+      <div style="font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;letter-spacing:0.07em;">Open</div>
+      <div style="font-size:22px;font-weight:800;color:#2d4578;margin-top:2px;">{{ open_count }}</div>
+    </div>
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:11px;padding:12px 18px;min-width:130px;">
+      <div style="font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;letter-spacing:0.07em;">Unread</div>
+      <div style="font-size:22px;font-weight:800;color:#3d5a99;margin-top:2px;">{{ unread_count }}</div>
+    </div>
+    <div style="background:white;border:1px solid #fee2e2;border-radius:11px;padding:12px 18px;min-width:130px;">
+      <div style="font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;letter-spacing:0.07em;">High Priority</div>
+      <div style="font-size:22px;font-weight:800;color:#dc2626;margin-top:2px;">{{ high_priority_count }}</div>
+    </div>
+  </div>
+
+  <div class="sa-card">
+    <div class="sa-filters" id="sa-filters">
+      <select class="sa-filter-select" name="status"
+              hx-get="{% url 'superadmin:support_tickets' %}"
+              hx-target="body"
+              hx-push-url="true"
+              hx-include="#sa-filters">
+        <option value="all" {% if active_status == 'all' %}selected{% endif %}>All Statuses</option>
+        <option value="open" {% if active_status == 'open' %}selected{% endif %}>Open</option>
+        <option value="in_progress" {% if active_status == 'in_progress' %}selected{% endif %}>In Progress</option>
+        <option value="resolved" {% if active_status == 'resolved' %}selected{% endif %}>Resolved</option>
+      </select>
+
+      <select class="sa-filter-select" name="priority"
+              hx-get="{% url 'superadmin:support_tickets' %}"
+              hx-target="body"
+              hx-push-url="true"
+              hx-include="#sa-filters">
+        <option value="all" {% if active_priority == 'all' %}selected{% endif %}>All Priorities</option>
+        <option value="high" {% if active_priority == 'high' %}selected{% endif %}>High</option>
+        <option value="medium" {% if active_priority == 'medium' %}selected{% endif %}>Medium</option>
+        <option value="low" {% if active_priority == 'low' %}selected{% endif %}>Low</option>
+      </select>
+    </div>
+
+    <table class="sa-table">
+      <thead>
+        <tr>
+          <th>Organisation</th>
+          <th>Submitted By</th>
+          <th>Subject</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>Submitted</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ticket in page_obj %}
+        <tr>
+          <td>
+            <span style="font-weight:600">{{ ticket.org.name }}</span>
+          </td>
+          <td style="color:#8a96a8">
+            {{ ticket.submitted_by.email|default:"—" }}
+          </td>
+          <td>
+            {% if not ticket.is_read_by_admin %}
+            <span class="unread-dot" title="Unread"></span>
+            {% endif %}
+            {{ ticket.subject }}
+          </td>
+          <td>
+            <span class="pill pill-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span>
+          </td>
+          <td>
+            <span class="pill pill-{{ ticket.status }}">{{ ticket.get_status_display }}</span>
+          </td>
+          <td style="color:#8a96a8;font-size:12px">
+            {{ ticket.created_at|date:"d M Y, H:i" }}
+          </td>
+          <td style="display:flex;gap:6px;align-items:center;">
+            <a href="{% url 'superadmin:support_ticket_detail' pk=ticket.pk %}"
+               style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;
+                      background:#e8eef8;color:#3d5a99;text-decoration:none;">
+              View
+            </a>
+            <button class="read-btn"
+                    hx-post="{% url 'superadmin:support_ticket_mark_read' pk=ticket.pk %}"
+                    hx-indicator="#htmx-spinner">
+              {% if ticket.is_read_by_admin %}Unread{% else %}Read{% endif %}
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" style="text-align:center;padding:40px;color:#8a96a8;font-size:13px">
+            No support tickets found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if page_obj.has_other_pages %}
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-top:1px solid #f1f5f9;">
+      <div style="font-size:12px;color:#8a96a8">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      </div>
+      <div style="display:flex;gap:6px;">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}&status={{ active_status }}&priority={{ active_priority }}"
+           style="padding:6px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;color:#3d5a99;text-decoration:none;">
+          &laquo; Prev
+        </a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}&status={{ active_status }}&priority={{ active_priority }}"
+           style="padding:6px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;color:#3d5a99;text-decoration:none;">
+          Next &raquo;
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

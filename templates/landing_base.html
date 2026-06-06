@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}FlockIQ — AI-Powered Poultry Farm Management{% endblock %}</title>
   <meta name="description" content="{% block description %}Breed-specific farm management for Nigerian poultry farmers. Track mortality, eggs, feed, health and finances in one intelligent platform.{% endblock %}">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -15,6 +15,11 @@
       --green:#16a34a;--green-light:#dcfce7;
       --text:#0f172a;--text2:#475569;--text3:#94a3b8;
       --border:#e2e8f0;--bg:#f8fafc;--white:#ffffff;
+      --surface:#f7f9ff;--surface-container-low:#f1f4fb;
+      --surface-container-lowest:#ffffff;--surface-container-high:#e5e8ef;
+      --on-surface:#181c21;--on-surface-variant:#444650;
+      --outline-variant:#c4c6d2;--secondary:#336a28;
+      --secondary-container:#b1f09e;--on-secondary-container:#376f2c;
     }
     body{font-family:'Inter',sans-serif;color:var(--text);background:var(--white)}
 
@@ -689,7 +694,7 @@
       </div>
       <p class="footer-tagline">Empowering the standard of global food production through high-frequency avian intelligence.</p>
     </div>
-    <div>
+    <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:16px">
       <div class="footer-col-title">Platform</div>
       <ul class="footer-links">
         <li><a href="/#features">Neural Engine</a></li>
@@ -698,7 +703,7 @@
         <li><a href="/#features">Security IQ</a></li>
       </ul>
     </div>
-    <div>
+    <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:16px">
       <div class="footer-col-title">Company</div>
       <ul class="footer-links">
         <li><a href="{% url 'about' %}">About ADM Tech Hub</a></li>
@@ -707,7 +712,7 @@
         <li><a href="#">Press</a></li>
       </ul>
     </div>
-    <div>
+    <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:16px">
       <div class="footer-col-title">Legal</div>
       <ul class="footer-links">
         <li><a href="{% url 'privacy_policy' %}">Privacy Policy</a></li>
@@ -717,11 +722,12 @@
         <li><a href="{% url 'security' %}">Data Security</a></li>
       </ul>
     </div>
-    <div>
+    <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:16px">
       <div class="footer-col-title">Support</div>
       <ul class="footer-links">
         <li><a href="{% url 'help' %}">Help Center</a></li>
         <li><a href="https://wa.me/2348000000000">WhatsApp Support</a></li>
+        <li><a href="{% url 'cookie_policy' %}">Cookie Policy</a></li>
       </ul>
     </div>
   </div>

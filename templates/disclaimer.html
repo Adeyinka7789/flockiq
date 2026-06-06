@@ -1,517 +1,238 @@
+{% extends "landing_base.html" %}
 {% load static %}
 {% load humanize %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlockIQ — AI & Veterinary Disclaimer</title>
-  <meta name="description" content="FlockIQ AI provides insights, not veterinary diagnosis. Read our legal disclaimer and understand the limits of AI in poultry farming.">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
 
-    :root {
-      /* FlockIQ base colors */
-      --navy: #1e3a8a;
-      --navy-mid: #2d5be3;
-      --navy-light: #eff6ff;
-      --green: #16a34a;
-      --green-light: #dcfce7;
-      --text: #0f172a;
-      --text2: #475569;
-      --text3: #94a3b8;
-      --border: #e2e8f0;
-      --bg: #f8fafc;
-      --white: #ffffff;
+{% block title %}FlockIQ — AI & Veterinary Disclaimer{% endblock %}
+{% block description %}FlockIQ AI provides insights, not veterinary diagnosis. Read our legal disclaimer and understand the limits of AI in poultry farming.{% endblock %}
 
-      /* Precision Pastoral additions (tonal layering) */
-      --surface: #f7f9ff;
-      --surface-container-low: #f1f4fb;
-      --surface-container-lowest: #ffffff;
-      --surface-container-high: #e5e8ef;
-      --on-surface: #181c21;
-      --on-surface-variant: #444650;
-      --outline-variant: #c4c6d2;
-      --primary-fixed: #d9e2ff;
-      --on-primary-fixed: #001945;
-      --secondary: #336a28;
-      --secondary-container: #b1f09e;
-      --on-secondary-container: #376f2c;
-      --error: #ba1a1a;
-      --error-container: #ffdad6;
-    }
+{% block extra_head %}
+<style>
+  body { background: var(--surface); color: var(--on-surface); }
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--surface);
-      color: var(--on-surface);
-    }
+  .disclaimer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 48px 6% 80px;
+  }
 
-    /* ── NAV (inherited from FlockIQ, slightly polished) ── */
-    .nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(247, 249, 255, 0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(196, 198, 210, 0.2);
-      padding: 0 6%;
-      height: 68px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+  .warning-header {
+    background: var(--navy);
+    border-radius: 1.5rem;
+    padding: 2rem 2rem;
+    margin-bottom: 3rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.08);
+  }
 
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-    }
+  .warning-header-inner {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
 
-    .nav-logo-mark {
-      width: 36px;
-      height: 36px;
-      background: var(--navy);
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 13px;
-      letter-spacing: -0.5px;
-    }
+  .warning-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 0.25rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 1rem;
+  }
 
-    .nav-logo-text {
-      font-size: 17px;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -0.4px;
-      font-family: 'Manrope', sans-serif;
-    }
+  .warning-header h1 {
+    font-family: 'Manrope', sans-serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: white;
+    margin-bottom: 1rem;
+  }
 
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      list-style: none;
-    }
+  .warning-header p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.85);
+    max-width: 90%;
+  }
 
-    .nav-links a {
-      font-size: 14px;
-      color: var(--text2);
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.15s;
-    }
+  .warning-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 
-    .nav-links a:hover {
-      color: var(--navy);
-    }
+  .warning-icon-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+  }
 
-    .nav-cta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+  .disclaimer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
 
-    .btn-ghost {
-      padding: 8px 18px;
-      border-radius: 8px;
-      border: 1.5px solid var(--border);
-      color: var(--text2);
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.15s;
-      background: white;
-    }
+  .legal-card {
+    background: var(--surface-container-lowest);
+    border-radius: 1.5rem;
+    padding: 1.75rem;
+    transition: all 0.2s ease;
+  }
 
-    .btn-ghost:hover {
-      border-color: var(--navy);
-      color: var(--navy);
-    }
+  .legal-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
+  }
 
-    .btn-navy {
-      padding: 9px 20px;
-      border-radius: 8px;
-      background: var(--navy);
-      color: white;
-      font-size: 13px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: all 0.15s;
-    }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
 
-    .btn-navy:hover {
-      background: #1e40af;
-      transform: translateY(-1px);
-    }
+  .card-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--navy-light);
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+  }
 
-    /* ── MAIN CONTENT (no sidebar, centered) ── */
-    .disclaimer-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 48px 6% 80px;
-    }
+  .legal-card h3 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+  }
 
-    /* Critical warning header */
-    .warning-header {
-      background: var(--navy);
-      border-radius: 1.5rem;
-      padding: 2rem 2rem;
-      margin-bottom: 3rem;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.08);
-    }
+  .legal-card p, .legal-card li {
+    font-size: 0.875rem;
+    line-height: 1.65;
+    color: var(--text2);
+  }
 
-    .warning-header-inner {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 2rem;
-      align-items: center;
-      position: relative;
-      z-index: 2;
-    }
+  .legal-card ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+    margin: 0.75rem 0;
+  }
 
-    .warning-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(255, 255, 255, 0.15);
-      padding: 0.25rem 1rem;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: white;
-      margin-bottom: 1rem;
-    }
+  .legal-card li {
+    margin-bottom: 0.5rem;
+  }
 
-    .warning-header h1 {
-      font-family: 'Manrope', sans-serif;
-      font-size: clamp(2rem, 5vw, 3rem);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      line-height: 1.1;
-      color: white;
-      margin-bottom: 1rem;
-    }
+  .strong-callout {
+    font-weight: 700;
+    color: var(--navy);
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+  }
 
-    .warning-header p {
-      font-size: 1rem;
-      line-height: 1.6;
-      color: rgba(255, 255, 255, 0.85);
-      max-width: 90%;
-    }
+  .editorial-panel {
+    background: var(--surface-container-low);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    margin: 2rem 0;
+    border-left: 6px solid var(--navy);
+  }
 
-    .warning-icon {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
+  .editorial-panel h4 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 1rem;
+  }
 
-    .warning-icon-circle {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      border: 3px solid rgba(255, 255, 255, 0.2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 48px;
-    }
+  .editorial-flex {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
 
-    /* Two-column grid */
-    .disclaimer-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2.5rem;
-    }
-
-    /* Cards — Precision Pastoral style (no borders, tonal layering) */
-    .legal-card {
-      background: var(--surface-container-lowest);
-      border-radius: 1.5rem;
-      padding: 1.75rem;
-      transition: all 0.2s ease;
-    }
-
-    .legal-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin-bottom: 1.25rem;
-    }
-
-    .card-icon {
-      width: 48px;
-      height: 48px;
-      background: var(--navy-light);
-      border-radius: 0.75rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-    }
-
-    .legal-card h3 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .legal-card p, .legal-card li {
-      font-size: 0.875rem;
-      line-height: 1.65;
-      color: var(--text2);
-    }
-
-    .legal-card ul {
-      list-style: disc;
-      padding-left: 1.25rem;
-      margin: 0.75rem 0;
-    }
-
-    .legal-card li {
-      margin-bottom: 0.5rem;
-    }
-
-    .strong-callout {
-      font-weight: 700;
-      color: var(--navy);
-      margin-top: 1rem;
-      padding-top: 0.75rem;
-      border-top: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    /* Full-width editorial panel */
-    .editorial-panel {
-      background: var(--surface-container-low);
-      border-radius: 1.5rem;
-      padding: 2rem;
-      margin: 2rem 0;
-      border-left: 6px solid var(--navy);
-    }
-
-    .editorial-panel h4 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--navy);
-      margin-bottom: 1rem;
-    }
-
+  @media (min-width: 768px) {
     .editorial-flex {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
+      flex-direction: row;
+      gap: 2rem;
     }
-
-    @media (min-width: 768px) {
-      .editorial-flex {
-        flex-direction: row;
-        gap: 2rem;
-      }
-      .editorial-text {
-        flex: 2;
-      }
-      .editorial-meta {
-        flex: 1;
-        border-left: 1px solid rgba(0, 0, 0, 0.08);
-        padding-left: 1.5rem;
-      }
+    .editorial-text { flex: 2; }
+    .editorial-meta {
+      flex: 1;
+      border-left: 1px solid rgba(0, 0, 0, 0.08);
+      padding-left: 1.5rem;
     }
+  }
 
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: var(--navy);
-      color: white;
-      padding: 0.75rem 1.75rem;
-      border-radius: 9999px;
-      font-weight: 700;
-      font-size: 0.875rem;
-      text-decoration: none;
-      transition: all 0.2s;
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--navy);
+    color: white;
+    padding: 0.75rem 1.75rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover {
+    background: #1e40af;
+    transform: translateY(-2px);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--surface-container-high);
+    color: var(--on-surface);
+    padding: 0.75rem 1.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover {
+    background: var(--surface-container-lowest);
+  }
+
+  @media (max-width: 768px) {
+    .warning-header-inner {
+      grid-template-columns: 1fr;
     }
-
-    .btn-primary:hover {
-      background: #1e40af;
-      transform: translateY(-2px);
+    .warning-icon {
+      justify-content: flex-start;
     }
+  }
+</style>
+{% endblock %}
 
-    .btn-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: var(--surface-container-high);
-      color: var(--on-surface);
-      padding: 0.75rem 1.75rem;
-      border-radius: 9999px;
-      font-weight: 600;
-      font-size: 0.875rem;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-
-    .btn-secondary:hover {
-      background: var(--surface-container-lowest);
-    }
-
-    /* Footer (inherited from FlockIQ) */
-    .footer {
-      background: #0f172a;
-      padding: 52px 6% 28px;
-      margin-top: 60px;
-    }
-
-    .footer-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 32px;
-      flex-wrap: wrap;
-      margin-bottom: 44px;
-    }
-
-    .footer-brand {
-      max-width: 200px;
-    }
-
-    .footer-logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .footer-logo-mark {
-      width: 30px;
-      height: 30px;
-      background: var(--navy-mid);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 11px;
-    }
-
-    .footer-logo-name {
-      font-size: 15px;
-      font-weight: 800;
-      color: white;
-      font-family: 'Manrope', sans-serif;
-    }
-
-    .footer-tagline {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.35);
-      line-height: 1.6;
-    }
-
-    .footer-col-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.4);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 14px;
-    }
-
-    .footer-links {
-      list-style: none;
-    }
-
-    .footer-links li {
-      margin-bottom: 10px;
-    }
-
-    .footer-links a {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.5);
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-
-    .footer-links a:hover {
-      color: white;
-    }
-
-    .footer-bottom {
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
-      padding-top: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .footer-copy {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.25);
-    }
-
-    /* Reveal animation */
-    .reveal {
-      opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    @media (max-width: 768px) {
-      .warning-header-inner {
-        grid-template-columns: 1fr;
-      }
-      .warning-icon {
-        justify-content: flex-start;
-      }
-    }
-  </style>
-</head>
-<body>
-
-<!-- NAV (inherited from FlockIQ Landing) -->
-<nav class="nav">
-  <a href="/" class="nav-logo">
-    <div class="nav-logo-mark">FQ</div>
-    <span class="nav-logo-text">FlockIQ</span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="/#features">Features</a></li>
-    <li><a href="/#how">How it works</a></li>
-    <li><a href="/#pricing">Pricing</a></li>
-    <li><a href="/#about">About</a></li>
-  </ul>
-  <div class="nav-cta">
-    <a href="/login/" class="btn-ghost">Sign in</a>
-    <a href="/signup/" class="btn-navy">Get Started →</a>
-  </div>
-</nav>
-
-<!-- MAIN CONTENT (no sidebar) -->
+{% block content %}
 <div class="disclaimer-container">
   <!-- Critical Safeguard Header -->
   <div class="warning-header reveal">
@@ -597,70 +318,10 @@
     </p>
   </div>
 </div>
+{% endblock %}
 
-<!-- FOOTER (inherited from FlockIQ) -->
-<footer class="footer">
-  <div class="footer-top">
-    <div class="footer-brand">
-      <div class="footer-logo">
-        <div class="footer-logo-mark">FQ</div>
-        <span class="footer-logo-name">FlockIQ</span>
-      </div>
-      <p class="footer-tagline">Empowering the standard of global food production through high-frequency avian intelligence.</p>
-    </div>
-    <div>
-      <div class="footer-col-title">Platform</div>
-      <ul class="footer-links">
-        <li><a href="/#features">Neural Engine</a></li>
-        <li><a href="/#features">AI Inference</a></li>
-        <li><a href="/#features">Drone Hub</a></li>
-        <li><a href="/#features">Security IQ</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Company</div>
-      <ul class="footer-links">
-        <li><a href="/#about">About ADM Tech Hub</a></li>
-        <li><a href="#">Investor Relations</a></li>
-        <li><a href="#">News & Press</a></li>
-        <li><a href="#">Careers</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Legal</div>
-      <ul class="footer-links">
-        <li><a href="#">Privacy Policy</a></li>
-        <li><a href="#">Terms of Service</a></li>
-        <li><a href="#">Data Security</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Support</div>
-      <ul class="footer-links">
-        <li><a href="#">Documentation</a></li>
-        <li><a href="https://wa.me/2348000000000">WhatsApp Support</a></li>
-        <li><a href="#">System Status</a></li>
-      </ul>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <div class="footer-copy">© 2026 FlockIQ / ADM Tech Hub. All rights reserved.</div>
-    <div class="footer-copy">Built in Lagos, Nigeria 🇳🇬</div>
-  </div>
-</footer>
-
+{% block extra_scripts %}
 <script>
-  // Scroll reveal
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
   // Micro-interactions (button press)
   document.querySelectorAll('a, button').forEach(btn => {
     btn.addEventListener('mousedown', () => btn.style.transform = 'scale(0.96)');
@@ -668,6 +329,4 @@
     btn.addEventListener('mouseleave', () => btn.style.transform = '');
   });
 </script>
-
-</body>
-</html>
+{% endblock %}

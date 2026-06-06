@@ -12,6 +12,25 @@ from django.views.generic import TemplateView
 from apps.infrastructure.core.rls import set_tenant_context
 
 
+def custom_404(request, exception=None):
+    return render(request, '404.html', status=404)
+
+
+def custom_500(request):
+    return render(request, '500.html', status=500)
+
+
+def setup_wizard(request):
+    from django.contrib.auth.decorators import login_required
+    if not request.user.is_authenticated:
+        from django.contrib.auth.views import redirect_to_login
+        return redirect_to_login(request.get_full_path())
+    org = getattr(request.user, 'org', None)
+    if not org or getattr(org, 'onboarding_complete', False):
+        return redirect('/')
+    return render(request, 'setup-wizard.html', {'org': org})
+
+
 class SessionCheckView(View):
     def get(self, request):
         if request.user.is_authenticated:

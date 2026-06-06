@@ -7,6 +7,10 @@ from .views import (
     MarkReadView,
     MarkAllReadView,
     MarkAllReadPageView,
+    MySupportTicketsView,
+    SupportTicketDetailUserView,
+    SupportTicketFormView,
+    SubmitSupportTicketView,
 )
 
 app_name = "notifications"
@@ -19,4 +23,8 @@ urlpatterns = [
     path("notifications/<uuid:pk>/acknowledge/", AcknowledgeNotificationView.as_view(), name="acknowledge"),
     path("notifications/read-all/", MarkAllReadView.as_view(), name="mark_all_read"),
     path("notifications/mark-all-read-page/", MarkAllReadPageView.as_view(), name="mark_all_read_page"),
+    path("support/ticket/form/", SupportTicketFormView.as_view(), name="support_form"),
+    path("support/ticket/submit/", SubmitSupportTicketView.as_view(), name="submit_support_ticket"),
+    path("support/my-tickets/", MySupportTicketsView.as_view(), name="my_support_tickets"),
+    path("support/my-tickets/<int:pk>/", SupportTicketDetailUserView.as_view(), name="support_ticket_detail"),
 ]

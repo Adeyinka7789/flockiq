@@ -1,428 +1,163 @@
+{% extends "landing_base.html" %}
 {% load static %}
 {% load humanize %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlockIQ — Security & Compliance</title>
-  <meta name="description" content="FlockIQ protects your poultry farm data with AES-256 encryption, NDPR compliance, and multi-tenant isolation. Learn about our security practices.">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
 
-    :root {
-      --navy: #1e3a8a;
-      --navy-mid: #2d5be3;
-      --navy-light: #eff6ff;
-      --green: #16a34a;
-      --green-light: #dcfce7;
-      --text: #0f172a;
-      --text2: #475569;
-      --text3: #94a3b8;
-      --border: #e2e8f0;
-      --bg: #f8fafc;
-      --white: #ffffff;
-      --surface: #f7f9ff;
-      --surface-container-low: #f1f4fb;
-      --surface-container-lowest: #ffffff;
-      --surface-container-high: #e5e8ef;
-      --on-surface: #181c21;
-      --on-surface-variant: #444650;
-      --active-intel: #8bc87a;
-    }
+{% block title %}FlockIQ — Security & Compliance{% endblock %}
+{% block description %}FlockIQ protects your poultry farm data with AES-256 encryption, NDPR compliance, and multi-tenant isolation. Learn about our security practices.{% endblock %}
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--surface);
-      color: var(--on-surface);
-    }
+{% block extra_head %}
+<style>
+  body { background: var(--surface); color: var(--on-surface); }
 
-    /* ── NAV ── */
-    .nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(247, 249, 255, 0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(196, 198, 210, 0.2);
-      padding: 0 6%;
-      height: 68px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+  --active-intel: #8bc87a;
 
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-    }
+  .security-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+    padding: 60px 6%;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
 
-    .nav-logo-mark {
-      width: 36px;
-      height: 36px;
-      background: var(--navy);
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 13px;
-      letter-spacing: -0.5px;
-    }
+  .security-hero h1 {
+    font-family: 'Manrope', sans-serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    color: white;
+    margin-bottom: 16px;
+  }
 
-    .nav-logo-text {
-      font-size: 17px;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -0.4px;
-      font-family: 'Manrope', sans-serif;
-    }
+  .security-hero p {
+    color: rgba(255, 255, 255, 0.7);
+    max-width: 600px;
+    margin: 0 auto;
+    font-size: 1rem;
+  }
 
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      list-style: none;
-    }
+  .security-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 48px 6% 80px;
+  }
 
-    .nav-links a {
-      font-size: 14px;
-      color: var(--text2);
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.15s;
-    }
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px;
+    margin-bottom: 48px;
+  }
 
-    .nav-links a:hover {
-      color: var(--navy);
-    }
+  .stat-card {
+    background: var(--surface-container-lowest);
+    border-radius: 1rem;
+    padding: 24px;
+    text-align: center;
+    box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
+  }
 
-    .nav-cta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+  .stat-number {
+    font-family: 'Manrope', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--navy);
+  }
 
-    .btn-ghost {
-      padding: 8px 18px;
-      border-radius: 9999px;
-      border: 1.5px solid var(--border);
-      color: var(--text2);
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.15s;
-      background: white;
-    }
+  .stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    margin-top: 6px;
+  }
 
-    .btn-ghost:hover {
-      border-color: var(--navy);
-      color: var(--navy);
-    }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-bottom: 48px;
+  }
 
-    .btn-navy {
-      padding: 9px 20px;
-      border-radius: 9999px;
-      background: var(--navy);
-      color: white;
-      font-size: 13px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: all 0.15s;
-    }
+  .security-card {
+    background: var(--surface-container-lowest);
+    border-radius: 1rem;
+    padding: 28px;
+    transition: all 0.2s;
+  }
 
-    .btn-navy:hover {
-      background: #1e40af;
-      transform: translateY(-1px);
-    }
+  .security-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.08);
+  }
 
-    /* Hero */
-    .security-hero {
-      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
-      padding: 60px 6%;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
+  .card-icon {
+    width: 56px;
+    height: 56px;
+    background: var(--navy-light);
+    border-radius: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    margin-bottom: 20px;
+  }
 
-    .security-hero h1 {
-      font-family: 'Manrope', sans-serif;
-      font-size: clamp(2rem, 4vw, 3rem);
-      font-weight: 800;
-      color: white;
-      margin-bottom: 16px;
-    }
+  .security-card h3 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 12px;
+  }
 
-    .security-hero p {
-      color: rgba(255, 255, 255, 0.7);
-      max-width: 600px;
-      margin: 0 auto;
-      font-size: 1rem;
-    }
+  .security-card p {
+    font-size: 0.875rem;
+    color: var(--text2);
+    line-height: 1.6;
+  }
 
-    /* Main content */
-    .security-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 48px 6% 80px;
-    }
+  .compliance-section {
+    background: var(--surface-container-low);
+    border-radius: 1.5rem;
+    padding: 40px;
+    text-align: center;
+    margin-bottom: 48px;
+  }
 
-    /* Stats row */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 24px;
-      margin-bottom: 48px;
-    }
+  .compliance-section h2 {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 24px;
+  }
 
-    .stat-card {
-      background: var(--surface-container-lowest);
-      border-radius: 1rem;
-      padding: 24px;
-      text-align: center;
-      box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
-    }
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 24px;
+  }
 
-    .stat-number {
-      font-family: 'Manrope', sans-serif;
-      font-size: 2rem;
-      font-weight: 800;
-      color: var(--navy);
-    }
+  .badge-item {
+    background: var(--surface-container-lowest);
+    border-radius: 1rem;
+    padding: 16px 24px;
+    text-align: center;
+    min-width: 140px;
+  }
 
-    .stat-label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text3);
-      margin-top: 6px;
-    }
+  .badge-icon { font-size: 2rem; margin-bottom: 8px; }
 
-    /* Feature grid */
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 24px;
-      margin-bottom: 48px;
-    }
+  .badge-item span:last-child {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
+</style>
+{% endblock %}
 
-    .security-card {
-      background: var(--surface-container-lowest);
-      border-radius: 1rem;
-      padding: 28px;
-      transition: all 0.2s;
-    }
-
-    .security-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.08);
-    }
-
-    .card-icon {
-      width: 56px;
-      height: 56px;
-      background: var(--navy-light);
-      border-radius: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.75rem;
-      margin-bottom: 20px;
-    }
-
-    .security-card h3 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.125rem;
-      font-weight: 700;
-      color: var(--navy);
-      margin-bottom: 12px;
-    }
-
-    .security-card p {
-      font-size: 0.875rem;
-      color: var(--text2);
-      line-height: 1.6;
-    }
-
-    /* Compliance badges */
-    .compliance-section {
-      background: var(--surface-container-low);
-      border-radius: 1.5rem;
-      padding: 40px;
-      text-align: center;
-      margin-bottom: 48px;
-    }
-
-    .compliance-section h2 {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--navy);
-      margin-bottom: 24px;
-    }
-
-    .badges {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 24px;
-    }
-
-    .badge-item {
-      background: var(--surface-container-lowest);
-      border-radius: 1rem;
-      padding: 16px 24px;
-      text-align: center;
-      min-width: 140px;
-    }
-
-    .badge-icon {
-      font-size: 2rem;
-      margin-bottom: 8px;
-    }
-
-    .badge-item span:last-child {
-      display: block;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: var(--navy);
-    }
-
-    /* Footer */
-    .footer {
-      background: #0f172a;
-      padding: 52px 6% 28px;
-    }
-
-    .footer-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 32px;
-      flex-wrap: wrap;
-      margin-bottom: 44px;
-    }
-
-    .footer-brand {
-      max-width: 200px;
-    }
-
-    .footer-logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .footer-logo-mark {
-      width: 30px;
-      height: 30px;
-      background: var(--navy-mid);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 11px;
-    }
-
-    .footer-logo-name {
-      font-size: 15px;
-      font-weight: 800;
-      color: white;
-      font-family: 'Manrope', sans-serif;
-    }
-
-    .footer-tagline {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.35);
-      line-height: 1.6;
-    }
-
-    .footer-col-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.4);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 14px;
-    }
-
-    .footer-links {
-      list-style: none;
-    }
-
-    .footer-links li {
-      margin-bottom: 10px;
-    }
-
-    .footer-links a {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.5);
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-
-    .footer-links a:hover {
-      color: white;
-    }
-
-    .footer-bottom {
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
-      padding-top: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .footer-copy {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.25);
-    }
-
-    .reveal {
-      opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  </style>
-</head>
-<body>
-
-<!-- NAV -->
-<nav class="nav">
-  <a href="/" class="nav-logo">
-    <div class="nav-logo-mark">FQ</div>
-    <span class="nav-logo-text">FlockIQ</span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="/#features">Features</a></li>
-    <li><a href="/#how">How it works</a></li>
-    <li><a href="/#pricing">Pricing</a></li>
-    <li><a href="/about/">About</a></li>
-  </ul>
-  <div class="nav-cta">
-    <a href="/login/" class="btn-ghost">Sign in</a>
-    <a href="/signup/" class="btn-navy">Get Started →</a>
-  </div>
-</nav>
-
+{% block content %}
 <!-- Hero -->
 <section class="security-hero">
   <h1 class="reveal">🔒 Your Data, Protected Like Fort Knox</h1>
@@ -513,67 +248,6 @@
     <p style="color: var(--text2); font-size: 0.875rem;">Questions about our security practices? Contact our security team at <a href="mailto:security@flockiq.com" style="color: var(--navy);">security@flockiq.com</a></p>
   </div>
 </div>
+{% endblock %}
 
-<!-- FOOTER -->
-<footer class="footer">
-  <div class="footer-top">
-    <div class="footer-brand">
-      <div class="footer-logo">
-        <div class="footer-logo-mark">FQ</div>
-        <span class="footer-logo-name">FlockIQ</span>
-      </div>
-      <p class="footer-tagline">Empowering poultry farmers with AI-driven intelligence. Built in Lagos, for Nigeria.</p>
-    </div>
-    <div>
-      <div class="footer-col-title">Platform</div>
-      <ul class="footer-links">
-        <li><a href="/#features">Neural Engine</a></li>
-        <li><a href="/#features">AI Inference</a></li>
-        <li><a href="/#features">Security IQ</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Company</div>
-      <ul class="footer-links">
-        <li><a href="/about/">About ADM Tech Hub</a></li>
-        <li><a href="#">Careers</a></li>
-        <li><a href="#">Press</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Legal</div>
-      <ul class="footer-links">
-        <li><a href="/privacy/">Privacy Policy</a></li>
-        <li><a href="/terms/">Terms of Service</a></li>
-        <li><a href="/cookie/">Cookie Policy</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Support</div>
-      <ul class="footer-links">
-        <li><a href="/help/">Help Center</a></li>
-        <li><a href="#">WhatsApp Support</a></li>
-        <li><a href="#">System Status</a></li>
-      </ul>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <div class="footer-copy">© 2026 FlockIQ / ADM Tech Hub. All rights reserved.</div>
-    <div class="footer-copy">Built in Lagos, Nigeria 🇳🇬</div>
-  </div>
-</footer>
-
-<script>
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-</script>
-
-</body>
-</html>
+{% block extra_scripts %}{% endblock %}

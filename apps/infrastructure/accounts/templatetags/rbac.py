@@ -5,7 +5,15 @@ register = template.Library()
 
 @register.filter
 def unread_notification_count(user):
-    if not user.is_authenticated or not getattr(user, "org", None):
+    if not user.is_authenticated:
+        return 0
+    if getattr(user, "is_superuser", False):
+        try:
+            from apps.infrastructure.notifications.models import AdminNotification
+            return AdminNotification.objects.filter(recipient=user, is_read=False).count()
+        except Exception:
+            return 0
+    if not getattr(user, "org", None):
         return 0
     try:
         from apps.infrastructure.notifications.models import NotificationLog

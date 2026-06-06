@@ -1,0 +1,23 @@
+{% if error %}
+<div style="background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:9px;padding:10px 14px;margin-bottom:12px;font-size:13px;">
+  {{ error }}
+</div>
+{% endif %}
+
+{% for reply in replies %}
+<div class="reply-bubble {% if reply.author.is_superuser %}reply-admin{% else %}reply-user{% endif %}">
+  <div class="reply-meta">
+    {% if reply.author.is_superuser %}
+    <strong style="color:#3d5a99;">FlockIQ Support</strong>
+    {% else %}
+    <strong>{{ reply.author.get_full_name|default:reply.author.email }}</strong>
+    {% endif %}
+    &middot; {{ reply.created_at|date:"d M Y, H:i" }}
+  </div>
+  <div class="reply-msg">{{ reply.message }}</div>
+</div>
+{% empty %}
+<div style="text-align:center;padding:24px;color:#8a96a8;font-size:13px;">
+  No replies yet.
+</div>
+{% endfor %}

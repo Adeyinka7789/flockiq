@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Ticket #{{ ticket.pk }} — {{ ticket.subject }}{% endblock %}
+{% block breadcrumb %}Support Ticket{% endblock %}
+
+{% block content %}
+<style>
+  .sa-wrap { max-width: 900px; margin: 0 auto; }
+  .sa-card { background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;margin-bottom:16px; }
+  .sa-card-hd { display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #f1f5f9; }
+  .sa-card-title { font-size:14px;font-weight:700;color:#1a2744; }
+  .pill { padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase; }
+  .pill-low    { background:#f1f5f9;color:#475569; }
+  .pill-medium { background:#fef3c7;color:#92400e; }
+  .pill-high   { background:#fee2e2;color:#dc2626; }
+  .pill-open        { background:#e8eef8;color:#2d4578; }
+  .pill-in_progress { background:#fef3c7;color:#92400e; }
+  .pill-resolved    { background:#edfae8;color:#166534; }
+  .reply-bubble { border-radius:12px;padding:14px 16px;margin-bottom:12px; }
+  .reply-admin { background:#e8eef8;margin-left:40px; }
+  .reply-user  { background:#f8faff;margin-right:40px;border:1px solid #e2e8f0; }
+  .reply-meta  { font-size:11px;color:#8a96a8;margin-bottom:6px; }
+  .reply-msg   { font-size:13px;color:#1a2744;white-space:pre-wrap; }
+</style>
+
+<div class="sa-wrap">
+  <div style="margin-bottom:20px">
+    <a href="{% url 'superadmin:support_tickets' %}"
+       style="font-size:12px;color:#3d5a99;text-decoration:none;">
+      &larr; Back to Support Tickets
+    </a>
+  </div>
+
+  <!-- Ticket Info -->
+  <div class="sa-card">
+    <div class="sa-card-hd">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#1a2744;letter-spacing:-0.3px">
+          {{ ticket.subject }}
+        </div>
+        <div style="font-size:12px;color:#8a96a8;margin-top:3px">
+          {{ ticket.org.name }} &middot; {{ ticket.submitted_by.email|default:"unknown" }}
+          &middot; {{ ticket.created_at|date:"d M Y, H:i" }}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="pill pill-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span>
+        <span class="pill pill-{{ ticket.status }}">{{ ticket.get_status_display }}</span>
+      </div>
+    </div>
+    <div style="padding:20px;">
+      <div style="font-size:13px;color:#1a2744;white-space:pre-wrap;line-height:1.6">{{ ticket.message }}</div>
+    </div>
+  </div>
+
+  <!-- Replies thread -->
+  <div class="sa-card">
+    <div class="sa-card-hd">
+      <span class="sa-card-title">Conversation</span>
+    </div>
+    <div style="padding:20px;" id="ticket-replies">
+      {% include "superadmin/_ticket_replies.html" with ticket=ticket replies=replies %}
+    </div>
+  </div>
+
+  <!-- Reply Form -->
+  <div class="sa-card">
+    <div class="sa-card-hd">
+      <span class="sa-card-title">Reply to User</span>
+    </div>
+    <div style="padding:20px;">
+      <form hx-post="{% url 'superadmin:support_ticket_reply' pk=ticket.pk %}"
+            hx-target="#ticket-replies"
+            hx-swap="innerHTML"
+            hx-indicator="#htmx-spinner">
+        {% csrf_token %}
+        <div style="margin-bottom:14px;">
+          <label style="font-size:12px;font-weight:700;color:#1a2744;display:block;margin-bottom:6px;">
+            Update Status
+          </label>
+          <select name="status"
+                  style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;color:#1a2744;background:white;outline:none;">
+            <option value="" {% if not ticket.status %}selected{% endif %}>— Keep current —</option>
+            <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>Open</option>
+            <option value="in_progress" {% if ticket.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+            <option value="resolved" {% if ticket.status == 'resolved' %}selected{% endif %}>Resolved</option>
+          </select>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="font-size:12px;font-weight:700;color:#1a2744;display:block;margin-bottom:6px;">
+            Message
+          </label>
+          <textarea name="message"
+                    rows="5"
+                    required
+                    placeholder="Write your reply to the user…"
+                    style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;
+                           color:#1a2744;resize:vertical;outline:none;font-family:inherit;"></textarea>
+        </div>
+        <button type="submit"
+                style="padding:10px 24px;background:#3d5a99;color:white;border:none;border-radius:9px;
+                       font-size:13px;font-weight:700;cursor:pointer;">
+          Send Reply
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,512 +1,234 @@
+{% extends "landing_base.html" %}
 {% load static %}
 {% load humanize %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlockIQ — Page Not Found</title>
-  <meta name="description" content="The page you're looking for doesn't exist. Return to FlockIQ's poultry farm management platform.">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
 
-    :root {
-      /* FlockIQ base colors */
-      --navy: #1e3a8a;
-      --navy-mid: #2d5be3;
-      --navy-light: #eff6ff;
-      --green: #16a34a;
-      --green-light: #dcfce7;
-      --text: #0f172a;
-      --text2: #475569;
-      --text3: #94a3b8;
-      --border: #e2e8f0;
-      --bg: #f8fafc;
-      --white: #ffffff;
+{% block title %}FlockIQ — Page Not Found{% endblock %}
+{% block description %}The page you're looking for doesn't exist. Return to FlockIQ's poultry farm management platform.{% endblock %}
 
-      /* Precision Pastoral additions */
-      --surface: #f7f9ff;
-      --surface-container-low: #f1f4fb;
-      --surface-container-lowest: #ffffff;
-      --surface-container-high: #e5e8ef;
-      --on-surface: #181c21;
-      --on-surface-variant: #444650;
-      --outline-variant: #c4c6d2;
-      --secondary: #336a28;
-      --secondary-container: #b1f09e;
-      --on-secondary-container: #376f2c;
-    }
+{% block extra_head %}
+<style>
+  body {
+    background: var(--surface);
+    color: var(--on-surface);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
 
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--surface);
-      color: var(--on-surface);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+  main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
 
-    /* ── NAV (inherited from FlockIQ Landing) ── */
-    .nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(247, 249, 255, 0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(196, 198, 210, 0.2);
-      padding: 0 6%;
-      height: 68px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
+  .error-container {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 6%;
+    position: relative;
+    overflow: hidden;
+  }
 
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-    }
+  .error-container::before {
+    content: '';
+    position: absolute;
+    top: 20%;
+    left: -5%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(35, 66, 128, 0.04) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
 
-    .nav-logo-mark {
-      width: 36px;
-      height: 36px;
-      background: var(--navy);
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 13px;
-      letter-spacing: -0.5px;
-    }
+  .error-container::after {
+    content: '';
+    position: absolute;
+    bottom: 15%;
+    right: -5%;
+    width: 350px;
+    height: 350px;
+    background: radial-gradient(circle, rgba(51, 106, 40, 0.03) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
 
-    .nav-logo-text {
-      font-size: 17px;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -0.4px;
-      font-family: 'Manrope', sans-serif;
-    }
+  .error-inner {
+    max-width: 1100px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
 
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      list-style: none;
-    }
+  .error-visual { position: relative; }
 
-    .nav-links a {
-      font-size: 14px;
-      color: var(--text2);
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.15s;
-    }
+  .error-icon-container {
+    background: var(--surface-container-lowest);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
+    position: relative;
+  }
 
-    .nav-links a:hover {
-      color: var(--navy);
-    }
+  .error-icon-bg {
+    background: var(--surface-container-low);
+    border-radius: 1rem;
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 280px;
+  }
 
-    .nav-cta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+  .floating-icon {
+    font-size: 100px;
+    animation: float 4s ease-in-out infinite;
+  }
 
-    .btn-ghost {
-      padding: 8px 18px;
-      border-radius: 9999px;
-      border: 1.5px solid var(--border);
-      color: var(--text2);
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.15s;
-      background: white;
-    }
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+  }
 
-    .btn-ghost:hover {
-      border-color: var(--navy);
-      color: var(--navy);
-    }
+  .decorative-badge {
+    position: absolute;
+    bottom: -16px;
+    right: -16px;
+    background: var(--secondary-container);
+    color: var(--on-secondary-container);
+    padding: 8px 20px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
 
-    .btn-navy {
-      padding: 9px 20px;
-      border-radius: 9999px;
-      background: var(--navy);
-      color: white;
-      font-size: 13px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: all 0.15s;
-    }
+  .error-content { text-align: left; }
 
-    .btn-navy:hover {
-      background: #1e40af;
-      transform: translateY(-1px);
-    }
+  .error-code {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--green);
+    margin-bottom: 1rem;
+    display: inline-block;
+  }
 
-    /* ── MAIN ERROR CONTENT (asymmetric, calm) ── */
-    .error-container {
-      flex-grow: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 60px 6%;
-      position: relative;
-      overflow: hidden;
-    }
+  .error-title {
+    font-family: 'Manrope', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--navy);
+    line-height: 1.15;
+    margin-bottom: 1rem;
+  }
 
-    /* Background organic blobs */
-    .error-container::before {
-      content: '';
-      position: absolute;
-      top: 20%;
-      left: -5%;
-      width: 300px;
-      height: 300px;
-      background: radial-gradient(circle, rgba(35, 66, 128, 0.04) 0%, transparent 70%);
-      border-radius: 50%;
-      pointer-events: none;
-    }
+  .error-title span { color: var(--on-surface-variant); }
 
-    .error-container::after {
-      content: '';
-      position: absolute;
-      bottom: 15%;
-      right: -5%;
-      width: 350px;
-      height: 350px;
-      background: radial-gradient(circle, rgba(51, 106, 40, 0.03) 0%, transparent 70%);
-      border-radius: 50%;
-      pointer-events: none;
-    }
+  .error-message {
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--text2);
+    max-width: 440px;
+    margin-bottom: 2rem;
+  }
 
-    .error-inner {
-      max-width: 1100px;
-      width: 100%;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 48px;
-      align-items: center;
-      position: relative;
-      z-index: 2;
-    }
+  .error-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
 
-    /* Visual / illustration side */
-    .error-visual {
-      position: relative;
-    }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+    color: white;
+    padding: 0.875rem 1.75rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
 
-    .error-icon-container {
-      background: var(--surface-container-lowest);
-      border-radius: 1.5rem;
-      padding: 2rem;
-      box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
-      position: relative;
-    }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25);
+  }
 
-    .error-icon-bg {
-      background: var(--surface-container-low);
-      border-radius: 1rem;
-      padding: 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      min-height: 280px;
-    }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-container-high);
+    color: var(--on-surface);
+    padding: 0.875rem 1.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
 
-    .floating-icon {
-      font-size: 100px;
-      animation: float 4s ease-in-out infinite;
-    }
+  .btn-secondary:hover {
+    background: var(--surface-container-lowest);
+    transform: translateY(-2px);
+  }
 
-    @keyframes float {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-12px); }
-    }
+  .status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    max-width: 380px;
+  }
 
-    .decorative-badge {
-      position: absolute;
-      bottom: -16px;
-      right: -16px;
-      background: var(--secondary-container);
-      color: var(--on-secondary-container);
-      padding: 8px 20px;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    }
+  .status-item .status-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    margin-bottom: 0.25rem;
+  }
 
-    /* Content side */
-    .error-content {
-      text-align: left;
-    }
+  .status-item .status-value {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--on-surface);
+  }
 
-    .error-code {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      color: var(--green);
-      margin-bottom: 1rem;
-      display: inline-block;
-    }
+  @media (max-width: 768px) {
+    .error-inner { grid-template-columns: 1fr; gap: 32px; }
+    .error-content { text-align: center; }
+    .error-message { max-width: 100%; }
+    .error-actions { justify-content: center; }
+    .status-grid { max-width: 100%; margin: 0 auto; }
+  }
+</style>
+{% endblock %}
 
-    .error-title {
-      font-family: 'Manrope', sans-serif;
-      font-size: clamp(2.5rem, 5vw, 3.5rem);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: var(--navy);
-      line-height: 1.15;
-      margin-bottom: 1rem;
-    }
-
-    .error-title span {
-      color: var(--on-surface-variant);
-    }
-
-    .error-message {
-      font-size: 1rem;
-      line-height: 1.65;
-      color: var(--text2);
-      max-width: 440px;
-      margin-bottom: 2rem;
-    }
-
-    .error-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-bottom: 2.5rem;
-    }
-
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, var(--navy), var(--navy-mid));
-      color: white;
-      padding: 0.875rem 1.75rem;
-      border-radius: 9999px;
-      font-weight: 700;
-      font-size: 0.875rem;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25);
-    }
-
-    .btn-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--surface-container-high);
-      color: var(--on-surface);
-      padding: 0.875rem 1.75rem;
-      border-radius: 9999px;
-      font-weight: 600;
-      font-size: 0.875rem;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-
-    .btn-secondary:hover {
-      background: var(--surface-container-lowest);
-      transform: translateY(-2px);
-    }
-
-    /* Status grid */
-    .status-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.5rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid rgba(0, 0, 0, 0.05);
-      max-width: 380px;
-    }
-
-    .status-item .status-label {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text3);
-      margin-bottom: 0.25rem;
-    }
-
-    .status-item .status-value {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: var(--on-surface);
-    }
-
-    /* Footer */
-    .footer {
-      background: #0f172a;
-      padding: 52px 6% 28px;
-    }
-
-    .footer-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 32px;
-      flex-wrap: wrap;
-      margin-bottom: 44px;
-    }
-
-    .footer-brand {
-      max-width: 200px;
-    }
-
-    .footer-logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .footer-logo-mark {
-      width: 30px;
-      height: 30px;
-      background: var(--navy-mid);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 11px;
-    }
-
-    .footer-logo-name {
-      font-size: 15px;
-      font-weight: 800;
-      color: white;
-      font-family: 'Manrope', sans-serif;
-    }
-
-    .footer-tagline {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.35);
-      line-height: 1.6;
-    }
-
-    .footer-col-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.4);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 14px;
-    }
-
-    .footer-links {
-      list-style: none;
-    }
-
-    .footer-links li {
-      margin-bottom: 10px;
-    }
-
-    .footer-links a {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.5);
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-
-    .footer-links a:hover {
-      color: white;
-    }
-
-    .footer-bottom {
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
-      padding-top: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .footer-copy {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.25);
-    }
-
-    /* Reveal animation */
-    .reveal {
-      opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    @media (max-width: 768px) {
-      .error-inner {
-        grid-template-columns: 1fr;
-        gap: 32px;
-      }
-      .error-content {
-        text-align: center;
-      }
-      .error-message {
-        max-width: 100%;
-      }
-      .error-actions {
-        justify-content: center;
-      }
-      .status-grid {
-        max-width: 100%;
-        margin: 0 auto;
-      }
-    }
-  </style>
-</head>
-<body>
-
-<!-- NAV (inherited from FlockIQ) -->
-<nav class="nav">
-  <a href="/" class="nav-logo">
-    <div class="nav-logo-mark">FQ</div>
-    <span class="nav-logo-text">FlockIQ</span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="/#features">Features</a></li>
-    <li><a href="/#how">How it works</a></li>
-    <li><a href="/#pricing">Pricing</a></li>
-    <li><a href="/#about">About</a></li>
-  </ul>
-  <div class="nav-cta">
-    <a href="/login/" class="btn-ghost">Sign in</a>
-    <a href="/signup/" class="btn-navy">Get Started →</a>
-  </div>
-</nav>
-
-<!-- MAIN ERROR CONTENT -->
+{% block content %}
 <div class="error-container">
   <div class="error-inner">
-    <!-- Visual side (asymmetric, floating) -->
+    <!-- Visual side -->
     <div class="error-visual reveal">
       <div class="error-icon-container">
         <div class="error-icon-bg">
@@ -528,7 +250,7 @@
         <span>We'll find the way.</span>
       </h1>
       <p class="error-message">
-        The page you're looking for has wandered off — maybe it's foraging elsewhere. 
+        The page you're looking for has wandered off — maybe it's foraging elsewhere.
         Don't worry, your farm data is safe and your flock is waiting.
       </p>
       <div class="error-actions">
@@ -554,70 +276,10 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
-<!-- FOOTER (inherited from FlockIQ) -->
-<footer class="footer">
-  <div class="footer-top">
-    <div class="footer-brand">
-      <div class="footer-logo">
-        <div class="footer-logo-mark">FQ</div>
-        <span class="footer-logo-name">FlockIQ</span>
-      </div>
-      <p class="footer-tagline">Empowering the standard of global food production through high-frequency avian intelligence.</p>
-    </div>
-    <div>
-      <div class="footer-col-title">Platform</div>
-      <ul class="footer-links">
-        <li><a href="/#features">Neural Engine</a></li>
-        <li><a href="/#features">AI Inference</a></li>
-        <li><a href="/#features">Drone Hub</a></li>
-        <li><a href="/#features">Security IQ</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Company</div>
-      <ul class="footer-links">
-        <li><a href="/#about">About ADM Tech Hub</a></li>
-        <li><a href="#">Investor Relations</a></li>
-        <li><a href="#">News & Press</a></li>
-        <li><a href="#">Careers</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Legal</div>
-      <ul class="footer-links">
-        <li><a href="#">Privacy Policy</a></li>
-        <li><a href="#">Terms of Service</a></li>
-        <li><a href="#">Data Security</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Support</div>
-      <ul class="footer-links">
-        <li><a href="#">Documentation</a></li>
-        <li><a href="https://wa.me/2348000000000">WhatsApp Support</a></li>
-        <li><a href="#">System Status</a></li>
-      </ul>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <div class="footer-copy">© 2026 FlockIQ / ADM Tech Hub. All rights reserved.</div>
-    <div class="footer-copy">Built in Lagos, Nigeria 🇳🇬</div>
-  </div>
-</footer>
-
+{% block extra_scripts %}
 <script>
-  // Scroll reveal
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
   // Micro-interactions
   document.querySelectorAll('a, button').forEach(el => {
     el.addEventListener('mousedown', () => {
@@ -631,6 +293,4 @@
     });
   });
 </script>
-
-</body>
-</html>
+{% endblock %}

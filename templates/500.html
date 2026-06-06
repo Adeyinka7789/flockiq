@@ -1,582 +1,302 @@
+{% extends "landing_base.html" %}
 {% load static %}
 {% load humanize %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlockIQ — Server Error</title>
-  <meta name="description" content="Something went wrong on our end. Our team has been notified. FlockIQ is working to restore service.">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    :root {
-      /* FlockIQ base colors */
-      --navy: #1e3a8a;
-      --navy-mid: #2d5be3;
-      --navy-light: #eff6ff;
-      --green: #16a34a;
-      --green-light: #dcfce7;
-      --text: #0f172a;
-      --text2: #475569;
-      --text3: #94a3b8;
-      --border: #e2e8f0;
-      --bg: #f8fafc;
-      --white: #ffffff;
-
-      /* Precision Pastoral additions */
-      --surface: #f7f9ff;
-      --surface-container-low: #f1f4fb;
-      --surface-container-lowest: #ffffff;
-      --surface-container-high: #e5e8ef;
-      --on-surface: #181c21;
-      --on-surface-variant: #444650;
-      --outline-variant: #c4c6d2;
-      --secondary: #336a28;
-      --secondary-container: #b1f09e;
-      --secondary-fixed: #b4f3a0;
-      --primary-fixed: #d9e2ff;
-      --error: #ba1a1a;
-      --error-container: #ffdad6;
-    }
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background: var(--surface);
-      color: var(--on-surface);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow-x: hidden;
-    }
-
-    /* ── NAV (inherited from FlockIQ Landing) ── */
-    .nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: rgba(247, 249, 255, 0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(196, 198, 210, 0.2);
-      padding: 0 6%;
-      height: 68px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .nav-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-    }
-
-    .nav-logo-mark {
-      width: 36px;
-      height: 36px;
-      background: var(--navy);
-      border-radius: 9px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 13px;
-      letter-spacing: -0.5px;
-    }
-
-    .nav-logo-text {
-      font-size: 17px;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -0.4px;
-      font-family: 'Manrope', sans-serif;
-    }
-
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      list-style: none;
-    }
-
-    .nav-links a {
-      font-size: 14px;
-      color: var(--text2);
-      text-decoration: none;
-      font-weight: 500;
-      transition: color 0.15s;
-    }
-
-    .nav-links a:hover {
-      color: var(--navy);
-    }
-
-    .nav-cta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .btn-ghost {
-      padding: 8px 18px;
-      border-radius: 9999px;
-      border: 1.5px solid var(--border);
-      color: var(--text2);
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.15s;
-      background: white;
-    }
-
-    .btn-ghost:hover {
-      border-color: var(--navy);
-      color: var(--navy);
-    }
-
-    .btn-navy {
-      padding: 9px 20px;
-      border-radius: 9999px;
-      background: var(--navy);
-      color: white;
-      font-size: 13px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: all 0.15s;
-    }
-
-    .btn-navy:hover {
-      background: #1e40af;
-      transform: translateY(-1px);
-    }
-
-    /* ── MAIN ERROR CONTENT (asymmetric, glass, parallax) ── */
-    .error-container {
-      flex-grow: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 60px 6%;
-      position: relative;
-      overflow: hidden;
-      min-height: 70vh;
-    }
-
-    /* Parallax background blobs */
-    .bg-blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.3;
-      pointer-events: none;
-      transition: transform 0.1s ease-out;
-      z-index: 0;
-    }
-
-    .bg-blob-1 {
-      top: -100px;
-      right: -100px;
-      width: 400px;
-      height: 400px;
-      background: var(--secondary-fixed);
-    }
-
-    .bg-blob-2 {
-      bottom: -120px;
-      left: -120px;
-      width: 450px;
-      height: 450px;
-      background: var(--primary-fixed);
-    }
-
-    .bg-blob-3 {
-      top: 40%;
-      left: 30%;
-      width: 250px;
-      height: 250px;
-      background: var(--error-container);
-      opacity: 0.15;
-    }
-
-    .error-inner {
-      max-width: 1100px;
-      width: 100%;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 48px;
-      align-items: center;
-      position: relative;
-      z-index: 2;
-    }
-
-    /* Visual / glass panel side */
-    .error-visual {
-      position: relative;
-    }
-
-    .glass-panel {
-      background: rgba(255, 255, 255, 0.7);
-      backdrop-filter: blur(12px);
-      border-radius: 1.5rem;
-      padding: 1.5rem;
-      box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
-      position: relative;
-    }
-
-    .glass-inner {
-      background: var(--surface-container-low);
-      border-radius: 1rem;
-      padding: 2rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 320px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .floating-icon {
-      font-size: 100px;
-      animation: float 4s ease-in-out infinite;
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-12px); }
-    }
-
-    .floating-badge {
-      position: absolute;
-      top: -16px;
-      left: 24px;
-      background: var(--surface-container-lowest);
-      backdrop-filter: blur(8px);
-      padding: 12px 24px;
-      border-radius: 9999px;
-      box-shadow: 0px 8px 20px rgba(35, 66, 128, 0.08);
-      text-align: center;
-    }
-
-    .floating-badge .error-code {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1.75rem;
-      font-weight: 800;
-      color: var(--navy);
-      line-height: 1;
-    }
-
-    .floating-badge .error-label {
-      font-size: 0.6rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text3);
-      font-weight: 600;
-    }
-
-    /* Content side */
-    .error-content {
-      text-align: left;
-    }
-
-    .error-eyebrow {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.2em;
-      color: var(--secondary);
-      margin-bottom: 1rem;
-      display: inline-block;
-    }
-
-    .error-title {
-      font-family: 'Manrope', sans-serif;
-      font-size: clamp(2rem, 5vw, 3.25rem);
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      color: var(--on-surface);
-      line-height: 1.15;
-      margin-bottom: 1rem;
-    }
-
-    .error-title span {
-      color: var(--navy);
-    }
-
-    .error-message {
-      font-size: 1rem;
-      line-height: 1.65;
-      color: var(--text2);
-      max-width: 440px;
-      margin-bottom: 2rem;
-    }
-
-    .error-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, var(--navy), var(--navy-mid));
-      color: white;
-      padding: 0.875rem 1.75rem;
-      border-radius: 9999px;
-      font-weight: 700;
-      font-size: 0.875rem;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25);
-    }
-
-    .btn-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--surface-container-high);
-      color: var(--on-surface);
-      padding: 0.875rem 1.75rem;
-      border-radius: 9999px;
-      font-weight: 600;
-      font-size: 0.875rem;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-
-    .btn-secondary:hover {
-      background: var(--surface-container-lowest);
-      transform: translateY(-2px);
-    }
-
-    /* Status grid */
-    .status-row {
-      display: flex;
-      gap: 2rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid rgba(0, 0, 0, 0.05);
-    }
-
-    .status-item .status-label {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text3);
-      margin-bottom: 0.25rem;
-    }
-
-    .status-item .status-value {
-      font-family: 'Manrope', sans-serif;
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--on-surface);
-    }
-
-    /* Quick search */
-    .quick-search {
-      margin-top: 2rem;
-      padding-top: 1rem;
-      border-left: 3px solid var(--navy);
-      padding-left: 1.25rem;
-    }
-
-    .quick-search p {
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text3);
-      margin-bottom: 0.75rem;
-    }
-
-    .search-wrapper {
-      position: relative;
-      max-width: 280px;
-    }
-
-    .search-wrapper input {
-      width: 100%;
-      background: var(--surface-container-low);
-      border: none;
-      border-radius: 9999px;
-      padding: 0.75rem 1rem 0.75rem 1rem;
-      font-size: 0.875rem;
-      font-family: 'Inter', sans-serif;
-      transition: all 0.2s;
-    }
-
-    .search-wrapper input:focus {
-      outline: none;
-      background: var(--surface-container-lowest);
-      box-shadow: 0 0 0 2px var(--navy);
-    }
-
-    /* Footer */
-    .footer {
-      background: #0f172a;
-      padding: 52px 6% 28px;
-    }
-
-    .footer-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 32px;
-      flex-wrap: wrap;
-      margin-bottom: 44px;
-    }
-
-    .footer-brand {
-      max-width: 200px;
-    }
-
-    .footer-logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .footer-logo-mark {
-      width: 30px;
-      height: 30px;
-      background: var(--navy-mid);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 11px;
-    }
-
-    .footer-logo-name {
-      font-size: 15px;
-      font-weight: 800;
-      color: white;
-      font-family: 'Manrope', sans-serif;
-    }
-
-    .footer-tagline {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.35);
-      line-height: 1.6;
-    }
-
-    .footer-col-title {
-      font-size: 11px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.4);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 14px;
-    }
-
-    .footer-links {
-      list-style: none;
-    }
-
-    .footer-links li {
-      margin-bottom: 10px;
-    }
-
-    .footer-links a {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.5);
-      text-decoration: none;
-      transition: color 0.15s;
-    }
-
-    .footer-links a:hover {
-      color: white;
-    }
-
-    .footer-bottom {
-      border-top: 1px solid rgba(255, 255, 255, 0.07);
-      padding-top: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .footer-copy {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.25);
-    }
-
-    /* Reveal animation */
-    .reveal {
-      opacity: 0;
-      transform: translateY(24px);
-      transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .reveal.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    @media (max-width: 768px) {
-      .error-inner {
-        grid-template-columns: 1fr;
-        gap: 32px;
-      }
-      .error-content {
-        text-align: center;
-      }
-      .error-message {
-        max-width: 100%;
-      }
-      .error-actions {
-        justify-content: center;
-      }
-      .status-row {
-        justify-content: center;
-      }
-      .quick-search {
-        text-align: left;
-      }
-      .search-wrapper {
-        max-width: 100%;
-      }
-    }
-  </style>
-</head>
-<body>
-
-<!-- NAV (inherited from FlockIQ) -->
-<nav class="nav">
-  <a href="/" class="nav-logo">
-    <div class="nav-logo-mark">FQ</div>
-    <span class="nav-logo-text">FlockIQ</span>
-  </a>
-  <ul class="nav-links">
-    <li><a href="/#features">Features</a></li>
-    <li><a href="/#how">How it works</a></li>
-    <li><a href="/#pricing">Pricing</a></li>
-    <li><a href="/#about">About</a></li>
-  </ul>
-  <div class="nav-cta">
-    <a href="/login/" class="btn-ghost">Sign in</a>
-    <a href="/signup/" class="btn-navy">Get Started →</a>
-  </div>
-</nav>
-
-<!-- MAIN ERROR CONTENT -->
+
+{% block title %}FlockIQ — Server Error{% endblock %}
+{% block description %}Something went wrong on our end. Our team has been notified. FlockIQ is working to restore service.{% endblock %}
+
+{% block extra_head %}
+<style>
+  body {
+    background: var(--surface);
+    color: var(--on-surface);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+  }
+
+  main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  --secondary-fixed: #b4f3a0;
+  --primary-fixed: #d9e2ff;
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+
+  .error-container {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 6%;
+    position: relative;
+    overflow: hidden;
+    min-height: 70vh;
+  }
+
+  .bg-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.3;
+    pointer-events: none;
+    transition: transform 0.1s ease-out;
+    z-index: 0;
+  }
+
+  .bg-blob-1 {
+    top: -100px;
+    right: -100px;
+    width: 400px;
+    height: 400px;
+    background: #b4f3a0;
+  }
+
+  .bg-blob-2 {
+    bottom: -120px;
+    left: -120px;
+    width: 450px;
+    height: 450px;
+    background: #d9e2ff;
+  }
+
+  .bg-blob-3 {
+    top: 40%;
+    left: 30%;
+    width: 250px;
+    height: 250px;
+    background: #ffdad6;
+    opacity: 0.15;
+  }
+
+  .error-inner {
+    max-width: 1100px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  .error-visual { position: relative; }
+
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    box-shadow: 0px 12px 32px rgba(35, 66, 128, 0.06);
+    position: relative;
+  }
+
+  .glass-inner {
+    background: var(--surface-container-low);
+    border-radius: 1rem;
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 320px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .floating-icon {
+    font-size: 100px;
+    animation: float 4s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+  }
+
+  .floating-badge {
+    position: absolute;
+    top: -16px;
+    left: 24px;
+    background: var(--surface-container-lowest);
+    backdrop-filter: blur(8px);
+    padding: 12px 24px;
+    border-radius: 9999px;
+    box-shadow: 0px 8px 20px rgba(35, 66, 128, 0.08);
+    text-align: center;
+  }
+
+  .floating-badge .error-code {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--navy);
+    line-height: 1;
+  }
+
+  .floating-badge .error-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    font-weight: 600;
+  }
+
+  .error-content { text-align: left; }
+
+  .error-eyebrow {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--secondary);
+    margin-bottom: 1rem;
+    display: inline-block;
+  }
+
+  .error-title {
+    font-family: 'Manrope', sans-serif;
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--on-surface);
+    line-height: 1.15;
+    margin-bottom: 1rem;
+  }
+
+  .error-title span { color: var(--navy); }
+
+  .error-message {
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--text2);
+    max-width: 440px;
+    margin-bottom: 2rem;
+  }
+
+  .error-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--navy), var(--navy-mid));
+    color: white;
+    padding: 0.875rem 1.75rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-container-high);
+    color: var(--on-surface);
+    padding: 0.875rem 1.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .btn-secondary:hover {
+    background: var(--surface-container-lowest);
+    transform: translateY(-2px);
+  }
+
+  .status-row {
+    display: flex;
+    gap: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .status-item .status-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    margin-bottom: 0.25rem;
+  }
+
+  .status-item .status-value {
+    font-family: 'Manrope', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--on-surface);
+  }
+
+  .quick-search {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-left: 3px solid var(--navy);
+    padding-left: 1.25rem;
+  }
+
+  .quick-search p {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    margin-bottom: 0.75rem;
+  }
+
+  .search-wrapper {
+    position: relative;
+    max-width: 280px;
+  }
+
+  .search-wrapper input {
+    width: 100%;
+    background: var(--surface-container-low);
+    border: none;
+    border-radius: 9999px;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.2s;
+  }
+
+  .search-wrapper input:focus {
+    outline: none;
+    background: var(--surface-container-lowest);
+    box-shadow: 0 0 0 2px var(--navy);
+  }
+
+  @media (max-width: 768px) {
+    .error-inner { grid-template-columns: 1fr; gap: 32px; }
+    .error-content { text-align: center; }
+    .error-message { max-width: 100%; }
+    .error-actions { justify-content: center; }
+    .status-row { justify-content: center; }
+    .quick-search { text-align: left; }
+    .search-wrapper { max-width: 100%; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
 <div class="error-container">
   <!-- Parallax background blobs -->
   <div class="bg-blob bg-blob-1" id="blob1"></div>
@@ -630,7 +350,7 @@
         </div>
       </div>
 
-      <!-- Quick search (editorial touch) -->
+      <!-- Quick search -->
       <div class="quick-search">
         <p>🔍 Quick Navigation</p>
         <div class="search-wrapper">
@@ -640,79 +360,19 @@
     </div>
   </div>
 </div>
+{% endblock %}
 
-<!-- FOOTER (inherited from FlockIQ) -->
-<footer class="footer">
-  <div class="footer-top">
-    <div class="footer-brand">
-      <div class="footer-logo">
-        <div class="footer-logo-mark">FQ</div>
-        <span class="footer-logo-name">FlockIQ</span>
-      </div>
-      <p class="footer-tagline">Empowering the standard of global food production through high-frequency avian intelligence.</p>
-    </div>
-    <div>
-      <div class="footer-col-title">Platform</div>
-      <ul class="footer-links">
-        <li><a href="/#features">Neural Engine</a></li>
-        <li><a href="/#features">AI Inference</a></li>
-        <li><a href="/#features">Drone Hub</a></li>
-        <li><a href="/#features">Security IQ</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Company</div>
-      <ul class="footer-links">
-        <li><a href="/#about">About ADM Tech Hub</a></li>
-        <li><a href="#">Investor Relations</a></li>
-        <li><a href="#">News & Press</a></li>
-        <li><a href="#">Careers</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Legal</div>
-      <ul class="footer-links">
-        <li><a href="#">Privacy Policy</a></li>
-        <li><a href="#">Terms of Service</a></li>
-        <li><a href="#">Data Security</a></li>
-      </ul>
-    </div>
-    <div>
-      <div class="footer-col-title">Support</div>
-      <ul class="footer-links">
-        <li><a href="#">Documentation</a></li>
-        <li><a href="https://wa.me/2348003562747">WhatsApp Support</a></li>
-        <li><a href="#">System Status</a></li>
-      </ul>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <div class="footer-copy">© 2026 FlockIQ / ADM Tech Hub. All rights reserved.</div>
-    <div class="footer-copy">Built in Lagos, Nigeria 🇳🇬</div>
-  </div>
-</footer>
-
+{% block extra_scripts %}
 <script>
-  // Scroll reveal
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
   // Parallax effect for background blurs (mousemove)
   document.addEventListener('mousemove', (e) => {
     const x = e.clientX / window.innerWidth;
     const y = e.clientY / window.innerHeight;
-    
+
     const blob1 = document.getElementById('blob1');
     const blob2 = document.getElementById('blob2');
     const blob3 = document.getElementById('blob3');
-    
+
     if (blob1) blob1.style.transform = `translate(${x * 30}px, ${y * 20}px)`;
     if (blob2) blob2.style.transform = `translate(${-x * 25}px, ${-y * 15}px)`;
     if (blob3) blob3.style.transform = `translate(${x * 15}px, ${-y * 10}px)`;
@@ -738,6 +398,4 @@
     }
   });
 </script>
-
-</body>
-</html>
+{% endblock %}

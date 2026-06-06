@@ -1,15 +1,21 @@
 import json
 import uuid
 
+import structlog
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views import View
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 
+from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 from .services import NotificationService
+
+logger = structlog.get_logger(__name__)
 
 
 class NotificationBellView(LoginRequiredMixin, View):
@@ -156,3 +162,132 @@ class MarkAllReadPageView(LoginRequiredMixin, View):
             "refreshBell": True,
         })
         return response
+
+
+class MySupportTicketsView(LoginRequiredMixin, View):
+    """GET /support/my-tickets/ — lists the current user's support tickets."""
+
+    def get(self, request):
+        from .models import SupportTicket
+        tickets = SupportTicket.objects.filter(
+            submitted_by=request.user
+        ).order_by('-created_at')
+        return render(request, "support/my_tickets.html", {"tickets": tickets})
+
+
+class SupportTicketDetailUserView(LoginRequiredMixin, View):
+    """GET/POST /support/my-tickets/<pk>/ — user views their ticket thread."""
+
+    def get(self, request, pk):
+        from .models import SupportTicket
+        ticket = get_object_or_404(SupportTicket, pk=pk, submitted_by=request.user)
+        replies = ticket.replies.select_related('author').all()
+        return render(request, "support/ticket_detail.html", {
+            "ticket": ticket,
+            "replies": replies,
+        })
+
+    def post(self, request, pk):
+        from apps.infrastructure.accounts.models import CustomUser
+        from .models import SupportTicket, SupportTicketReply, AdminNotification
+
+        ticket = get_object_or_404(SupportTicket, pk=pk, submitted_by=request.user)
+        message = request.POST.get("message", "").strip()
+
+        if not message or ticket.status == "resolved":
+            replies = ticket.replies.select_related("author").all()
+            return render(request, "support/ticket_detail.html", {
+                "ticket": ticket,
+                "replies": replies,
+                "error": "Cannot reply — message is empty or ticket is resolved.",
+            }, status=422)
+
+        SupportTicketReply.objects.create(
+            ticket=ticket,
+            author=request.user,
+            message=message,
+        )
+
+        for su in CustomUser.objects.filter(is_superuser=True):
+            AdminNotification.objects.create(
+                recipient=su,
+                title=f"[Support follow-up] {ticket.subject} | {ticket.org.name}",
+                body=f"{request.user.email}: {message[:200]}",
+            )
+
+        replies = ticket.replies.select_related("author").all()
+        return render(request, "support/ticket_detail.html", {
+            "ticket": ticket,
+            "replies": replies,
+        })
+
+
+class SupportTicketFormView(LoginRequiredMixin, View):
+    """GET /support/ticket/form/ — returns the form fragment."""
+
+    def get(self, request):
+        return render(request, "support/_ticket_form.html", {})
+
+
+class SubmitSupportTicketView(LoginRequiredMixin, View):
+    """POST /support/ticket/submit/ — saves ticket, notifies admins, sends email."""
+
+    def post(self, request):
+        from .models import AdminNotification, SupportTicket
+        from apps.infrastructure.accounts.models import CustomUser
+
+        org = get_org_or_404(request)
+        subject = request.POST.get("subject", "").strip()
+        message = request.POST.get("message", "").strip()
+        priority = request.POST.get("priority", "medium").strip()
+
+        if not subject or not message:
+            return render(
+                request,
+                "support/_ticket_form.html",
+                {"error": "Subject and message are required.", "priority": priority},
+                status=422,
+            )
+
+        if priority not in ("low", "medium", "high"):
+            priority = "medium"
+
+        ticket = SupportTicket.objects.create(
+            org=org,
+            submitted_by=request.user,
+            subject=subject,
+            message=message,
+            priority=priority,
+        )
+
+        superusers = CustomUser.objects.filter(is_superuser=True)
+        for su in superusers:
+            AdminNotification.objects.create(
+                recipient=su,
+                title=f"[Support] {priority.upper()} — {subject} | {org.name}",
+                body=(
+                    f"From: {request.user.email}\n"
+                    f"Org: {org.name}\n"
+                    f"Priority: {priority}\n\n"
+                    f"{message}"
+                ),
+            )
+
+        try:
+            send_mail(
+                subject=f"[FlockIQ Support] {priority.upper()} — {subject} | {org.name}",
+                message=(
+                    f"Organisation: {org.name}\n"
+                    f"Submitted by: {request.user.email}\n"
+                    f"Priority: {priority}\n"
+                    f"Submitted: {ticket.created_at.strftime('%Y-%m-%d %H:%M UTC')}\n\n"
+                    f"{message}"
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.ADMIN_EMAIL],
+                fail_silently=True,
+            )
+        except Exception:
+            logger.exception("support_ticket.email_send_failed", ticket_id=ticket.pk)
+
+        return render(request, "support/_ticket_success.html", {})

@@ -1,0 +1,16 @@
+{% for reply in replies %}
+<div style="border-radius:12px;padding:14px 16px;margin-bottom:12px;
+            {% if reply.author.is_superuser %}background:#e8eef8;margin-left:40px;{% else %}background:#f8faff;margin-right:40px;border:1px solid #e2e8f0;{% endif %}">
+  <div style="font-size:11px;color:#8a96a8;margin-bottom:6px;">
+    {% if reply.author.is_superuser %}
+    <strong style="color:#3d5a99;">FlockIQ Support</strong>
+    {% else %}
+    <strong>{{ reply.author.get_full_name|default:reply.author.email }}</strong>
+    {% endif %}
+    &middot; {{ reply.created_at|date:"d M Y, H:i" }}
+  </div>
+  <div style="font-size:13px;color:#1a2744;white-space:pre-wrap;">{{ reply.message }}</div>
+</div>
+{% empty %}
+<div style="text-align:center;padding:24px;color:#8a96a8;font-size:13px;">No replies yet — we'll respond soon.</div>
+{% endfor %}
