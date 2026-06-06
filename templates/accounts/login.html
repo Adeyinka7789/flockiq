@@ -270,6 +270,12 @@
           {{ success_msg }}
         </div>
         {% endif %}
+        {% if request.GET.next %}
+        <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;
+                    padding:10px 14px;font-size:13px;color:#92400e;margin-bottom:16px">
+          Your session expired. Please log in again to continue.
+        </div>
+        {% endif %}
         {% if error %}
         <div class="form-error">{{ error }}</div>
         {% endif %}

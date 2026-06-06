@@ -131,9 +131,19 @@ CACHES = {
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_CACHE_ALIAS = "default"
 
-thirty_minutes = 1800
-SESSION_COOKIE_AGE = thirty_minutes   #time before cookie expires
-SESSION_SAVE_EVERY_REQUEST = True  # Resets the 30-minute timer on every mouse click/HTMX hit
+SESSION_COOKIE_AGE = 60 * 60 * 2        # 2 hours of inactivity
+SESSION_SAVE_EVERY_REQUEST = True        # resets the 2-hour clock on every request
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # survive browser restart within 2 hours
+SESSION_COOKIE_HTTPONLY = True           # JS cannot read session cookie
+SESSION_COOKIE_SAMESITE = "Lax"
+
+CSRF_COOKIE_HTTPONLY = False             # HTMX needs to read CSRF cookie
+CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS",
+    default="http://localhost:8000,http://127.0.0.1:8000",
+    cast=Csv(),
+)
 
 # --- Auth ---
 AUTH_USER_MODEL = "accounts.CustomUser"
@@ -191,6 +201,13 @@ CELERY_WORKER_MAX_TASKS_PER_CHILD = 200
 CELERY_TASK_SOFT_TIME_LIMIT = 180
 CELERY_TASK_TIME_LIMIT = 240
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+from celery.schedules import crontab  # noqa: E402
+CELERY_BEAT_SCHEDULE = {
+    "clear-expired-sessions": {
+        "task": "apps.infrastructure.core.tasks.clear_expired_sessions",
+        "schedule": crontab(hour=2, minute=0),
+    },
+}
 
 # --- JWT ---
 from datetime import timedelta

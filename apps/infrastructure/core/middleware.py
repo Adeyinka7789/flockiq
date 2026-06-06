@@ -47,8 +47,8 @@ class HtmxSessionExpiredMiddleware:
             and request.headers.get("HX-Request")
             and "/login/" in response.get("Location", "")
         ):
-            new_response = HttpResponse(status=204)
-            new_response["HX-Redirect"] = response["Location"]
+            new_response = HttpResponse(status=401)
+            new_response["HX-Redirect"] = "/login/?next=" + request.path
             return new_response
         return response
 
