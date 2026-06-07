@@ -120,16 +120,35 @@ DATABASES = {
 }
 
 # --- Cache ---
+# DB 1 (REDIS_URL)         → Celery broker + general-purpose cache.
+# DB 2 (REDIS_SESSION_URL) → sessions only, isolated from cache/Celery churn so a
+#                            flush or restart of DB 1 cannot wipe user sessions.
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": config("REDIS_URL", default="redis://127.0.0.1:6379/1"),
-        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
-    }
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": True,
+        },
+        "TIMEOUT": 300,
+    },
+    "sessions": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": config("REDIS_SESSION_URL", default="redis://127.0.0.1:6379/2"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": False,  # sessions must not fail silently
+        },
+        "TIMEOUT": 60 * 60 * 2,  # match SESSION_COOKIE_AGE
+    },
 }
 
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-SESSION_CACHE_ALIAS = "default"
+# cached_db: reads from the "sessions" Redis cache (fast), falls back to the
+# django_session table on a cache miss/outage (resilient). Session rows are
+# always persisted in PostgreSQL, so a Redis restart does not log users out.
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+SESSION_CACHE_ALIAS = "sessions"
 
 SESSION_COOKIE_AGE = 60 * 60 * 2        # 2 hours of inactivity
 SESSION_SAVE_EVERY_REQUEST = True        # resets the 2-hour clock on every request

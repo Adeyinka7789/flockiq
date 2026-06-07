@@ -74,3 +74,9 @@ LOGGING = {
         "level": "WARNING",
     },
 }
+
+
+# Pure DB-backed sessions for local dev. Overrides base's cached_db so local has
+# NO Redis dependency for auth — sessions survive Redis/server restarts. No
+# SESSION_CACHE_ALIAS needed; the db backend never touches the cache.
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
