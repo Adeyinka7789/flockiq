@@ -1,0 +1,506 @@
+[
+{
+  "model": "tenants.organization",
+  "pk": "a41d6f0c-dc2e-443f-990a-08cdc517121a",
+  "fields": {
+    "name": "Obasanjo Farm",
+    "subdomain": "obasanjofarm",
+    "logo": "",
+    "primary_colour": "#16a34a",
+    "plan_tier": "trial",
+    "subscription_status": "trial",
+    "trial_ends_at": "2026-06-23T10:14:41.679Z",
+    "max_users": 5,
+    "storage_quota_gb": 2,
+    "grace_period_ends_at": null,
+    "owner_name": "Olusegun",
+    "owner_phone": "+2347030415678",
+    "owner_email": "Olusegun419@gmail.com",
+    "settings": {},
+    "is_active": true,
+    "onboarding_complete": true,
+    "created_at": "2026-06-02T10:14:41.680Z",
+    "updated_at": "2026-06-04T20:36:21.508Z"
+  }
+},
+{
+  "model": "tenants.organization",
+  "pk": "fdd1504c-af63-4283-b4c1-75ef9fea0570",
+  "fields": {
+    "name": "Test Farm Ltd",
+    "subdomain": "testfarm",
+    "logo": "",
+    "primary_colour": "#16a34a",
+    "plan_tier": "monthly",
+    "subscription_status": "active",
+    "trial_ends_at": "2026-07-02T10:04:21.093Z",
+    "max_users": 5,
+    "storage_quota_gb": 5,
+    "grace_period_ends_at": null,
+    "owner_name": "Michael Adeniran",
+    "owner_phone": "+2348012345678",
+    "owner_email": "michael@testfarm.com",
+    "settings": {},
+    "is_active": true,
+    "onboarding_complete": true,
+    "created_at": "2026-06-02T10:04:21.113Z",
+    "updated_at": "2026-06-02T11:24:56.492Z"
+  }
+},
+{
+  "model": "accounts.customuser",
+  "fields": {
+    "password": "pbkdf2_sha256$870000$kwafLV5AencwaXHhqOa612$NKUluQHPCImtUUvrpapvQBbDZScQ36XFLt+4oKOZ0HE=",
+    "last_login": "2026-06-07T09:49:07.312Z",
+    "is_superuser": false,
+    "username": "michael_testfarm",
+    "first_name": "Michael",
+    "last_name": "Adeniran",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-06-02T10:04:21.183Z",
+    "org": "fdd1504c-af63-4283-b4c1-75ef9fea0570",
+    "role": "owner",
+    "phone": "07030834157",
+    "bio": "Dami's HUsband",
+    "country": "",
+    "state_region": "",
+    "timezone": "",
+    "language_code": "en",
+    "email_verified": true,
+    "email_verification_token": "b7cac0a5-b4b6-4d50-9576-9f880ceb52c5",
+    "email": "michael@testfarm.com",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.customuser",
+  "fields": {
+    "password": "pbkdf2_sha256$870000$7UpBiqHeErXaHJ9K8j5AGP$UHrZqIZE82ezPCM5gwhbxS0SjQbRDOpNoy7/ZzO/q9s=",
+    "last_login": "2026-06-03T11:11:44.773Z",
+    "is_superuser": false,
+    "username": "Olusegun419@gmail.com",
+    "first_name": "Olusegun",
+    "last_name": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-06-02T10:14:41.733Z",
+    "org": "a41d6f0c-dc2e-443f-990a-08cdc517121a",
+    "role": "owner",
+    "phone": "+2347030415678",
+    "bio": "",
+    "country": "",
+    "state_region": "",
+    "timezone": "",
+    "language_code": "en",
+    "email_verified": true,
+    "email_verification_token": "b7cac0a5-b4b6-4d50-9576-9f880ceb52c5",
+    "email": "Olusegun419@gmail.com",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.customuser",
+  "fields": {
+    "password": "pbkdf2_sha256$870000$u87wjPh8dRWaIVlTqkDy3B$rr9DC8mnG5rX0FR8jItpK1gitLwop+kOGNAdtvpatYY=",
+    "last_login": "2026-06-07T15:02:02.340Z",
+    "is_superuser": true,
+    "username": "Mike7789",
+    "first_name": "Adeniran",
+    "last_name": "MICHAEL",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-06-03T11:08:39.155Z",
+    "org": null,
+    "role": "super_admin",
+    "phone": "07030834157",
+    "bio": "I am The Best Software Developer in The world when it comes to automating business processes",
+    "country": "",
+    "state_region": "",
+    "timezone": "",
+    "language_code": "en",
+    "email_verified": true,
+    "email_verification_token": "b7cac0a5-b4b6-4d50-9576-9f880ceb52c5",
+    "email": "Dotunm85@gmail.com",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "notifications.broadcastnotification",
+  "pk": 1,
+  "fields": {
+    "title": "Scheduled Maintenance, Jun 10.",
+    "message": "We will be running our monthly audit and maintenance.",
+    "audience": "owners_managers",
+    "channel": "both",
+    "sent_by": [
+      "Dotunm85@gmail.com"
+    ],
+    "sent_at": "2026-06-04T14:36:33.043Z",
+    "recipient_count": 2
+  }
+},
+{
+  "model": "notifications.adminnotification",
+  "pk": 1,
+  "fields": {
+    "recipient": [
+      "Dotunm85@gmail.com"
+    ],
+    "title": "[Support] MEDIUM  Notification | Test Farm Ltd",
+    "body": "From: michael@testfarm.com\nOrg: Test Farm Ltd\nPriority: medium\n\nMy notficatios are slow",
+    "is_read": true,
+    "action_url": "",
+    "created_at": "2026-06-06T19:39:37.928Z"
+  }
+},
+{
+  "model": "notifications.adminnotification",
+  "pk": 2,
+  "fields": {
+    "recipient": [
+      "michael@testfarm.com"
+    ],
+    "title": "Support ticket update  Notification",
+    "body": "Admin replied: fixed bro",
+    "is_read": false,
+    "action_url": "",
+    "created_at": "2026-06-06T19:56:36.161Z"
+  }
+},
+{
+  "model": "notifications.adminnotification",
+  "pk": 3,
+  "fields": {
+    "recipient": [
+      "Dotunm85@gmail.com"
+    ],
+    "title": "[Support] MEDIUM  Abeg let's test | Test Farm Ltd",
+    "body": "From: michael@testfarm.com\nOrg: Test Farm Ltd\nPriority: medium\n\nI dey test o",
+    "is_read": true,
+    "action_url": "",
+    "created_at": "2026-06-06T20:01:51.475Z"
+  }
+},
+{
+  "model": "notifications.adminnotification",
+  "pk": 4,
+  "fields": {
+    "recipient": [
+      "Dotunm85@gmail.com"
+    ],
+    "title": "[Support] HIGH  Oya brotherly | Test Farm Ltd",
+    "body": "From: michael@testfarm.com\nOrg: Test Farm Ltd\nPriority: high\n\nAdmin test",
+    "is_read": true,
+    "action_url": "",
+    "created_at": "2026-06-06T20:11:47.083Z"
+  }
+},
+{
+  "model": "notifications.adminnotification",
+  "pk": 5,
+  "fields": {
+    "recipient": [
+      "Dotunm85@gmail.com"
+    ],
+    "title": "[Support] MEDIUM  HelLo check | Test Farm Ltd",
+    "body": "From: michael@testfarm.com\nOrg: Test Farm Ltd\nPriority: medium\n\ncheck",
+    "is_read": true,
+    "action_url": "",
+    "created_at": "2026-06-06T22:27:12.612Z"
+  }
+},
+{
+  "model": "notifications.adminnotification",
+  "pk": 6,
+  "fields": {
+    "recipient": [
+      "Dotunm85@gmail.com"
+    ],
+    "title": "[Support] MEDIUM  Final mi o | Test Farm Ltd",
+    "body": "From: michael@testfarm.com\nOrg: Test Farm Ltd\nPriority: medium\n\nFinal Memda",
+    "is_read": true,
+    "action_url": "/superadmin/support-tickets/5/",
+    "created_at": "2026-06-06T23:22:40.485Z"
+  }
+},
+{
+  "model": "notifications.supportticket",
+  "pk": 1,
+  "fields": {
+    "org": "fdd1504c-af63-4283-b4c1-75ef9fea0570",
+    "submitted_by": [
+      "michael@testfarm.com"
+    ],
+    "subject": "Notification",
+    "message": "My notficatios are slow",
+    "priority": "medium",
+    "status": "resolved",
+    "created_at": "2026-06-06T19:39:37.912Z",
+    "updated_at": "2026-06-06T19:56:34.847Z",
+    "is_read_by_admin": true
+  }
+},
+{
+  "model": "notifications.supportticket",
+  "pk": 2,
+  "fields": {
+    "org": "fdd1504c-af63-4283-b4c1-75ef9fea0570",
+    "submitted_by": [
+      "michael@testfarm.com"
+    ],
+    "subject": "Abeg let's test",
+    "message": "I dey test o",
+    "priority": "medium",
+    "status": "resolved",
+    "created_at": "2026-06-06T20:01:51.462Z",
+    "updated_at": "2026-06-06T20:10:56.012Z",
+    "is_read_by_admin": true
+  }
+},
+{
+  "model": "notifications.supportticket",
+  "pk": 3,
+  "fields": {
+    "org": "fdd1504c-af63-4283-b4c1-75ef9fea0570",
+    "submitted_by": [
+      "michael@testfarm.com"
+    ],
+    "subject": "Oya brotherly",
+    "message": "Admin test",
+    "priority": "high",
+    "status": "resolved",
+    "created_at": "2026-06-06T20:11:47.073Z",
+    "updated_at": "2026-06-06T22:09:16.053Z",
+    "is_read_by_admin": true
+  }
+},
+{
+  "model": "notifications.supportticket",
+  "pk": 4,
+  "fields": {
+    "org": "fdd1504c-af63-4283-b4c1-75ef9fea0570",
+    "submitted_by": [
+      "michael@testfarm.com"
+    ],
+    "subject": "HelLo check",
+    "message": "check",
+    "priority": "medium",
+    "status": "resolved",
+    "created_at": "2026-06-06T22:27:12.603Z",
+    "updated_at": "2026-06-06T22:50:02.617Z",
+    "is_read_by_admin": true
+  }
+},
+{
+  "model": "notifications.supportticket",
+  "pk": 5,
+  "fields": {
+    "org": "fdd1504c-af63-4283-b4c1-75ef9fea0570",
+    "submitted_by": [
+      "michael@testfarm.com"
+    ],
+    "subject": "Final mi o",
+    "message": "Final Memda",
+    "priority": "medium",
+    "status": "open",
+    "created_at": "2026-06-06T23:22:40.471Z",
+    "updated_at": "2026-06-06T23:23:37.925Z",
+    "is_read_by_admin": true
+  }
+},
+{
+  "model": "notifications.supportticketreply",
+  "pk": 1,
+  "fields": {
+    "ticket": 1,
+    "author": [
+      "Dotunm85@gmail.com"
+    ],
+    "message": "fixed bro",
+    "created_at": "2026-06-06T19:56:34.839Z"
+  }
+},
+{
+  "model": "notifications.supportticketreply",
+  "pk": 2,
+  "fields": {
+    "ticket": 2,
+    "author": [
+      "Dotunm85@gmail.com"
+    ],
+    "message": "We don fix am brotherly",
+    "created_at": "2026-06-06T20:10:56.004Z"
+  }
+},
+{
+  "model": "notifications.supportticketreply",
+  "pk": 3,
+  "fields": {
+    "ticket": 3,
+    "author": [
+      "Dotunm85@gmail.com"
+    ],
+    "message": "I dey o bro",
+    "created_at": "2026-06-06T22:09:16.045Z"
+  }
+},
+{
+  "model": "notifications.supportticketreply",
+  "pk": 4,
+  "fields": {
+    "ticket": 4,
+    "author": [
+      "Dotunm85@gmail.com"
+    ],
+    "message": "okay bro",
+    "created_at": "2026-06-06T22:49:17.501Z"
+  }
+},
+{
+  "model": "notifications.supportticketreply",
+  "pk": 5,
+  "fields": {
+    "ticket": 4,
+    "author": [
+      "Dotunm85@gmail.com"
+    ],
+    "message": "yes",
+    "created_at": "2026-06-06T22:49:57.154Z"
+  }
+},
+{
+  "model": "notifications.supportticketreply",
+  "pk": 6,
+  "fields": {
+    "ticket": 4,
+    "author": [
+      "Dotunm85@gmail.com"
+    ],
+    "message": "yes",
+    "created_at": "2026-06-06T22:49:59.268Z"
+  }
+},
+{
+  "model": "notifications.supportticketreply",
+  "pk": 7,
+  "fields": {
+    "ticket": 4,
+    "author": [
+      "Dotunm85@gmail.com"
+    ],
+    "message": "yes",
+    "created_at": "2026-06-06T22:50:02.611Z"
+  }
+},
+{
+  "model": "notifications.supportticketreply",
+  "pk": 8,
+  "fields": {
+    "ticket": 5,
+    "author": [
+      "Dotunm85@gmail.com"
+    ],
+    "message": "I love you bro",
+    "created_at": "2026-06-06T23:23:37.914Z"
+  }
+},
+{
+  "model": "billing.billingplan",
+  "pk": 2,
+  "fields": {
+    "name": "Free Trial",
+    "plan_tier": "trial",
+    "paystack_plan_code": "",
+    "amount_kobo": 0,
+    "billing_interval": "monthly",
+    "features": [
+      "1 farm, 1 active batch",
+      "All daily logging features",
+      "Basic dashboard",
+      "14-day full access"
+    ],
+    "is_active": true,
+    "created_at": "2026-06-02T15:00:30.526Z"
+  }
+},
+{
+  "model": "billing.billingplan",
+  "pk": 3,
+  "fields": {
+    "name": "Monthly",
+    "plan_tier": "monthly",
+    "paystack_plan_code": "",
+    "amount_kobo": 3000000,
+    "billing_interval": "monthly",
+    "features": [
+      "Up to 3 farms",
+      "All features + AI alerts",
+      "SMS notifications",
+      "PDF & Excel exports",
+      "Weather intelligence"
+    ],
+    "is_active": true,
+    "created_at": "2026-06-02T15:00:30.539Z"
+  }
+},
+{
+  "model": "billing.billingplan",
+  "pk": 4,
+  "fields": {
+    "name": "Cycle",
+    "plan_tier": "cycle",
+    "paystack_plan_code": "",
+    "amount_kobo": 1500000,
+    "billing_interval": "per_cycle",
+    "features": [
+      "Per 6-week broiler cycle",
+      "Activates on batch placement",
+      "All features included"
+    ],
+    "is_active": true,
+    "created_at": "2026-06-02T15:00:30.547Z"
+  }
+},
+{
+  "model": "billing.billingplan",
+  "pk": 5,
+  "fields": {
+    "name": "Yearly",
+    "plan_tier": "yearly",
+    "paystack_plan_code": "",
+    "amount_kobo": 30000000,
+    "billing_interval": "annually",
+    "features": [
+      "Unlimited farms",
+      "Advanced AI features",
+      "White-label option",
+      "Priority support",
+      "2 months free"
+    ],
+    "is_active": true,
+    "created_at": "2026-06-02T15:00:30.556Z"
+  }
+},
+{
+  "model": "accounts.impersonationlog",
+  "pk": "78a12154-1678-414b-82f0-cb8051a69d2a",
+  "fields": {
+    "impersonator": [
+      "Dotunm85@gmail.com"
+    ],
+    "target_user": [
+      "Olusegun419@gmail.com"
+    ],
+    "target_org": "a41d6f0c-dc2e-443f-990a-08cdc517121a",
+    "reason": "Support session",
+    "started_at": "2026-06-04T20:37:27.851Z",
+    "ended_at": "2026-06-04T20:37:46.947Z",
+    "ip_address": "127.0.0.1",
+    "x_forwarded_for": ""
+  }
+}
+]
