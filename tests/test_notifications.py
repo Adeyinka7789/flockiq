@@ -343,7 +343,7 @@ def test_mark_read_updates_is_read():
             recipient=user,
         )
         svc = NotificationService(org)
-        svc.mark_read(notif.id)
+        svc.mark_read(notif.id, user)
         notif.refresh_from_db()
 
     assert notif.is_read is True
