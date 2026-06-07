@@ -21,6 +21,7 @@ class ImpersonationLog(models.Model):
     started_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
+    x_forwarded_for = models.CharField(max_length=255, blank=True)
 
     class Meta:
         ordering = ['-started_at']

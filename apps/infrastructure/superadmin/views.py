@@ -1,3 +1,4 @@
+import ipaddress
 import json
 import time
 from collections import Counter
@@ -16,6 +17,20 @@ from apps.infrastructure.core.mixins import SuperAdminMixin
 from apps.infrastructure.tenants.models import Organization
 
 logger = structlog.get_logger(__name__)
+
+
+def get_client_ip(request):
+    """
+    Capture both the trusted REMOTE_ADDR and the (client-spoofable)
+    X-Forwarded-For header separately so the audit trail never relies on
+    a header an attacker can set.
+    """
+    remote_addr = request.META.get('REMOTE_ADDR', '')
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    return {
+        'remote_addr': remote_addr,
+        'x_forwarded_for': x_forwarded_for,
+    }
 
 
 class SuperAdminDashboardView(SuperAdminMixin, View):
@@ -503,10 +518,7 @@ class ImpersonateStartView(SuperAdminMixin, View):
             })
             return response
 
-        x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
-        ip = (x_forwarded.split(',')[0]
-              if x_forwarded
-              else request.META.get('REMOTE_ADDR'))
+        ip_info = get_client_ip(request)
 
         request.session['_impersonator_id'] = str(request.user.pk)
         request.session['_impersonated_user_id'] = str(target.pk)
@@ -518,7 +530,8 @@ class ImpersonateStartView(SuperAdminMixin, View):
             target_user=target,
             target_org=target.org,
             reason=request.POST.get('reason', ''),
-            ip_address=ip,
+            ip_address=ip_info['remote_addr'] or None,
+            x_forwarded_for=ip_info['x_forwarded_for'],
         )
 
         from django.shortcuts import redirect

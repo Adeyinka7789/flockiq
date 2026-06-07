@@ -75,6 +75,8 @@ X_FRAME_OPTIONS = "DENY"
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
+# REQUIRED: set this env var in production
+# CSRF_TRUSTED_ORIGINS=https://*.flockiq.com,https://flockiq.com
 CSRF_TRUSTED_ORIGINS = [
     "https://flockiq.com",
     "https://www.flockiq.com",
