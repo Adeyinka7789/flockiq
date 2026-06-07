@@ -151,102 +151,22 @@
 
 <div class="cases-container">
   <div class="cases-grid">
-
-    <!-- Case Study 1 -->
+    {% for cs in case_studies %}
     <div class="case-card reveal">
-      <div class="case-image">🐔 🇳🇬</div>
+      <div class="case-image">{{ cs.emoji }}</div>
       <div class="case-content">
-        <div class="farm-badge">LAGOS · 25,000 BIRDS</div>
-        <h3>Aladimeji Farms: 40% Mortality Reduction</h3>
+        <div class="farm-badge">{{ cs.card_badge }}</div>
+        <h3>{{ cs.card_title }}</h3>
         <div class="case-stats">
-          <span class="stat">📉 -40% Mortality</span>
-          <span class="stat">💰 ₦12M Saved/Year</span>
-          <span class="stat">⚠️ 72hr Early Warning</span>
+          {% for stat in cs.card_stats %}
+          <span class="stat">{{ stat }}</span>
+          {% endfor %}
         </div>
-        <p>"FlockIQ's anomaly detection alerted us to a respiratory outbreak 3 days before clinical signs appeared. We isolated the affected house and saved over 4,000 birds. The AI paid for itself in one cycle."</p>
-        <a href="#" class="read-more">Read full story →</a>
+        <p>{{ cs.card_excerpt }}</p>
+        <a href="{% url 'case_study_detail' slug=cs.slug %}" class="read-more">Read full story →</a>
       </div>
     </div>
-
-    <!-- Case Study 2 -->
-    <div class="case-card reveal">
-      <div class="case-image">🥚 📊</div>
-      <div class="case-content">
-        <div class="farm-badge">IBADAN · 50,000 LAYERS</div>
-        <h3>Golden Egg Farms: 18% Egg Production Increase</h3>
-        <div class="case-stats">
-          <span class="stat">🥚 +18% Egg Yield</span>
-          <span class="stat">📈 95% Peak Production</span>
-          <span class="stat">💊 Vaccine Compliance: 100%</span>
-        </div>
-        <p>"The vaccination scheduler eliminated missed doses. Our layer peak production hit 95% — the highest in our 15-year history. FlockIQ turned our data into actionable intelligence."</p>
-        <a href="#" class="read-more">Read full story →</a>
-      </div>
-    </div>
-
-    <!-- Case Study 3 -->
-    <div class="case-card reveal">
-      <div class="case-image">💰 🔒</div>
-      <div class="case-content">
-        <div class="farm-badge">KANO · 15,000 BROILERS</div>
-        <h3>Northern Pride: Theft Detection Saved ₦8M</h3>
-        <div class="case-stats">
-          <span class="stat">🔍 ₦8M Recovered</span>
-          <span class="stat">📋 Full Audit Trail</span>
-          <span class="stat">✅ 1.5% Variance Detection</span>
-        </div>
-        <p>"FlockIQ flagged a 2% discrepancy between bird counts and feed consumption. The audit trail revealed organized theft. We recovered losses and implemented controls. This feature alone justified the subscription."</p>
-        <a href="#" class="read-more">Read full story →</a>
-      </div>
-    </div>
-
-    <!-- Case Study 4 -->
-    <div class="case-card reveal">
-      <div class="case-image">🌡️ 📱</div>
-      <div class="case-content">
-        <div class="farm-badge">ABUJA · 8,000 BIRDS</div>
-        <h3>Zuma Poultry: Heat Stress Prevention</h3>
-        <div class="case-stats">
-          <span class="stat">🌡️ -65% Heat-Related Losses</span>
-          <span class="stat">⚡ Real-time SMS Alerts</span>
-          <span class="stat">💧 Water Consumption Monitoring</span>
-        </div>
-        <p>"During the 2026 heatwave, FlockIQ sent SMS alerts when water consumption dropped. We activated emergency cooling and lost only 2% of our flock while neighbors lost 15-20%."</p>
-        <a href="#" class="read-more">Read full story →</a>
-      </div>
-    </div>
-
-    <!-- Case Study 5 -->
-    <div class="case-card reveal">
-      <div class="case-image">📉 💡</div>
-      <div class="case-content">
-        <div class="farm-badge">OGUN · 30,000 BROILERS</div>
-        <h3>Greenfield Farms: Optimal Sale Timing</h3>
-        <div class="case-stats">
-          <span class="stat">📊 +22% Profit Margin</span>
-          <span class="stat">⏱️ 7-Day Optimal Window</span>
-          <span class="stat">💰 ₦5M Extra Revenue</span>
-        </div>
-        <p>"The AI predicted the optimal sale window and gave us 7 days' notice. We sold at peak market price and increased profit margins by 22% — an extra ₦5 million per cycle."</p>
-        <a href="#" class="read-more">Read full story →</a>
-      </div>
-    </div>
-
-    <!-- Case Study 6 -->
-    <div class="case-card reveal">
-      <div class="case-image">👨‍🌾 🤝</div>
-      <div class="case-content">
-        <div class="farm-badge">ENUGU · 5,000 BIRDS</div>
-        <h3>Smallholder Success: First-Time Farmer</h3>
-        <div class="case-stats">
-          <span class="stat">📈 98% Survival Rate</span>
-          <span class="stat">🍽️ 1.65 FCR</span>
-          <span class="stat">💰 3x ROI First Cycle</span>
-        </div>
-        <p>"As a first-time farmer, FlockIQ's guided setup and daily alerts kept my birds healthy. I achieved a 98% survival rate and 1.65 feed conversion ratio — better than experienced farmers. I'm expanding to 10,000 birds next cycle."</p>
-        <a href="#" class="read-more">Read full story →</a>
-      </div>
-    </div>
+    {% endfor %}
   </div>
 
   <!-- CTA -->

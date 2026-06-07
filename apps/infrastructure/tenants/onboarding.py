@@ -18,6 +18,8 @@ class OnboardingWizardView(LoginRequiredMixin, View):
     Heavy DB operations (create_farm, create_house, create_batch) offloaded to Celery.
     """
 
+    template_name = 'tenants/setup_wizard.html'
+
     def get(self, request):
         org = getattr(request.user, 'org', None)
         if not org:
@@ -25,7 +27,20 @@ class OnboardingWizardView(LoginRequiredMixin, View):
         if org.onboarding_complete:
             return redirect('/')
         step = int(request.GET.get('step', 1))
-        return render(request, 'tenants/onboarding.html', {
+
+        # Prevent URL-jumping past an incomplete step.
+        from apps.farm.farms.models import Farm, House
+        from apps.infrastructure.core.rls import set_tenant_context
+        if step >= 2:
+            with set_tenant_context(org):
+                if not Farm.objects.exists():
+                    return redirect('/onboarding/?step=1')
+        if step >= 3:
+            with set_tenant_context(org):
+                if not House.objects.exists():
+                    return redirect('/onboarding/?step=2')
+
+        return render(request, self.template_name, {
             'step': step,
             'org': org,
         })
@@ -62,7 +77,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
             if not farm_name or not location:
                 return render(
                     request,
-                    'tenants/onboarding.html',
+                    self.template_name,
                     {
                         'step': 1,
                         'error': 'Farm name and location are required.',
@@ -89,7 +104,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
             logger.exception("onboarding.step1_handler_error", org_id=str(org.id))
             return render(
                 request,
-                'tenants/onboarding.html',
+                self.template_name,
                 {
                     'step': 1,
                     'error': 'An unexpected error occurred. Please try again.',
@@ -112,7 +127,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
                     if not farm:
                         return render(
                             request,
-                            'tenants/onboarding.html',
+                            self.template_name,
                             {
                                 'step': 2,
                                 'error': 'No farm found. Please complete Step 1 first.',
@@ -123,7 +138,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
             except Farm.DoesNotExist:
                 return render(
                     request,
-                    'tenants/onboarding.html',
+                    self.template_name,
                     {
                         'step': 2,
                         'error': 'Farm not found. Please restart the onboarding.',
@@ -139,7 +154,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
             if not house_name:
                 return render(
                     request,
-                    'tenants/onboarding.html',
+                    self.template_name,
                     {
                         'step': 2,
                         'error': 'House name is required.',
@@ -155,7 +170,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
             except ValueError as e:
                 return render(
                     request,
-                    'tenants/onboarding.html',
+                    self.template_name,
                     {
                         'step': 2,
                         'error': f'Invalid capacity: {str(e)}',
@@ -181,7 +196,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
             logger.exception("onboarding.step2_handler_error", org_id=str(org.id))
             return render(
                 request,
-                'tenants/onboarding.html',
+                self.template_name,
                 {
                     'step': 2,
                     'error': 'An unexpected error occurred. Please try again.',
@@ -211,7 +226,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
                             missing.append("house")
                         return render(
                             request,
-                            'tenants/onboarding.html',
+                            self.template_name,
                             {
                                 'step': 3,
                                 'error': f'Missing: {", ".join(missing)}. Please restart onboarding.',
@@ -222,7 +237,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
             except (Farm.DoesNotExist, House.DoesNotExist) as e:
                 return render(
                     request,
-                    'tenants/onboarding.html',
+                    self.template_name,
                     {
                         'step': 3,
                         'error': 'Required farm or house not found. Please restart onboarding.',
@@ -239,7 +254,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
             if not batch_name:
                 return render(
                     request,
-                    'tenants/onboarding.html',
+                    self.template_name,
                     {
                         'step': 3,
                         'error': 'Batch name is required.',
@@ -251,7 +266,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
             if bird_type not in ['broiler', 'layer']:
                 return render(
                     request,
-                    'tenants/onboarding.html',
+                    self.template_name,
                     {
                         'step': 3,
                         'error': 'Invalid bird type.',
@@ -267,7 +282,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
             except ValueError as e:
                 return render(
                     request,
-                    'tenants/onboarding.html',
+                    self.template_name,
                     {
                         'step': 3,
                         'error': f'Invalid bird count: {str(e)}',
@@ -300,7 +315,7 @@ class OnboardingWizardView(LoginRequiredMixin, View):
             logger.exception("onboarding.step3_handler_error", org_id=str(org.id))
             return render(
                 request,
-                'tenants/onboarding.html',
+                self.template_name,
                 {
                     'step': 3,
                     'error': 'An unexpected error occurred. Please try again.',

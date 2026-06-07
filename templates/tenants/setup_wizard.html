@@ -1,0 +1,277 @@
+{% extends "base_wizard.html" %}
+
+{% block title %}Set up your farm — Step {{ step }} of 3{% endblock %}
+
+{% block extra_styles %}
+.wiz-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 16px 80px;
+}
+.wiz-welcome {
+  width: 100%;
+  max-width: 540px;
+  margin-bottom: 20px;
+}
+.wiz-welcome-badge {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.18em; color: var(--green);
+  margin-bottom: 0.5rem; display: inline-block;
+}
+.wiz-welcome h1 {
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  font-weight: 800; letter-spacing: -0.02em;
+  color: var(--on-surface); margin-bottom: 0.35rem;
+}
+.wiz-welcome p { font-size: 0.875rem; color: var(--text2); }
+
+.wiz-card {
+  background: var(--white);
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(30, 58, 138, 0.08);
+  width: 100%; max-width: 540px;
+  padding: 36px 40px 32px;
+}
+
+/* Progress steps */
+.ob-steps { display: flex; align-items: center; margin-bottom: 20px; }
+.ob-step { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.ob-step-num {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--surface-container-high); color: var(--text3);
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s, color .2s;
+}
+.ob-step.active .ob-step-num { background: var(--navy); color: #fff; }
+.ob-step.done .ob-step-num { background: var(--green); color: #fff; font-size: 16px; }
+.ob-step-lbl { font-size: 11px; font-weight: 600; color: var(--text3); white-space: nowrap; }
+.ob-step.active .ob-step-lbl { color: var(--navy); }
+.ob-step.done .ob-step-lbl { color: var(--green); }
+.ob-connector {
+  flex: 1; height: 2px; background: var(--border);
+  margin: 0 6px; margin-bottom: 16px; transition: background .2s;
+}
+.ob-connector.active { background: var(--navy); }
+.ob-connector.done { background: var(--green); }
+
+/* Progress bar */
+.progress-bar-bg {
+  height: 6px; background: var(--surface-container-high);
+  border-radius: 9999px; overflow: hidden; margin-bottom: 28px;
+}
+.progress-bar-fill {
+  height: 100%; background: var(--navy);
+  border-radius: 9999px; transition: width 0.4s ease;
+}
+
+/* Form */
+.wiz-heading {
+  font-size: 22px; font-weight: 700; color: var(--on-surface);
+  margin-bottom: 4px; font-family: 'Manrope', sans-serif;
+}
+.wiz-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+.wiz-error {
+  background: #fee2e2; border: 1px solid #fecaca;
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 13px; color: #dc2626; margin-bottom: 16px;
+}
+.wiz-field { margin-bottom: 16px; }
+.wiz-label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+.wiz-input, .wiz-select {
+  width: 100%; padding: 10px 13px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  font-size: 14px; color: var(--on-surface);
+  outline: none; transition: border-color 0.15s; background: #fff;
+  font-family: 'Inter', sans-serif;
+}
+.wiz-input:focus, .wiz-select:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(30,58,138,0.08); }
+.wiz-input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wiz-tip { font-size: 11px; color: var(--text3); margin-top: 4px; }
+.wiz-tip a { color: var(--navy); text-decoration: underline; cursor: pointer; }
+.wiz-btn {
+  width: 100%; padding: 13px;
+  background: var(--navy); color: #fff;
+  border: none; border-radius: 10px;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; margin-top: 8px;
+  transition: background 0.15s, transform 0.1s;
+  font-family: 'Inter', sans-serif;
+}
+.wiz-btn:hover { background: #1e40af; transform: translateY(-1px); }
+.wiz-btn:active { transform: translateY(0); }
+.wiz-skip {
+  display: block; text-align: center; margin-top: 14px;
+  font-size: 13px; color: var(--text3); text-decoration: none;
+}
+.wiz-skip:hover { color: var(--navy); }
+{% endblock %}
+
+{% block content %}
+<div class="wiz-body">
+
+  <!-- Welcome header -->
+  <div class="wiz-welcome">
+    <div class="wiz-welcome-badge">🐔 Farm Setup</div>
+    <h1>Welcome, {{ request.user.get_full_name|default:request.user.email }}</h1>
+    <p>Get your farm ready in 3 quick steps to unlock AI-powered insights.</p>
+  </div>
+
+  <div class="wiz-card">
+
+    <!-- Step indicators -->
+    <div class="ob-steps">
+      <div class="ob-step {% if step == 1 %}active{% elif step > 1 %}done{% endif %}">
+        <div class="ob-step-num">{% if step > 1 %}✓{% else %}1{% endif %}</div>
+        <div class="ob-step-lbl">Your Farm</div>
+      </div>
+      <div class="ob-connector {% if step == 2 %}active{% elif step > 2 %}done{% endif %}"></div>
+      <div class="ob-step {% if step == 2 %}active{% elif step > 2 %}done{% endif %}">
+        <div class="ob-step-num">{% if step > 2 %}✓{% else %}2{% endif %}</div>
+        <div class="ob-step-lbl">Add a House</div>
+      </div>
+      <div class="ob-connector {% if step == 3 %}active{% endif %}"></div>
+      <div class="ob-step {% if step == 3 %}active{% endif %}">
+        <div class="ob-step-num">3</div>
+        <div class="ob-step-lbl">First Batch</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" style="width: {% widthratio step 3 100 %}%;"></div>
+    </div>
+
+    <!-- Error banner -->
+    {% if error %}
+    <div class="wiz-error">{{ error }}</div>
+    {% endif %}
+
+    <!-- ── Step 1: Farm Setup ─────────────────────────────────────────── -->
+    {% if step == 1 %}
+    <div class="wiz-heading">Tell us about your farm</div>
+    <div class="wiz-sub">We'll use this to personalise weather alerts and AI insights.</div>
+    <form method="POST" action="/onboarding/">
+      {% csrf_token %}
+      <input type="hidden" name="step" value="1">
+      <div class="wiz-field">
+        <label class="wiz-label">Farm name *</label>
+        <input class="wiz-input" type="text" name="farm_name" required
+               placeholder="e.g. Greenfield Poultry Farm">
+      </div>
+      <div class="wiz-field">
+        <label class="wiz-label">Location / address *</label>
+        <input class="wiz-input" type="text" name="location" required
+               placeholder="e.g. Km 15, Ikorodu Road, Lagos">
+      </div>
+      <div class="wiz-field">
+        <label class="wiz-label">GPS coordinates *</label>
+        <div class="wiz-input-row">
+          <input class="wiz-input" type="number" id="lat" name="latitude"
+                 step="0.0001" required placeholder="Latitude (e.g. 6.6194)">
+          <input class="wiz-input" type="number" id="lng" name="longitude"
+                 step="0.0001" required placeholder="Longitude (e.g. 3.3634)">
+        </div>
+        <div class="wiz-tip">
+          <a onclick="detectLocation()" tabindex="0">📍 Use my current location</a>
+          &nbsp;·&nbsp; Or find coordinates on Google Maps
+        </div>
+      </div>
+      <div class="wiz-field">
+        <label class="wiz-label">Farm type</label>
+        <select class="wiz-select" name="farm_type">
+          <option value="mixed" selected>Mixed (Broilers &amp; Layers)</option>
+          <option value="broiler">Broiler only</option>
+          <option value="layer">Layer only</option>
+        </select>
+      </div>
+      <button type="submit" class="wiz-btn">Continue →</button>
+    </form>
+    <a class="wiz-skip" href="/?skip=1">Skip setup for now →</a>
+    {% endif %}
+
+    <!-- ── Step 2: House Setup ────────────────────────────────────────── -->
+    {% if step == 2 %}
+    <div class="wiz-heading">Add your first poultry house</div>
+    <div class="wiz-sub">A house is a single building where one batch of birds lives at a time.</div>
+    <form method="POST" action="/onboarding/">
+      {% csrf_token %}
+      <input type="hidden" name="step" value="2">
+      <div class="wiz-field">
+        <label class="wiz-label">House name *</label>
+        <input class="wiz-input" type="text" name="house_name" required
+               placeholder="e.g. House A">
+      </div>
+      <div class="wiz-field">
+        <label class="wiz-label">Capacity (birds) *</label>
+        <input class="wiz-input" type="number" name="capacity" required
+               min="100" placeholder="e.g. 500">
+        <div class="wiz-tip">Minimum 100 birds</div>
+      </div>
+      <div class="wiz-field">
+        <label class="wiz-label">House type</label>
+        <select class="wiz-select" name="house_type">
+          <option value="mixed" selected>Mixed</option>
+          <option value="broiler">Broiler</option>
+          <option value="layer">Layer</option>
+        </select>
+      </div>
+      <button type="submit" class="wiz-btn">Continue →</button>
+    </form>
+    <a class="wiz-skip" href="/?skip=1">Skip setup for now →</a>
+    {% endif %}
+
+    <!-- ── Step 3: Batch Setup ────────────────────────────────────────── -->
+    {% if step == 3 %}
+    <div class="wiz-heading">Place your first batch</div>
+    <div class="wiz-sub">A batch is a group of birds that enter and exit the house together.</div>
+    <form method="POST" action="/onboarding/">
+      {% csrf_token %}
+      <input type="hidden" name="step" value="3">
+      <div class="wiz-field">
+        <label class="wiz-label">Batch name *</label>
+        <input class="wiz-input" type="text" name="batch_name" required
+               placeholder="e.g. Batch 001">
+      </div>
+      <div class="wiz-field">
+        <label class="wiz-label">Bird type</label>
+        <select class="wiz-select" name="bird_type">
+          <option value="broiler" selected>Broiler</option>
+          <option value="layer">Layer</option>
+        </select>
+      </div>
+      <div class="wiz-field">
+        <label class="wiz-label">Number of birds *</label>
+        <input class="wiz-input" type="number" name="bird_count" required min="10"
+               placeholder="e.g. 500"
+               style="font-size:20px;font-weight:700;padding:14px 13px">
+        <div class="wiz-tip">Minimum 10 birds</div>
+      </div>
+      <div class="wiz-field">
+        <label class="wiz-label">Breed name <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
+        <input class="wiz-input" type="text" name="breed_name"
+               placeholder="e.g. Cobb 500, ISA Brown, Noiler">
+      </div>
+      <button type="submit" class="wiz-btn">Finish setup →</button>
+    </form>
+    <a class="wiz-skip" href="/?skip=1">Skip setup for now →</a>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function detectLocation() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      document.getElementById('lat').value = pos.coords.latitude.toFixed(4);
+      document.getElementById('lng').value = pos.coords.longitude.toFixed(4);
+    });
+  }
+</script>
+{% endblock %}

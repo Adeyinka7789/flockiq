@@ -154,6 +154,12 @@ class WebLoginView(View):
         user = authenticate(request, username=email, password=password)
 
         if user is not None:
+            if not getattr(user, 'email_verified', True):
+                return render(request, 'accounts/login.html', {
+                    'error': 'Please verify your email before logging in.',
+                    'show_resend_verification': True,
+                    'unverified_email': email,
+                })
             login(request, user)
             next_url = request.GET.get('next', '/')
             return redirect(next_url)
@@ -250,10 +256,93 @@ class SignupView(View):
                 role="owner",
             )
 
-        user.backend = "django.contrib.auth.backends.ModelBackend"
-        login(request, user)
+        verification_url = request.build_absolute_uri(
+            f"/accounts/verify/{user.email_verification_token}/"
+        )
+        send_mail(
+            subject="Verify your FlockIQ account",
+            message=(
+                f"Hi {user.first_name or user.email},\n\n"
+                f"Click the link below to verify your email address.\n"
+                f"This link expires in 24 hours.\n\n"
+                f"{verification_url}\n\n"
+                f"If you did not sign up for FlockIQ, you can safely ignore this email.\n\n"
+                f"— The FlockIQ Team"
+            ),
+            from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@flockiq.com"),
+            recipient_list=[email],
+            fail_silently=True,
+        )
+        if django_settings.DEBUG:
+            logger.info("signup.verification_url", url=verification_url)
         logger.info("org_signup", org_id=str(org.id), user_id=str(user.id))
-        return redirect("/")
+        return redirect(f"/accounts/verify-sent/?email={email}")
+
+
+class VerifyEmailSentView(View):
+    """GET /accounts/verify-sent/ — 'check your inbox' page shown after signup."""
+
+    def get(self, request):
+        email = request.GET.get('email', '')
+        return render(request, 'accounts/verify_email_sent.html', {'email': email})
+
+
+class VerifyEmailView(View):
+    """GET /accounts/verify/<uuid:token>/ — confirms email and logs the user in."""
+
+    def get(self, request, token):
+        try:
+            user = CustomUser.objects.get(email_verification_token=token)
+        except CustomUser.DoesNotExist:
+            return render(request, 'accounts/login.html', {
+                'error': 'This verification link is invalid or has already been used.',
+            })
+
+        if user.email_verified:
+            return redirect('/login/')
+
+        user.email_verified = True
+        user.save(update_fields=['email_verified'])
+        user.backend = 'django.contrib.auth.backends.ModelBackend'
+        login(request, user)
+        logger.info("email_verified", user_id=str(user.id))
+        return redirect('/')
+
+
+class ResendVerificationView(View):
+    """POST /accounts/resend-verification/ — re-sends the verification email."""
+
+    def post(self, request):
+        from django.conf import settings as django_settings
+
+        email = request.POST.get('email', '').strip()
+        try:
+            user = CustomUser.objects.get(email=email, email_verified=False)
+            verification_url = request.build_absolute_uri(
+                f"/accounts/verify/{user.email_verification_token}/"
+            )
+            send_mail(
+                subject="Verify your FlockIQ account",
+                message=(
+                    f"Hi {user.first_name or user.email},\n\n"
+                    f"Here is your new verification link:\n\n"
+                    f"{verification_url}\n\n"
+                    f"— The FlockIQ Team"
+                ),
+                from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@flockiq.com"),
+                recipient_list=[email],
+                fail_silently=True,
+            )
+            if django_settings.DEBUG:
+                logger.info("resend_verification.url", url=verification_url)
+            logger.info("verification_resent", email=email)
+        except CustomUser.DoesNotExist:
+            pass  # Silently ignore — prevents email enumeration
+
+        return render(request, 'accounts/verify_email_sent.html', {
+            'email': email,
+            'resent': True,
+        })
 
 
 class ForgotPasswordView(View):

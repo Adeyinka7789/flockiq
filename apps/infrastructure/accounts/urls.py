@@ -11,12 +11,15 @@ from .views import (
     LogoutView,
     ProfilePageView,
     ReactivateUserView,
+    ResendVerificationView,
     ResetPasswordView,
     TeamListView,
     TokenRefreshView,
     UserCreateView,
     UserListView,
     UserProfileView,
+    VerifyEmailSentView,
+    VerifyEmailView,
     WebChangePasswordView,
 )
 
@@ -35,6 +38,9 @@ urlpatterns = [
     path("profile/change-password/", WebChangePasswordView.as_view(), name="change_password"),
     path("forgot-password/", ForgotPasswordView.as_view(), name="forgot_password"),
     path("reset-password/", ResetPasswordView.as_view(), name="reset_password"),
+    path("accounts/verify/<uuid:token>/", VerifyEmailView.as_view(), name="verify_email"),
+    path("accounts/verify-sent/", VerifyEmailSentView.as_view(), name="verify_email_sent"),
+    path("accounts/resend-verification/", ResendVerificationView.as_view(), name="resend_verification"),
     # Team management
     path("team/", TeamListView.as_view(), name="team"),
     path("team/invite/", InviteUserView.as_view(), name="team_invite"),

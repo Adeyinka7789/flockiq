@@ -20,15 +20,7 @@ def custom_500(request):
     return render(request, '500.html', status=500)
 
 
-def setup_wizard(request):
-    from django.contrib.auth.decorators import login_required
-    if not request.user.is_authenticated:
-        from django.contrib.auth.views import redirect_to_login
-        return redirect_to_login(request.get_full_path())
-    org = getattr(request.user, 'org', None)
-    if not org or getattr(org, 'onboarding_complete', False):
-        return redirect('/')
-    return render(request, 'setup-wizard.html', {'org': org})
+# setup_wizard removed — replaced by OnboardingWizardView at /onboarding/
 
 
 class SessionCheckView(View):
@@ -104,12 +96,15 @@ class DashboardView(TemplateView):
             org.save(update_fields=['onboarding_complete', 'updated_at'])
             return redirect('/')
 
-        # Redirect new tenants to the onboarding wizard when no farms exist
+        # Redirect new tenants until farm + house + batch all exist
         if not request.user.org.onboarding_complete:
-            from apps.farm.farms.models import Farm
-            from apps.infrastructure.core.rls import set_tenant_context
+            from apps.farm.farms.models import Farm, House
+            from apps.farm.flocks.models import Batch
             with set_tenant_context(request.user.org):
-                if not Farm.objects.exists():
+                has_farm = Farm.objects.exists()
+                has_house = House.objects.exists()
+                has_batch = Batch.objects.filter(status=Batch.Status.ACTIVE).exists()
+                if not (has_farm and has_house and has_batch):
                     return redirect('/onboarding/')
 
         return super().dispatch(request, *args, **kwargs)

@@ -13,7 +13,7 @@ from django.views.generic import TemplateView
 from . import views
 
 from apps.infrastructure.accounts.views import WebLoginView, WebLogoutView, SignupView
-from apps.infrastructure.core.views import DashboardView, SessionCheckView, custom_404, custom_500, setup_wizard
+from apps.infrastructure.core.views import DashboardView, SessionCheckView, custom_404, custom_500
 from apps.infrastructure.core.search import GlobalSearchView
 from apps.infrastructure.superadmin import urls as superadmin_urls
 
@@ -23,7 +23,7 @@ handler500 = 'apps.infrastructure.core.views.custom_500'
 urlpatterns = [
     # Public pages (static content)
     path("about/", TemplateView.as_view(template_name="about-us.html"), name="about"),
-    path("case-studies/", TemplateView.as_view(template_name="case-studies.html"), name="case_studies"),
+    path("case-studies/", views.case_studies_list, name="case_studies"),
     path("case-studies/<slug:slug>/", views.case_study_detail, name="case_study_detail"),
     path("contact/", views.contact, name="contact"),
     path("privacy/", TemplateView.as_view(template_name="privacy.html"), name="privacy_policy"),
@@ -33,8 +33,6 @@ urlpatterns = [
     path("security/", TemplateView.as_view(template_name="security.html"), name="security"),
     path("help/", TemplateView.as_view(template_name="help.html"), name="help"),
     path("roi-calculator/", TemplateView.as_view(template_name="roi-calculator.html"), name="roi_calculator"),
-    path("setup/", setup_wizard, name="setup_wizard"),
-
     # ── Web app shell (must be first) ────────────────────────────────────────
     path("", DashboardView.as_view(), name="dashboard"),
     path("api/session/check/", SessionCheckView.as_view(), name="session_check"),

@@ -27,6 +27,13 @@
   {% if error %}
   <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-[13px] text-red-600 mb-4">
     {{ error }}
+    {% if show_resend_verification %}
+    <form method="POST" action="/accounts/resend-verification/" class="mt-2">
+      {% csrf_token %}
+      <input type="hidden" name="email" value="{{ unverified_email }}">
+      <button type="submit" class="underline text-[#3d5a99] text-[13px] font-semibold">Resend verification email</button>
+    </form>
+    {% endif %}
   </div>
   {% endif %}
 

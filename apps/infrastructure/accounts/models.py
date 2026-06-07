@@ -54,6 +54,9 @@ class CustomUser(AbstractUser):
     timezone = models.CharField(max_length=50, blank=True)  # auto-set from country
     language_code = models.CharField(max_length=10, blank=True, default="en")
 
+    email_verified = models.BooleanField(default=False)
+    email_verification_token = models.UUIDField(default=uuid.uuid4, editable=False)
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 

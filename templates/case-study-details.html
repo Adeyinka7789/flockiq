@@ -2,14 +2,12 @@
 {% load static %}
 {% load humanize %}
 
-{% block title %}FlockIQ — Case Study: Aladimeji Farms{% endblock %}
-{% block description %}How Aladimeji Farms reduced mortality by 40% and saved ₦12M annually using FlockIQ's AI-powered poultry management platform.{% endblock %}
+{% block title %}FlockIQ — Case Study: {{ case_study.farm_name }}{% endblock %}
+{% block description %}{{ case_study.description }}{% endblock %}
 
 {% block extra_head %}
 <style>
   body { background: var(--surface); color: var(--on-surface); }
-
-  --active-intel: #8bc87a;
 
   .case-hero {
     background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
@@ -211,22 +209,16 @@
 <!-- Hero -->
 <section class="case-hero">
   <div class="case-hero-inner">
-    <a href="/case-studies/" class="back-link">← Back to all case studies</a>
-    <div class="farm-badge">LAGOS · 25,000 BIRDS · BROILERS</div>
-    <h1>How Aladimeji Farms Reduced Mortality by 40% and Saved ₦12M Annually</h1>
+    <a href="{% url 'case_studies' %}" class="back-link">← Back to all case studies</a>
+    <div class="farm-badge">{{ case_study.detail_badge }}</div>
+    <h1>{{ case_study.headline }}</h1>
     <div class="hero-stats">
+      {% for stat in case_study.hero_stats %}
       <div class="hero-stat">
-        <div class="value">-40%</div>
-        <div class="label">Mortality Reduction</div>
+        <div class="value">{{ stat.value }}</div>
+        <div class="label">{{ stat.label }}</div>
       </div>
-      <div class="hero-stat">
-        <div class="value">₦12M</div>
-        <div class="label">Annual Savings</div>
-      </div>
-      <div class="hero-stat">
-        <div class="value">72hr</div>
-        <div class="label">Early Warning</div>
-      </div>
+      {% endfor %}
     </div>
   </div>
 </section>
@@ -234,100 +226,51 @@
 <!-- Main Content -->
 <div class="case-container">
 
-  <!-- Executive Summary -->
-  <div class="case-section reveal">
-    <h2>Executive Summary</h2>
-    <p>Aladimeji Farms, a 25,000-bird broiler operation in Lagos, was struggling with recurring respiratory outbreaks that claimed 12-15% of each flock. Traditional monitoring methods meant outbreaks were only detected after birds showed clinical signs — often too late to prevent significant losses.</p>
-    <p>After implementing FlockIQ's AI-powered anomaly detection system, the farm now receives alerts 72 hours before symptoms appear, enabling early intervention. Within three cycles, mortality dropped from 12% to 7.2% — a 40% reduction — saving the farm over ₦12 million annually.</p>
-  </div>
-
-  <!-- The Challenge -->
-  <div class="case-section reveal">
-    <h2>The Challenge</h2>
-    <p>Before FlockIQ, Aladimeji Farms relied on manual daily checks and visual inspection. By the time a sick bird was spotted, the disease had often spread to entire houses. Key challenges included:</p>
-    <ul style="margin-left: 24px; color: var(--text2); line-height: 1.8;">
-      <li>15-20% mortality during respiratory outbreaks</li>
-      <li>No early warning system for disease detection</li>
-      <li>Missed vaccination schedules due to manual tracking</li>
-      <li>Inconsistent feed and water consumption records</li>
-    </ul>
-  </div>
-
-  <!-- Quote -->
-  <div class="quote-block reveal">
-    <div class="quote-icon">"</div>
-    <div class="quote-text">Before FlockIQ, we were always reacting to problems after they happened. Birds would get sick, and by the time we noticed, we'd already lost hundreds. It was heartbreaking and expensive.</div>
-    <div class="quote-author">Mr. Adeboye Aladimeji</div>
-    <div class="quote-title">Chairman, Aladimeji Farms</div>
-  </div>
-
-  <!-- The Solution -->
-  <div class="case-section reveal">
-    <h2>The Solution</h2>
-    <p>Aladimeji Farms deployed FlockIQ's full platform, including:</p>
-    <ul style="margin-left: 24px; color: var(--text2); line-height: 1.8;">
-      <li><strong>AI Anomaly Detection</strong> — Real-time Z-score analysis of mortality, water consumption, and feed intake</li>
-      <li><strong>Vaccination Scheduler</strong> — Automated reminders for all breed-specific vaccines</li>
-      <li><strong>SMS Alerts</strong> — Critical notifications sent directly to farm managers' phones</li>
-      <li><strong>Daily Logging</strong> — Mobile-first data entry for mortality, feed, and water</li>
-    </ul>
-  </div>
-
-  <!-- Results -->
-  <div class="case-section reveal">
-    <h2>The Results</h2>
-    <div class="results-grid">
-      <div class="result-card">
-        <div class="result-number">-40%</div>
-        <div class="result-label">Mortality Rate</div>
+  {% for section in case_study.sections %}
+    {% if section.type == "text" %}
+      <div class="case-section reveal">
+        <h2>{{ section.heading }}</h2>
+        {% for paragraph in section.paragraphs %}
+        <p>{{ paragraph }}</p>
+        {% endfor %}
+        {% if section.bullets %}
+        <ul style="margin-left: 24px; color: var(--text2); line-height: 1.8;">
+          {% for bullet in section.bullets %}
+          <li>{{ bullet|safe }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
       </div>
-      <div class="result-card">
-        <div class="result-number">72hr</div>
-        <div class="result-label">Early Warning Before Symptoms</div>
+    {% elif section.type == "quote" %}
+      <div class="quote-block reveal"{% if section.alt %} style="background: var(--navy-light);"{% endif %}>
+        <div class="quote-icon"{% if section.alt %} style="color: var(--navy);"{% endif %}>"</div>
+        <div class="quote-text">{{ section.text }}</div>
+        <div class="quote-author">{{ section.author }}</div>
+        <div class="quote-title">{{ section.title }}</div>
       </div>
-      <div class="result-card">
-        <div class="result-number">₦12M</div>
-        <div class="result-label">Saved Annually</div>
+    {% elif section.type == "results" %}
+      <div class="case-section reveal">
+        <h2>{{ section.heading }}</h2>
+        <div class="results-grid">
+          {% for card in section.cards %}
+          <div class="result-card">
+            <div class="result-number">{{ card.number }}</div>
+            <div class="result-label">{{ card.label }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% for paragraph in section.paragraphs %}
+        <p>{{ paragraph }}</p>
+        {% endfor %}
       </div>
-      <div class="result-card">
-        <div class="result-number">100%</div>
-        <div class="result-label">Vaccination Compliance</div>
-      </div>
-    </div>
-    <p>The AI detected a 15% drop in water consumption and a 0.8% daily mortality increase — patterns invisible to the human eye. Three days later, birds in the adjacent house showed respiratory symptoms. The farm had already isolated the affected area and started treatment.</p>
-  </div>
-
-  <!-- Second Quote -->
-  <div class="quote-block reveal" style="background: var(--navy-light);">
-    <div class="quote-icon" style="color: var(--navy);">"</div>
-    <div class="quote-text">FlockIQ gave us a crystal ball. We saw the outbreak coming before any bird looked sick. That 72-hour warning saved us over 4,000 birds in that single cycle.</div>
-    <div class="quote-author">Mr. Adeboye Aladimeji</div>
-    <div class="quote-title">Chairman, Aladimeji Farms</div>
-  </div>
-
-  <!-- Future Plans -->
-  <div class="case-section reveal">
-    <h2>What's Next</h2>
-    <p>Encouraged by the results, Aladimeji Farms is expanding its FlockIQ deployment to all three farm locations and exploring the financial intelligence module to optimize sale timing and improve profit margins.</p>
-    <p>"We're not just reducing losses anymore — we're actively growing. FlockIQ has transformed how we manage our birds, and we're targeting a 5% mortality rate in the next cycle," says Mr. Aladimeji.</p>
-  </div>
-
-  <!-- Key Takeaways -->
-  <div class="case-section reveal">
-    <h2>Key Takeaways</h2>
-    <ul style="margin-left: 24px; color: var(--text2); line-height: 1.8;">
-      <li>AI can detect disease outbreaks 72 hours before clinical symptoms appear</li>
-      <li>Early intervention dramatically reduces mortality and financial loss</li>
-      <li>Automated vaccination scheduling ensures 100% compliance</li>
-      <li>Mobile-first design works even with intermittent internet connectivity</li>
-    </ul>
-  </div>
+    {% endif %}
+  {% endfor %}
 
   <!-- CTA -->
   <div class="cta-block reveal">
     <h3>Ready to write your own success story?</h3>
     <p>Join hundreds of Nigerian farmers already using FlockIQ to reduce losses and increase profits.</p>
-    <a href="/signup/" class="btn-white">Start Your Free Trial →</a>
+    <a href="{% url 'signup' %}" class="btn-white">Start Your Free Trial →</a>
   </div>
 </div>
 {% endblock %}

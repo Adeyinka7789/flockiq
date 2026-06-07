@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1e3a8a">
+  <title>{% block title %}FlockIQ — Setup{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1e3a8a; --navy-mid: #2d5be3; --navy-light: #eff6ff;
+      --green: #16a34a; --green-light: #dcfce7;
+      --text: #0f172a; --text2: #475569; --text3: #94a3b8;
+      --border: #e2e8f0; --bg: #f8fafc; --white: #ffffff;
+      --surface: #f7f9ff; --surface-container-low: #f1f4fb;
+      --surface-container-lowest: #ffffff; --surface-container-high: #e5e8ef;
+      --on-surface: #181c21; --on-surface-variant: #444650;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--surface);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .wiz-header {
+      padding: 1rem 6%;
+      border-bottom: 1px solid var(--border);
+      background: var(--white);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .wiz-logo-mark {
+      width: 32px; height: 32px;
+      background: var(--navy);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 900; font-size: 13px; letter-spacing: -0.5px;
+    }
+    .wiz-logo-text {
+      font-size: 17px; font-weight: 800; color: var(--text);
+      letter-spacing: -0.4px; font-family: 'Manrope', sans-serif;
+    }
+    {% block extra_styles %}{% endblock %}
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header class="wiz-header">
+    <div class="wiz-logo-mark">IQ</div>
+    <span class="wiz-logo-text">FlockIQ</span>
+  </header>
+  {% block content %}{% endblock %}
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>
