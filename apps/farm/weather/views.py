@@ -93,6 +93,19 @@ class WeatherAlertsPageView(LoginRequiredMixin, View):
             except Exception:
                 logger.exception("weather_alerts_page.fetch_failed", farm_id=str(farm.pk))
 
+        has_farms_with_gps = any(
+            f.latitude is not None and f.longitude is not None for f in farms
+        )
+
+        # No farm GPS available — fall back to the user's registered country so we
+        # can still surface live weather for their region.
+        default_weather = None
+        if not has_farms_with_gps:
+            try:
+                default_weather = WeatherService().fetch_weather_for_user(request.user) or None
+            except Exception:
+                logger.exception("weather_alerts_page.user_fallback_failed")
+
         advisor = SeasonalAdvisor()
         context = {
             'weather_data': weather_data,
@@ -100,9 +113,8 @@ class WeatherAlertsPageView(LoginRequiredMixin, View):
             'farms': farms,
             'seasonal': advisor.get_current_season_insight(),
             'placement_rec': advisor.get_placement_recommendation(),
-            'has_farms_with_gps': any(
-                f.latitude is not None and f.longitude is not None for f in farms
-            ),
+            'has_farms_with_gps': has_farms_with_gps,
+            'default_weather': default_weather,
         }
         return render(request, 'farm/weather/weather_alerts.html', context)
 

@@ -48,6 +48,12 @@ class CustomUser(AbstractUser):
     phone = models.CharField(max_length=20, blank=True)
     bio = models.TextField(blank=True, default="")
 
+    # Location / locale — captured at registration, editable on the profile page.
+    country = models.CharField(max_length=100, blank=True)
+    state_region = models.CharField(max_length=100, blank=True)
+    timezone = models.CharField(max_length=50, blank=True)  # auto-set from country
+    language_code = models.CharField(max_length=10, blank=True, default="en")
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 

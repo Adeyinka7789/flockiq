@@ -166,6 +166,39 @@
   </div>
 
   {% if not has_farms_with_gps %}
+
+  {% if default_weather %}
+  {% with temp=default_weather.current_temp|default:0 %}
+  <div class="wx-farms-grid">
+    <div class="wx-farm-card {% if temp >= 34 %}heat-critical{% elif temp >= 30 %}heat-warning{% endif %}">
+      <div class="wx-farm-name">{{ default_weather.location_label }} · Your region</div>
+      <div class="wx-temp {% if temp >= 34 %}critical{% elif temp >= 30 %}warning{% else %}normal{% endif %}">
+        {{ temp }}°C
+      </div>
+      <div class="wx-desc">
+        {{ default_weather.description|default:"Conditions unknown"|title }}
+      </div>
+      <div style="font-size:11px;color:#8a96a8;margin-bottom:10px">
+        Based on your registered location · Humidity {{ default_weather.humidity|default:"—" }}%
+      </div>
+      {% if default_weather.forecast %}
+      <div class="wx-forecast">
+        {% for day in default_weather.forecast|slice:":4" %}
+        <div class="wx-day {% if forloop.first %}today{% endif %}">
+          <div class="wx-day-name">
+            {% if forloop.first %}TODAY{% else %}{{ day.day_name }}{% endif %}
+          </div>
+          <div class="wx-day-temp">{{ day.temp }}°</div>
+          <div class="wx-day-desc">{{ day.description|truncatechars:10 }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endwith %}
+  {% endif %}
+
   <div class="seasonal-card">
     <div class="no-gps-state">
       <div style="font-size:32px;margin-bottom:12px">🌦️</div>

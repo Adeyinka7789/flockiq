@@ -4,14 +4,31 @@ Coverage tests for:
 - apps/infrastructure/core/tasks.py        (clear_expired_sessions)
 - apps/infrastructure/core/services.py     (BaseService, LedgerService)
 """
+import time
 import uuid
 from unittest.mock import MagicMock, patch
+from urllib.parse import unquote
 
 import pytest
 from django.http import HttpResponse, HttpResponseRedirect
 from django.test import RequestFactory
 
 pytestmark = pytest.mark.django_db
+
+
+class MockSession(dict):
+    """Minimal stand-in for a Django session.
+
+    Behaves like a dict but supports ``.modified`` attribute assignment, which
+    the middleware now performs after mutating the session. A plain dict raises
+    AttributeError on ``session.modified = True``.
+    """
+
+    modified = False
+
+    def pop(self, key, default=None):
+        self.modified = True
+        return super().pop(key, default)
 
 
 # ── HtmxSessionExpiredMiddleware — unit tests ────────────────────────────────
@@ -41,7 +58,9 @@ class TestHtmxSessionExpiredMiddleware:
             return HttpResponseRedirect("/login/?next=/batches/")
 
         response = self._middleware(get_response)(request)
-        assert "/batches/" in response["HX-Redirect"]
+        # M2 fix URL-encodes the `next` path, so the header contains
+        # '/login/?next=%2Fbatches%2F' rather than a literal '/batches/'.
+        assert "/batches/" in unquote(response["HX-Redirect"])
 
     def test_non_htmx_redirect_to_login_stays_302(self):
         rf = RequestFactory()
@@ -115,7 +134,7 @@ class TestImpersonationMiddleware:
 
     def test_no_session_key_sets_not_impersonating(self):
         request = MagicMock()
-        request.session = {}
+        request.session = MockSession()
         request.user.is_authenticated = True
 
         self._middleware()(request)
@@ -125,7 +144,7 @@ class TestImpersonationMiddleware:
 
     def test_unauthenticated_user_with_session_key_not_impersonating(self):
         request = MagicMock()
-        request.session = {"_impersonated_user_id": str(uuid.uuid4())}
+        request.session = MockSession({"_impersonated_user_id": str(uuid.uuid4())})
         request.user.is_authenticated = False
 
         self._middleware()(request)
@@ -147,7 +166,12 @@ class TestImpersonationMiddleware:
         # admin.is_authenticated is always True for a real Django user
 
         request = MagicMock()
-        request.session = {"_impersonated_user_id": tenant_user.pk}
+        request.session = MockSession({
+            "_impersonated_user_id": tenant_user.pk,
+            # Must be within IMPERSONATION_MAX_SECONDS or the middleware revokes
+            # the session before swapping the user.
+            "_impersonation_started_at": time.time(),
+        })
         request.user = admin
         # Don't set is_authenticated — it's a read-only property on real users
 
@@ -159,7 +183,12 @@ class TestImpersonationMiddleware:
 
     def test_invalid_user_id_clears_session_key(self):
         request = MagicMock()
-        request.session = {"_impersonated_user_id": str(uuid.uuid4())}
+        request.session = MockSession({
+            "_impersonated_user_id": str(uuid.uuid4()),
+            # Fresh start time so we reach the user lookup (which fails) rather
+            # than tripping the TTL/expiry revocation branch first.
+            "_impersonation_started_at": time.time(),
+        })
         request.user.is_authenticated = True
 
         self._middleware()(request)

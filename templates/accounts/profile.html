@@ -109,7 +109,7 @@
                 {% endif %}
                 <span class="text-xs text-[#444650] flex items-center gap-1">
                   <span class="material-symbols-outlined text-sm">location_on</span>
-                  {{ request.user.org.name|default:"—" }}
+                  {{ request.user.country|default:"—" }}
                 </span>
               </div>
               <p class="text-sm text-[#444650]/80 mt-3 max-w-md bg-[#f1f4fb] p-2 rounded-lg">
@@ -148,10 +148,12 @@
             </div>
             <div>
               <label class="text-[11px] font-bold text-[#444650] uppercase tracking-wider flex items-center gap-1">
-                <span class="material-symbols-outlined text-sm">grass</span> Farm Location
+                <span class="material-symbols-outlined text-sm">public</span> Location
               </label>
               <div class="bg-[#f1f4fb] rounded-xl p-3 mt-1 text-[#181c21] font-medium">
-                {{ request.user.org.name|default:"—" }}
+                {% if request.user.state_region or request.user.country %}
+                  {{ request.user.state_region }}{% if request.user.state_region and request.user.country %}, {% endif %}{{ request.user.country }}
+                {% else %}—{% endif %}
               </div>
             </div>
           </div>

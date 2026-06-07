@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}FlockIQ{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10">
+
+  <div class="bg-white rounded-2xl shadow-md px-8 py-10 w-full {% block card_width %}max-w-md{% endblock %}">
+
+    <!-- FlockIQ logo -->
+    <div class="flex items-center justify-center gap-2.5 mb-8">
+      <div class="w-9 h-9 rounded-lg bg-[#1e3a8a] flex items-center justify-center
+                  text-white font-extrabold text-[13px] tracking-tight">FQ</div>
+      <span class="text-lg font-extrabold text-[#0f172a] tracking-tight">FlockIQ</span>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <p class="text-center text-xs text-gray-400 mt-6">
+      <a href="/" class="hover:text-gray-600">
+        ← Back to FlockIQ
+      </a>
+    </p>
+  </div>
+
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -20,6 +20,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
+from .constants import COUNTRY_CHOICES, timezone_for_country
 from .models import CustomUser
 from .permissions import IsManagerOrAbove
 from .serializers import (
@@ -169,7 +170,9 @@ class SignupView(View):
     def get(self, request):
         if request.user.is_authenticated:
             return redirect("/")
-        return render(request, "accounts/signup.html")
+        return render(request, "accounts/signup.html", {
+            "country_choices": COUNTRY_CHOICES,
+        })
 
     def post(self, request):
         import re
@@ -187,6 +190,8 @@ class SignupView(View):
         email = request.POST.get("email", "").strip()
         phone = request.POST.get("phone", "").strip()
         subdomain = request.POST.get("subdomain", "").strip().lower()
+        country = request.POST.get("country", "").strip()
+        state_region = request.POST.get("state_region", "").strip()
         password = request.POST.get("password", "")
         confirm = request.POST.get("confirm_password", "")
 
@@ -194,6 +199,8 @@ class SignupView(View):
             errors["org_name"] = "Farm name is required"
         if not email:
             errors["email"] = "Email is required"
+        if not country:
+            errors["country"] = "Country is required"
         if not subdomain:
             errors["subdomain"] = "Subdomain is required"
         elif not re.match(r"^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$", subdomain):
@@ -213,6 +220,7 @@ class SignupView(View):
             return render(request, "accounts/signup.html", {
                 "errors": errors,
                 "values": request.POST,
+                "country_choices": COUNTRY_CHOICES,
             })
 
         with transaction.atomic():
@@ -235,6 +243,9 @@ class SignupView(View):
                 first_name=name_parts[0] if name_parts else "",
                 last_name=" ".join(name_parts[1:]) if len(name_parts) > 1 else "",
                 phone=phone,
+                country=country,
+                state_region=state_region,
+                timezone=timezone_for_country(country),
                 org=org,
                 role="owner",
             )
@@ -357,7 +368,9 @@ class EditProfileView(LoginRequiredMixin, View):
     """GET/POST /profile/edit/ — HTMX modal for editing profile fields."""
 
     def get(self, request):
-        return render(request, "accounts/_edit_profile_form.html")
+        return render(request, "accounts/_edit_profile_form.html", {
+            "country_choices": COUNTRY_CHOICES,
+        })
 
     def post(self, request):
         user = request.user
@@ -365,9 +378,17 @@ class EditProfileView(LoginRequiredMixin, View):
         user.last_name = request.POST.get("last_name", "").strip()
         user.phone = request.POST.get("phone", "").strip()
         user.bio = request.POST.get("bio", "").strip()
-        user.save(update_fields=["first_name", "last_name", "phone", "bio"])
+        user.country = request.POST.get("country", "").strip()
+        user.state_region = request.POST.get("state_region", "").strip()
+        user.timezone = timezone_for_country(user.country)
+        user.save(update_fields=[
+            "first_name", "last_name", "phone", "bio",
+            "country", "state_region", "timezone",
+        ])
         logger.info("profile_updated", user_id=str(user.id))
-        response = render(request, "accounts/_edit_profile_form.html")
+        response = render(request, "accounts/_edit_profile_form.html", {
+            "country_choices": COUNTRY_CHOICES,
+        })
         response["HX-Trigger"] = json.dumps({
             "showToast": {"message": "Profile updated.", "type": "success"},
         })

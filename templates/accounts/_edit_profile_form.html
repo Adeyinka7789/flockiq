@@ -40,9 +40,36 @@
       </label>
       <input type="text" name="phone"
              value="{{ request.user.phone }}"
-             placeholder="+234..."
+             placeholder="+234 800 000 0000"
              style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
                     border-radius:10px;font-size:13px;box-sizing:border-box">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;
+                      color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+          Country
+        </label>
+        <select name="country"
+                style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                       border-radius:10px;font-size:13px;box-sizing:border-box;background:#fff">
+          <option value="">Select country…</option>
+          {% for value, label in country_choices %}
+          <option value="{{ value }}" {% if request.user.country == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;
+                      color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+          State / Region
+        </label>
+        <input type="text" name="state_region"
+               value="{{ request.user.state_region }}"
+               placeholder="e.g. Lagos, Ogun, Abuja"
+               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                      border-radius:10px;font-size:13px;box-sizing:border-box">
+      </div>
     </div>
     <div>
       <label style="display:block;font-size:11px;font-weight:700;

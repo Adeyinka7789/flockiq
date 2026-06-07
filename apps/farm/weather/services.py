@@ -208,3 +208,48 @@ class WeatherService:
     def get_farm_weather_strip(self, farm_id: str) -> dict:
         """Returns cached weather data for the 4-day strip template. None if no cache."""
         return cache.get(f"weather:{farm_id}")
+
+    def fetch_weather_for_user(self, user) -> dict:
+        """Fallback weather keyed on the user's country.
+
+        Used when an org has no farm with GPS coordinates: we fetch weather for a
+        representative location in the user's registered country so the dashboard
+        can still show something useful. Cached in Redis only (no WeatherCache row,
+        since there is no farm). Returns {} if the country can't be resolved.
+        """
+        from apps.infrastructure.accounts.constants import coordinates_for_country
+
+        country = (getattr(user, "country", "") or "").strip()
+        coords = coordinates_for_country(country)
+        if not coords:
+            return {}
+
+        cache_key = f"weather:country:{country}"
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
+
+        import requests
+
+        lat, lng = coords
+        base_url = getattr(settings, "OPENWEATHERMAP_BASE_URL", _OPENWEATHERMAP_BASE_URL)
+        api_key = getattr(settings, "OPENWEATHERMAP_API_KEY", "")
+
+        try:
+            response = requests.get(
+                f"{base_url}/forecast",
+                params={"lat": lat, "lon": lng, "appid": api_key, "units": "metric", "cnt": 8},
+                timeout=10,
+            )
+            response.raise_for_status()
+            raw_data = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            logger.warning("weather.user_fallback_failed", country=country, error=str(exc))
+            return {}
+
+        parsed = self._parse_weather(raw_data)
+        if parsed:
+            state_region = (getattr(user, "state_region", "") or "").strip()
+            parsed["location_label"] = f"{state_region}, {country}" if state_region else country
+            cache.set(cache_key, parsed, timeout=WEATHER_CACHE_TTL)
+        return parsed
