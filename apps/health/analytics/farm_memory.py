@@ -277,12 +277,41 @@ class FarmMemoryService:
 
     def get_batch_performance_grade(self, fcr=None, mortality_rate=None, hen_day_pct=None) -> dict:
         from apps.health.analytics.breed_benchmarks import compare_batch_to_benchmark
+        from apps.health.analytics.farm_baseline_service import FarmBaselineService
 
         if not self.batch:
             return {}
 
         benchmark_result = compare_batch_to_benchmark(
             self.batch, fcr=fcr, mortality_rate=mortality_rate, hen_day_pct=hen_day_pct)
+
+        baseline = FarmBaselineService(self.org).get_baseline_or_benchmark(
+            self.batch.bird_type, getattr(self.batch, 'breed_name', '') or '')
+
+        # Grade relative to the farm's own FCR average once history exists.
+        # Falls back to breed-benchmark scoring for new farms / missing FCR.
+        if (fcr and baseline['source'] == 'farm_history' and baseline['avg_fcr']):
+            farm_avg = baseline['avg_fcr']
+            ratio = fcr / farm_avg
+            if ratio < 0.95:
+                grade, grade_color, grade_label, score = 'A', '#16a34a', 'Excellent', 95
+            elif ratio < 1.05:
+                grade, grade_color, grade_label, score = 'B', '#3d5a99', 'Good', 80
+            elif ratio < 1.15:
+                grade, grade_color, grade_label, score = 'C', '#d97706', 'Average', 65
+            else:
+                grade, grade_color, grade_label, score = 'D', '#dc2626', 'Below Target', 45
+
+            return {
+                'grade': grade,
+                'score': score,
+                'color': grade_color,
+                'label': grade_label,
+                'graded_against': 'farm_history',
+                'confidence_label': baseline['confidence_label'],
+                'farm_avg_fcr': farm_avg,
+                'benchmark': benchmark_result,
+            }
 
         score = 100
         for comp in benchmark_result['comparisons']:
@@ -305,5 +334,7 @@ class FarmMemoryService:
             'score': score,
             'color': grade_color,
             'label': grade_label,
+            'graded_against': 'breed_benchmark',
+            'confidence_label': baseline['confidence_label'],
             'benchmark': benchmark_result,
         }

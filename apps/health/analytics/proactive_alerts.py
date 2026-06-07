@@ -42,8 +42,33 @@ class ProactiveAlertEngine:
             trend_ratio = three_day / seven_day
             daily_rate_pct = three_day / max(batch.current_count, 1) * 100
 
+            # Farm-baseline-aware thresholds. The farm baseline stores
+            # *cumulative* mortality (fraction over a whole cycle); we surface
+            # it as a percent and use it to RAISE the per-day alert threshold
+            # for farms that historically run hotter, while flooring at the
+            # global daily constants so new / low-mortality farms are never
+            # made over-sensitive (units here are percent-per-day).
+            warn_threshold = self.MORT_RATE_WARNING
+            crit_threshold = self.MORT_RATE_CRITICAL
+            try:
+                from apps.health.analytics.farm_baseline_service import (
+                    FarmBaselineService,
+                )
+                baseline = FarmBaselineService(self.org).get_baseline_or_benchmark(
+                    batch.bird_type, getattr(batch, 'breed_name', '') or ''
+                )
+                farm_avg_mortality_pct = baseline['avg_mortality_rate_pct']
+                warn_threshold = max(
+                    farm_avg_mortality_pct * 1.5, self.MORT_RATE_WARNING
+                )
+                crit_threshold = max(
+                    farm_avg_mortality_pct * 2.0, self.MORT_RATE_CRITICAL
+                )
+            except Exception:
+                pass
+
             if (trend_ratio >= 2.5 or
-                    daily_rate_pct >= self.MORT_RATE_CRITICAL):
+                    daily_rate_pct >= crit_threshold):
                 severity = 'critical'
                 title = f'CRITICAL: Mortality Spike in {batch.batch_name}'
                 body = (
@@ -51,7 +76,7 @@ class ProactiveAlertEngine:
                     f'in the last 3 days ({three_day:.1f} birds/day vs '
                     f'{seven_day:.1f} avg). Immediate intervention required.')
             elif (trend_ratio >= 1.8 or
-                  daily_rate_pct >= self.MORT_RATE_WARNING):
+                  daily_rate_pct >= warn_threshold):
                 severity = 'warning'
                 title = f'Early Warning: Rising Mortality — {batch.batch_name}'
                 body = (

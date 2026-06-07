@@ -145,6 +145,93 @@ class AIDailyBrief(TenantAwareModel):
         return f'Brief {self.brief_date} — {self.overall_status}'
 
 
+class FarmBaseline(TenantAwareModel):
+    """
+    Persisted, continuously-updated per-farm performance baseline.
+
+    Computed from closed batches. Replaces the static breed benchmark
+    as the comparison target once enough history exists. New farms with
+    no history fall back to breed benchmarks (see FarmBaselineService).
+
+    Units:
+      - avg_mortality_rate / best_/worst_ are cumulative fractions per
+        batch (total deaths / initial_count), e.g. 0.045 == 4.5%.
+      - avg_fcr uses biomass = current_count * latest avg_weight_kg, the
+        same definition as FeedEfficiencyService so the two compare cleanly.
+    """
+
+    bird_type = models.CharField(max_length=20)  # broiler / layer
+    breed_name = models.CharField(max_length=100, blank=True)
+
+    # Core performance metrics (farm's actual historical averages)
+    avg_fcr = models.DecimalField(
+        max_digits=5, decimal_places=3, null=True, blank=True
+    )
+    avg_mortality_rate = models.DecimalField(
+        max_digits=5, decimal_places=3, null=True, blank=True
+    )
+    avg_daily_gain_g = models.DecimalField(
+        max_digits=6, decimal_places=2, null=True, blank=True
+    )
+    avg_feed_per_bird_kg = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, blank=True
+    )
+    avg_water_per_bird_l = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, blank=True
+    )
+
+    # Range awareness
+    best_fcr = models.DecimalField(
+        max_digits=5, decimal_places=3, null=True, blank=True
+    )
+    worst_fcr = models.DecimalField(
+        max_digits=5, decimal_places=3, null=True, blank=True
+    )
+    best_mortality_rate = models.DecimalField(
+        max_digits=5, decimal_places=3, null=True, blank=True
+    )
+    worst_mortality_rate = models.DecimalField(
+        max_digits=5, decimal_places=3, null=True, blank=True
+    )
+
+    # Confidence
+    batch_count = models.PositiveIntegerField(default=0)
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "analytics_farmbaseline"
+        unique_together = [("org", "bird_type", "breed_name")]
+        indexes = [
+            models.Index(
+                fields=["org", "bird_type", "breed_name"],
+                name="analytics_fb_org_bt_brd_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Baseline {self.bird_type} {self.breed_name or 'any'} ({self.batch_count} batches)"
+
+    @property
+    def confidence_level(self):
+        if self.batch_count >= 6:
+            return "high"
+        elif self.batch_count >= 3:
+            return "medium"
+        elif self.batch_count >= 1:
+            return "low"
+        return "none"
+
+    @property
+    def confidence_label(self):
+        labels = {
+            "high": f"Based on your last {self.batch_count} batches",
+            "medium": f"Based on {self.batch_count} batches — improving",
+            "low": "Early benchmark — based on 1 batch",
+            "none": "No history yet — using breed benchmarks",
+        }
+        return labels[self.confidence_level]
+
+
 class TheftFlag(TenantAwareModel):
     batch = models.ForeignKey(
         "flocks.Batch", on_delete=models.CASCADE, related_name="theft_flags"

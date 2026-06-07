@@ -108,6 +108,21 @@ class BatchService(BaseService):
 
             reconciliation = self._run_reconciliation(batch)
 
+        # Learning loop: fold this just-closed batch into the farm's baseline.
+        # Best-effort — never let baseline maths break a batch close.
+        try:
+            from apps.health.analytics.farm_baseline_service import FarmBaselineService
+
+            FarmBaselineService(self.org).compute_and_save(
+                bird_type=batch.bird_type,
+                breed_name=batch.breed_name,
+            )
+        except Exception:
+            logger.exception(
+                "flocks.baseline_recompute_failed",
+                batch_id=str(batch.pk),
+            )
+
         self.logger.info(
             "flocks.batch_closed",
             batch_id=str(batch.pk),

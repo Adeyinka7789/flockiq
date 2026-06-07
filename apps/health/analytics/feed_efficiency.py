@@ -54,7 +54,18 @@ class FeedEfficiencyService:
             benchmark = get_benchmark(
                 getattr(self.batch, 'breed_name', None),
                 self.batch.bird_type)
-            target_fcr = benchmark.get('target_fcr', 1.80)
+
+            # Farm memory: compare against this farm's own learned FCR once it
+            # has closed-batch history; otherwise fall back to the breed target.
+            from apps.health.analytics.farm_baseline_service import FarmBaselineService
+            baseline = FarmBaselineService(self.org).get_baseline_or_benchmark(
+                self.batch.bird_type,
+                getattr(self.batch, 'breed_name', '') or '',
+            )
+            target_fcr = round(baseline['avg_fcr'], 2) if baseline['avg_fcr'] else \
+                benchmark.get('target_fcr', 1.80)
+            comparison_source = baseline['source']
+            confidence_label = baseline['confidence_label']
 
             if fcr is None:
                 status = 'no_data'
@@ -75,6 +86,8 @@ class FeedEfficiencyService:
                 'avg_weight_kg': avg_weight_kg,
                 'status': status,
                 'breed': benchmark.get('name', 'Standard'),
+                'comparison_source': comparison_source,
+                'confidence_label': confidence_label,
             }
 
     def get_weekly_fcr_trend(self) -> list:

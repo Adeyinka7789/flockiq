@@ -260,6 +260,30 @@ class DailyBriefService(BaseService):
             except Exception:
                 pass  # Never break the brief generation
 
+        # Farm memory: surface the learned baseline for the primary active
+        # batch so the brief can frame metrics as "vs your farm average".
+        farm_baseline = None
+        fcr_vs_farm = None
+        try:
+            from apps.health.analytics.farm_baseline_service import FarmBaselineService
+            from apps.health.analytics.feed_efficiency import FeedEfficiencyService
+
+            primary = next(iter(active_batches), None)
+            if primary is not None:
+                farm_baseline = FarmBaselineService(self.org).get_baseline_or_benchmark(
+                    primary.bird_type, getattr(primary, "breed_name", "") or ""
+                )
+                current_fcr = FeedEfficiencyService(self.org, primary).compute_current_fcr().get("fcr")
+                if current_fcr and farm_baseline["avg_fcr"]:
+                    avg = farm_baseline["avg_fcr"]
+                    fcr_vs_farm = (
+                        "above" if current_fcr > avg
+                        else "below" if current_fcr < avg
+                        else "on track"
+                    )
+        except Exception:
+            pass
+
         brief = {
             "generated_at": today.isoformat(),
             "active_batches": len(active_batches),
@@ -267,6 +291,8 @@ class DailyBriefService(BaseService):
             "alerts": alerts,
             "recommendations": recommendations,
             "total_issues": len(alerts),
+            "farm_baseline": farm_baseline,
+            "fcr_vs_farm": fcr_vs_farm,
         }
         return brief
 

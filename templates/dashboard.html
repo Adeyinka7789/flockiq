@@ -258,6 +258,42 @@
   {% endif %}
   {% endif %}
 
+  <!-- Farm Memory: learned per-farm baseline -->
+  {% if farm_baseline %}
+  <div class="bg-white rounded-xl border border-earth-200 shadow-sm p-4 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+        <span>🧠</span> Farm Memory
+      </h3>
+      <span class="text-xs px-2 py-1 rounded-full
+        {% if farm_baseline.confidence == 'high' %}bg-green-100 text-green-700
+        {% elif farm_baseline.confidence == 'medium' %}bg-blue-100 text-blue-700
+        {% else %}bg-gray-100 text-gray-500{% endif %}">
+        {{ farm_baseline.confidence_label }}
+      </span>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <p class="text-xs text-gray-400">Your avg FCR</p>
+        <p class="text-lg font-bold text-gray-800">
+          {{ farm_baseline.avg_fcr|floatformat:2 }}
+        </p>
+      </div>
+      <div>
+        <p class="text-xs text-gray-400">Your avg mortality</p>
+        <p class="text-lg font-bold text-gray-800">
+          {{ farm_baseline.avg_mortality_rate_pct|floatformat:1 }}%
+        </p>
+      </div>
+    </div>
+    {% if farm_baseline.source == 'breed_benchmark' %}
+    <p class="text-xs text-gray-400 mt-3">
+      {{ farm_baseline.confidence_label }}
+    </p>
+    {% endif %}
+  </div>
+  {% endif %}
+
   <!-- Quick action buttons -->
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
     <a href="{% url 'farms:list' %}"

@@ -1,0 +1,8 @@
+C:\Users\USER\Documents\Django_Files\projects\flockiq\venv\Lib\site-packages\requests\__init__.py:113: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!
+  warnings.warn(
+CommandError: Unable to serialize database: 'charmap' codec can't encode character '\x96' in position 4: character maps to <undefined>
+Exception ignored in: <generator object cursor_iter at 0x00000142FE068F20>
+Traceback (most recent call last):
+  File "C:\Users\USER\Documents\Django_Files\projects\flockiq\venv\Lib\site-packages\django\db\models\sql\compiler.py", line 2115, in cursor_iter
+    cursor.close()
+sqlite3.ProgrammingError: Cannot operate on a closed database.

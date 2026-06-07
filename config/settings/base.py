@@ -212,7 +212,13 @@ from celery.schedules import crontab  # noqa: E402
 # the cache backend, so a periodic cleanup task would do nothing. If the session
 # backend is ever switched to django.contrib.sessions.backends.db, re-add a beat
 # task targeting "core.clear_expired_sessions" (see apps/infrastructure/core/tasks.py).
-CELERY_BEAT_SCHEDULE = {}
+CELERY_BEAT_SCHEDULE = {
+    # Nightly: refresh every org's learned farm baselines from closed batches.
+    "recompute-farm-baselines": {
+        "task": "analytics.recompute_all_farm_baselines",
+        "schedule": crontab(hour=1, minute=0),  # 01:00 daily
+    },
+}
 
 # --- JWT ---
 from datetime import timedelta

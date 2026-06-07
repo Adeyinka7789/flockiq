@@ -178,6 +178,61 @@ def run_proactive_alerts_all_orgs():
     return f'Proactive alerts: {total_fired} fired across {len(org_ids)} orgs'
 
 
+@shared_task(name="analytics.recompute_all_farm_baselines")
+def recompute_all_farm_baselines():
+    """Beat: 01:00 daily. Fan-out farm baseline recomputation to all active orgs."""
+    from apps.infrastructure.core.rls import no_tenant_context
+
+    with no_tenant_context():
+        from apps.infrastructure.tenants.models import Organization
+
+        org_ids = list(
+            Organization.objects.filter(
+                is_active=True,
+                subscription_status__in=["active", "trial"],
+            ).values_list("id", flat=True)
+        )
+
+    for org_id in org_ids:
+        recompute_farm_baseline_for_org.delay(str(org_id))
+
+
+@shared_task(name="analytics.recompute_farm_baseline_for_org")
+def recompute_farm_baseline_for_org(org_id: str):
+    """Recompute every (bird_type, breed) baseline for one org from closed batches."""
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.tenants.models import Organization
+    from apps.farm.flocks.models import Batch
+    from .farm_baseline_service import FarmBaselineService
+
+    with set_tenant_context(org_id):
+        try:
+            org = Organization.objects.get(id=org_id)
+        except Organization.DoesNotExist:
+            return
+
+        svc = FarmBaselineService(org)
+        for bird_type in ["broiler", "layer"]:
+            breeds = list(
+                Batch.objects.filter(
+                    org=org, bird_type=bird_type, status="closed"
+                )
+                .values_list("breed_name", flat=True)
+                .distinct()
+            )
+            for breed in breeds:
+                try:
+                    svc.compute_and_save(bird_type, breed or "")
+                except Exception as exc:
+                    logger.error(
+                        "Farm baseline recompute failed",
+                        org_id=org_id,
+                        bird_type=bird_type,
+                        breed=breed,
+                        error=str(exc),
+                    )
+
+
 @shared_task(name="analytics.run_theft_detection_for_org")
 def run_theft_detection_for_org(org_id: str):
     """Reconciles all active batches for one org."""
