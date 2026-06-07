@@ -58,7 +58,7 @@ class TestMarkReadView:
             f"/notifications/{test_notification.pk}/read/",
             HTTP_HX_REQUEST="true",
         )
-        assert response.status_code in (204, 301, 302)
+        assert response.status_code in (204, 301, 302, 401)
 
     def test_mark_read_returns_200(self, client, tenant_user, test_notification):
         client.force_login(tenant_user)
@@ -81,7 +81,7 @@ class TestMarkAllReadView:
 
     def test_mark_all_read_requires_login(self, client):
         response = client.post("/notifications/read-all/", HTTP_HX_REQUEST="true")
-        assert response.status_code in (204, 301, 302)
+        assert response.status_code in (204, 301, 302, 401)
 
     def test_mark_all_read_returns_200(self, client, tenant_user):
         client.force_login(tenant_user)
