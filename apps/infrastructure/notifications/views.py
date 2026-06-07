@@ -110,9 +110,11 @@ class MarkReadView(LoginRequiredMixin, View):
                 recipient=request.user, is_read=False
             ).count()
         else:
+            if not getattr(request.user, 'org', None):
+                return HttpResponse(status=400)
             svc = NotificationService(request.user.org)
             with set_tenant_context(request.user.org):
-                svc.mark_read(pk)
+                svc.mark_read(pk, request.user)
                 count = svc.get_unread_count(request.user)
         html = render_to_string(
             "notifications/_bell_count.html",
@@ -133,6 +135,8 @@ class MarkAllReadView(LoginRequiredMixin, View):
                 recipient=request.user, is_read=False
             ).update(is_read=True)
         else:
+            if not getattr(request.user, 'org', None):
+                return HttpResponse(status=400)
             from .models import NotificationLog
             with set_tenant_context(request.user.org):
                 NotificationLog.objects.filter(
@@ -165,6 +169,8 @@ class AcknowledgeNotificationView(LoginRequiredMixin, View):
     def post(self, request, pk):
         from .models import NotificationLog
 
+        if not getattr(request.user, 'org', None):
+            return HttpResponse(status=400)
         with set_tenant_context(request.user.org):
             notif = get_object_or_404(NotificationLog, pk=pk, recipient=request.user)
             notif.acknowledged = True

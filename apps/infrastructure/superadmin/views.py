@@ -2,6 +2,7 @@ import json
 from collections import Counter
 from datetime import date, timedelta
 
+import structlog
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.http import HttpResponse
@@ -12,6 +13,8 @@ from django.views import View
 from apps.infrastructure.billing.models import PaymentRecord
 from apps.infrastructure.core.mixins import SuperAdminMixin
 from apps.infrastructure.tenants.models import Organization
+
+logger = structlog.get_logger(__name__)
 
 
 class SuperAdminDashboardView(SuperAdminMixin, View):
@@ -541,7 +544,8 @@ class ImpersonateStopView(View):
                     log.ended_at = timezone.now()
                     log.save()
             except Exception:
-                pass
+                logger.exception("impersonation.stop_log_failed",
+                                 user_id=str(request.user.pk))
 
         request.session.pop('_impersonated_user_id', None)
         request.session.pop('_impersonator_id', None)
@@ -643,7 +647,7 @@ class SystemHealthView(SuperAdminMixin, View):
             queue_size = redis_conn.llen('celery') or 0
             workers_running = info.get('connected_clients', 1)
         except Exception:
-            pass
+            logger.exception("system_health.redis_unavailable")
 
         recent_tasks = TaskResult.objects.order_by('-date_done')[:20]
 

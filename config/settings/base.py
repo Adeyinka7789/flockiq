@@ -202,12 +202,13 @@ CELERY_TASK_SOFT_TIME_LIMIT = 180
 CELERY_TASK_TIME_LIMIT = 240
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 from celery.schedules import crontab  # noqa: E402
-CELERY_BEAT_SCHEDULE = {
-    "clear-expired-sessions": {
-        "task": "apps.infrastructure.core.tasks.clear_expired_sessions",
-        "schedule": crontab(hour=2, minute=0),
-    },
-}
+# NOTE: No `clear-expired-sessions` beat task is scheduled.
+# SESSION_ENGINE is the cache (Redis) backend, so sessions expire automatically
+# via Redis TTL (SESSION_COOKIE_AGE). `manage.py clearsessions` is a no-op for
+# the cache backend, so a periodic cleanup task would do nothing. If the session
+# backend is ever switched to django.contrib.sessions.backends.db, re-add a beat
+# task targeting "core.clear_expired_sessions" (see apps/infrastructure/core/tasks.py).
+CELERY_BEAT_SCHEDULE = {}
 
 # --- JWT ---
 from datetime import timedelta

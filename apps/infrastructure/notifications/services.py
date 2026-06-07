@@ -200,12 +200,16 @@ class NotificationService(BaseService):
             fallback = f"{event_type} event occurred"
             return event_type, fallback, ""
 
-    def mark_read(self, notification_log_id):
+    def mark_read(self, notification_log_id, user):
         updated = NotificationLog.objects.filter(
             id=notification_log_id,
-            recipient__org=self.org,
+            recipient=user,
         ).update(is_read=True, read_at=timezone.now())
-        self.logger.debug("notification.marked_read", id=str(notification_log_id), updated=updated)
+        if not updated:
+            self.logger.warning("notification.mark_read_denied",
+                                id=str(notification_log_id),
+                                user_id=str(user.id))
+        return updated
 
     def get_unread_count(self, user) -> int:
         return NotificationLog.objects.filter(

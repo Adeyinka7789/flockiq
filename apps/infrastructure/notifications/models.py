@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -135,6 +136,12 @@ class NotificationLog(TenantAwareModel):
         indexes = [
             models.Index(fields=["org", "is_read", "created_at"]),
         ]
+
+    def clean(self):
+        if self.action_url and not self.action_url.startswith('/'):
+            raise ValidationError(
+                {'action_url': 'action_url must be a relative path starting with /'}
+            )
 
     def __str__(self):
         return f"{self.title} → {self.recipient} ({'read' if self.is_read else 'unread'})"

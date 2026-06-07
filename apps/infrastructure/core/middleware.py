@@ -48,7 +48,16 @@ class HtmxSessionExpiredMiddleware:
             and "/login/" in response.get("Location", "")
         ):
             new_response = HttpResponse(status=401)
-            new_response["HX-Redirect"] = "/login/?next=" + request.path
+            from urllib.parse import urlencode
+            from django.utils.http import url_has_allowed_host_and_scheme
+            dest = request.get_full_path()
+            if not url_has_allowed_host_and_scheme(
+                dest,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure()
+            ):
+                dest = "/"
+            new_response["HX-Redirect"] = "/login/?" + urlencode({"next": dest})
             return new_response
         return response
 
