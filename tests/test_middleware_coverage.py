@@ -53,14 +53,27 @@ class TestHtmxSessionExpiredMiddleware:
     def test_htmx_redirect_hx_redirect_contains_path(self):
         rf = RequestFactory()
         request = rf.get("/batches/", HTTP_HX_REQUEST="true")
+        # Middleware now derives next= from HTTP_REFERER, not request.path.
+        request.META["HTTP_REFERER"] = "http://testserver/batches/"
 
         def get_response(req):
             return HttpResponseRedirect("/login/?next=/batches/")
 
         response = self._middleware(get_response)(request)
-        # M2 fix URL-encodes the `next` path, so the header contains
-        # '/login/?next=%2Fbatches%2F' rather than a literal '/batches/'.
+        assert response.status_code == 401
         assert "/batches/" in unquote(response["HX-Redirect"])
+
+    def test_htmx_redirect_no_referer_fallback_to_root(self):
+        rf = RequestFactory()
+        request = rf.get("/some-fragment/", HTTP_HX_REQUEST="true")
+        # No HTTP_REFERER — middleware falls back to dest = "/"
+
+        def get_response(req):
+            return HttpResponseRedirect("/login/?next=/some-fragment/")
+
+        response = self._middleware(get_response)(request)
+        assert response.status_code == 401
+        assert unquote(response["HX-Redirect"]) == "/login/?next=/"
 
     def test_non_htmx_redirect_to_login_stays_302(self):
         rf = RequestFactory()

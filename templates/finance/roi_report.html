@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load static humanize %}
+{% block title %}ROI Report{% endblock %}
+{% block breadcrumb %}ROI Report{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:0 auto;">
+
+  <div style="font-size:11px;font-weight:700;color:#8a96a8;
+               text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">
+    Financial Intelligence
+  </div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;
+               flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+    <div>
+      <h1 style="font-size:28px;font-weight:800;color:#1a2744;
+                  letter-spacing:-0.5px;line-height:1.2;">
+        FlockIQ ROI Report
+      </h1>
+      <p style="font-size:13px;color:#64748b;margin-top:4px;">
+        See exactly what FlockIQ saved and earned your farm.
+      </p>
+    </div>
+
+    {# Batch selector — triggers HTMX swap of the report partial #}
+    {% if batches %}
+    <div>
+      <label style="font-size:11px;font-weight:700;color:#8a96a8;
+                     text-transform:uppercase;letter-spacing:0.08em;
+                     display:block;margin-bottom:6px;">Select Batch</label>
+      <select style="padding:9px 14px;background:white;border:1.5px solid #e2e8f0;
+                      border-radius:10px;font-size:13px;color:#1a2744;
+                      cursor:pointer;outline:none;font-weight:500;"
+              hx-get="{% url 'finance:roi_calculator' %}"
+              hx-target="#roi-content"
+              hx-push-url="true"
+              name="batch">
+        {% for b in batches %}
+        <option value="{{ b.pk }}"
+          {% if selected_batch and b.pk == selected_batch.pk %}selected{% endif %}>
+          {{ b.batch_name }} — {{ b.farm.name }}
+          {% if b.status == 'closed' %}(closed){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+  </div>
+
+  {# Main ROI content — swapped by HTMX on batch change #}
+  <div id="roi-content">
+    {% include "finance/_roi_report.html" %}
+  </div>
+
+</div>
+{% endblock %}

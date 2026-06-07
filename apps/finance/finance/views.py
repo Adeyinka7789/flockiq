@@ -152,6 +152,83 @@ class ROICalculatorView(LoginRequiredMixin, View):
         return render(request, "finance/_roi_calculator.html", {"data": data, "batch_pk": batch_pk})
 
 
+class ROIReportView(LoginRequiredMixin, View):
+    """GET /finance/roi/ — full-page FlockIQ value delivery report."""
+
+    def get(self, request):
+        from apps.farm.flocks.models import Batch
+        from apps.infrastructure.billing.features import has_feature
+        from .roi_service import ROICalculatorService
+
+        org = get_org_or_404(request)
+
+        with set_tenant_context(org):
+            batches = list(
+                Batch.objects.filter(org=org)
+                .select_related("farm")
+                .order_by("-placement_date")
+            )
+
+        selected_batch = None
+        batch_pk = request.GET.get("batch")
+        if batch_pk:
+            selected_batch = next(
+                (b for b in batches if str(b.pk) == batch_pk), None
+            )
+        if selected_batch is None and batches:
+            selected_batch = batches[0]
+
+        feature_locked = not has_feature(org, "roi_calculator")
+
+        roi_data = {}
+        if not feature_locked and selected_batch is not None:
+            with set_tenant_context(org):
+                roi_data = ROICalculatorService(org, selected_batch).calculate()
+        elif feature_locked:
+            roi_data = {"has_data": False}
+
+        if request.headers.get("HX-Request"):
+            return render(request, "finance/_roi_report.html", {
+                "feature_locked": feature_locked,
+                "roi_data": roi_data,
+                "selected_batch": selected_batch,
+            })
+
+        return render(request, "finance/roi_report.html", {
+            "batches": batches,
+            "selected_batch": selected_batch,
+            "feature_locked": feature_locked,
+            "roi_data": roi_data,
+        })
+
+
+class ROIReportBatchView(LoginRequiredMixin, View):
+    """GET /finance/roi/batch/<uuid:batch_pk>/ — HTMX partial for batch switching."""
+
+    def get(self, request, batch_pk):
+        from apps.farm.flocks.models import Batch
+        from apps.infrastructure.billing.features import has_feature
+        from .roi_service import ROICalculatorService
+        from django.shortcuts import get_object_or_404
+
+        org = get_org_or_404(request)
+        feature_locked = not has_feature(org, "roi_calculator")
+
+        roi_data = {"has_data": False}
+        selected_batch = None
+
+        if not feature_locked:
+            with set_tenant_context(org):
+                selected_batch = get_object_or_404(Batch, pk=batch_pk, org=org)
+                roi_data = ROICalculatorService(org, selected_batch).calculate()
+
+        return render(request, "finance/_roi_report.html", {
+            "feature_locked": feature_locked,
+            "roi_data": roi_data,
+            "selected_batch": selected_batch,
+        })
+
+
 class FinanceSummaryAPIView(APIView):
     """GET /api/v1/finance/summary/"""
 

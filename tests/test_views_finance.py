@@ -18,6 +18,11 @@ class TestPLSummaryView:
 
 class TestSaleLogView:
 
+    def test_sale_log_get_returns_form(self, client, tenant_user, test_batch):
+        client.force_login(tenant_user)
+        response = client.get(f"/finance/sales/{test_batch.pk}/log/")
+        assert response.status_code == 200
+
     def test_sale_log_post_missing_fields_returns_422(self, client, tenant_user, test_batch):
         client.force_login(tenant_user)
         response = client.post(

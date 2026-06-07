@@ -31,6 +31,7 @@ def tenant_user(db, test_org):
         role="owner",
         first_name="Test",
         last_name="Owner",
+        email_verified=True,
     )
 
 

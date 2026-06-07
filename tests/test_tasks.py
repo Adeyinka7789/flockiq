@@ -257,3 +257,79 @@ class TestTaskCompleteView:
         assert response.status_code == 200
         assert "HX-Trigger" in response
         assert b"complete" in response.content.lower() or b"done" in response.content.lower()
+
+
+# ── TaskService.get_todays_tasks — lines 88-105 ───────────────────────────────
+
+class TestGetTodaysTasks:
+
+    def test_get_todays_tasks_with_farm_filter(self):
+        org = _make_org("tasks-today-1")
+        farm_a = _make_farm(org, "Farm A")
+        farm_b = _make_farm(org, "Farm B")
+
+        with _set_rls(org.id):
+            task_a = _make_task(org, farm_a)
+            _make_task(org, farm_b)
+
+        from apps.farm.tasks.services import TaskService
+        with _set_rls(org.id):
+            results = list(TaskService(org).get_todays_tasks(farm_id=farm_a.id))
+
+        assert all(t.farm_id == farm_a.id for t in results)
+        assert any(t.id == task_a.id for t in results)
+
+    def test_get_todays_tasks_priority_ordering(self):
+        org = _make_org("tasks-today-2")
+        farm = _make_farm(org)
+
+        from apps.farm.tasks.models import FarmTask
+        with _set_rls(org.id):
+            FarmTask.objects.create(
+                org=org, farm=farm, title="Low Task",
+                due_date=datetime.date.today(), status="pending", priority="low",
+            )
+            FarmTask.objects.create(
+                org=org, farm=farm, title="High Task",
+                due_date=datetime.date.today(), status="pending", priority="high",
+            )
+
+        from apps.farm.tasks.services import TaskService
+        with _set_rls(org.id):
+            results = list(TaskService(org).get_todays_tasks())
+
+        priorities = [t.priority for t in results]
+        assert priorities.index("high") < priorities.index("low")
+
+
+# ── TaskService.send_incomplete_report — lines 156-182 ───────────────────────
+
+class TestSendIncompleteReport:
+
+    def test_send_incomplete_report_fires_notification(self):
+        from unittest.mock import patch
+        from apps.infrastructure.notifications.services import NotificationService
+
+        org = _make_org("tasks-report-1")
+        farm = _make_farm(org)
+
+        with _set_rls(org.id):
+            _make_task(
+                org, farm,
+                status="pending",
+                due_date=datetime.date.today() - datetime.timedelta(days=1),
+            )
+
+        from apps.farm.tasks.services import TaskService
+        with _set_rls(org.id), patch.object(NotificationService, "send") as mock_send:
+            TaskService(org).send_incomplete_report()
+
+        mock_send.assert_called_once()
+
+    def test_send_incomplete_report_no_tasks_returns_early(self):
+        org = _make_org("tasks-report-2")
+
+        from apps.farm.tasks.services import TaskService
+        with _set_rls(org.id):
+            # No pending/overdue tasks — early return, must not raise
+            TaskService(org).send_incomplete_report()

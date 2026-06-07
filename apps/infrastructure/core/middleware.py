@@ -80,9 +80,16 @@ class HtmxSessionExpiredMiddleware:
             and "/login/" in response.get("Location", "")
         ):
             new_response = HttpResponse(status=401)
-            from urllib.parse import urlencode
+            from urllib.parse import urlencode, urlparse
             from django.utils.http import url_has_allowed_host_and_scheme
-            dest = request.get_full_path()
+            # Use the Referer header so the user lands back on the full page
+            # they were viewing, not on the HTMX fragment endpoint URL.
+            referer = request.META.get("HTTP_REFERER", "")
+            if referer:
+                parsed = urlparse(referer)
+                dest = parsed.path or "/"
+            else:
+                dest = "/"
             if not url_has_allowed_host_and_scheme(
                 dest,
                 allowed_hosts={request.get_host()},

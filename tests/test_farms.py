@@ -315,6 +315,66 @@ class TestFarmCreateForm:
         assert "longitude" in form.errors
 
 
+# ── farms/tasks.py — Celery task functions ────────────────────────────────────
+
+class TestFarmCeleryTasks:
+
+    def test_create_farm_async_creates_farm(self, db):
+        from apps.farm.farms.tasks import create_farm_async
+        from apps.farm.farms.models import Farm
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        org = _make_org()
+        create_farm_async(
+            org_id=str(org.id),
+            name="Async Farm",
+            location="Kano",
+            lat=12.0022,
+            lng=8.5920,
+            farm_type="broiler",
+        )
+        with set_tenant_context(org):
+            assert Farm.objects.filter(name="Async Farm").exists()
+
+    def test_create_house_async_creates_house(self, db):
+        from apps.farm.farms.tasks import create_house_async
+        from apps.farm.farms.models import Farm, House
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        org = _make_org()
+        farm = Farm(
+            org=org, name="Task Farm", location="Lagos",
+            latitude=Decimal("6.5244"), longitude=Decimal("3.3792"),
+            farm_type="layer",
+        )
+        farm.clean()
+        farm.save()
+
+        create_house_async(
+            org_id=str(org.id),
+            farm_id=str(farm.id),
+            name="Async House",
+            capacity=1000,
+            house_type="layer",
+        )
+        with set_tenant_context(org):
+            assert House.objects.filter(name="Async House").exists()
+
+    def test_create_farm_async_reraises_on_invalid_org(self, db):
+        import uuid as _uuid
+        from apps.farm.farms.tasks import create_farm_async
+
+        with pytest.raises(Exception):
+            create_farm_async(
+                org_id=str(_uuid.uuid4()),
+                name="Ghost Farm",
+                location="Nowhere",
+                lat=7.0,
+                lng=5.0,
+                farm_type="broiler",
+            )
+
+
 # ── View tests ────────────────────────────────────────────────────────────────
 
 class TestFarmViews:

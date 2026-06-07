@@ -458,3 +458,270 @@ class TestBatchViews:
         # Metrics card contains feed requirement data
         content = response.content.decode()
         assert "feed" in content.lower() or "kg" in content.lower()
+
+
+# ── flocks/tasks.py — Celery task functions ───────────────────────────────────
+
+class TestFlocksCeleryTasks:
+
+    def test_activate_cycle_subscription_stub_does_not_raise(self, db):
+        from apps.farm.flocks.tasks import activate_cycle_subscription
+        activate_cycle_subscription(org_id="fake-org", batch_id="fake-batch")
+
+    def test_deactivate_cycle_subscription_stub_does_not_raise(self, db):
+        from apps.farm.flocks.tasks import deactivate_cycle_subscription
+        deactivate_cycle_subscription(org_id="fake-org", batch_id="fake-batch")
+
+    def test_create_batch_async_creates_batch(self, db):
+        from apps.farm.flocks.tasks import create_batch_async
+        from apps.farm.flocks.models import Batch
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        org = _make_org("batchtask1")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        create_batch_async(
+            org_id=str(org.id),
+            farm_id=str(farm.id),
+            house_id=str(house.id),
+            batch_name="Async Batch",
+            bird_type="broiler",
+            placement_date=datetime.date.today(),
+            initial_count=500,
+            breed_name="Cobb 500",
+        )
+        with set_tenant_context(org):
+            assert Batch.objects.filter(batch_name="Async Batch").exists()
+
+    def test_create_batch_async_reraises_on_invalid_org(self, db):
+        import uuid as _uuid
+        from apps.farm.flocks.tasks import create_batch_async
+
+        with pytest.raises(Exception):
+            create_batch_async(
+                org_id=str(_uuid.uuid4()),
+                farm_id=str(_uuid.uuid4()),
+                house_id=str(_uuid.uuid4()),
+                batch_name="Ghost Batch",
+                bird_type="broiler",
+                placement_date=datetime.date.today(),
+                initial_count=100,
+                breed_name="",
+            )
+
+
+# ── flocks/signals.py — edge case branches ────────────────────────────────────
+
+class TestFlocksSignalEdgeCases:
+
+    def test_mortality_signal_skips_on_update(self, db):
+        """Line 12: created=False path returns immediately."""
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        org = _make_org("sigedge1")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org):
+            batch = _make_batch(org, farm, house, initial_count=200)
+            from apps.farm.flocks.services import BatchService
+            log = BatchService(org).log_mortality(batch_id=str(batch.id), count=5)
+            batch.refresh_from_db()
+            count_after = batch.current_count
+
+            # Update the log (created=False) — signal returns immediately
+            log.notes = "edited"
+            log.save()
+            batch.refresh_from_db()
+
+        assert batch.current_count == count_after  # unchanged
+
+    def test_mortality_signal_cross_tenant_block(self, db):
+        """Lines 21-28: Batch.update() returning 0 logs error, does not raise."""
+        from apps.farm.flocks.signals import on_mortality_log_saved
+        from apps.infrastructure.core.rls import set_tenant_context
+        from unittest.mock import patch, MagicMock
+
+        org = _make_org("sigedge2")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org):
+            batch = _make_batch(org, farm, house, initial_count=200)
+            from apps.farm.flocks.services import BatchService
+            log = BatchService(org).log_mortality(batch_id=str(batch.id), count=5)
+
+        # Simulate cross-tenant block: make unscoped().filter().update() return 0
+        mock_qs = MagicMock()
+        mock_qs.filter.return_value.update.return_value = 0
+        with patch("apps.farm.flocks.models.Batch") as MockBatch:
+            MockBatch.objects.unscoped.return_value = mock_qs
+            on_mortality_log_saved(sender=None, instance=log, created=True)  # must not raise
+
+    def test_mortality_spike_notification_exception_swallowed(self, db):
+        """Lines 48-50: notification failure never aborts the domain write."""
+        from unittest.mock import patch
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.infrastructure.notifications.services import NotificationService
+        from apps.farm.flocks.models import Batch
+
+        org = _make_org("sigedge3")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org):
+            # Small batch so a single death triggers the spike threshold (< 10%)
+            batch = Batch.objects.create(
+                org=org, farm=farm, house=house,
+                batch_name="Spike Batch",
+                bird_type="broiler",
+                placement_date=datetime.date.today() - datetime.timedelta(days=10),
+                initial_count=10,
+                current_count=10,
+                status="active",
+            )
+
+        with set_tenant_context(org), patch.object(
+            NotificationService, "send", side_effect=Exception("notif down")
+        ):
+            from apps.farm.flocks.services import BatchService
+            BatchService(org).log_mortality(batch_id=str(batch.id), count=2)
+
+    def test_mortality_anomaly_task_exception_swallowed(self, db):
+        """Lines 59-60: check_mortality_anomaly.delay() failure is swallowed."""
+        from unittest.mock import patch
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.farm.flocks.tasks import check_mortality_anomaly
+
+        org = _make_org("sigedge4")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org):
+            batch = _make_batch(org, farm, house, initial_count=200)
+
+        with set_tenant_context(org), patch.object(
+            check_mortality_anomaly, "delay", side_effect=Exception("Redis down")
+        ):
+            from apps.farm.flocks.services import BatchService
+            BatchService(org).log_mortality(batch_id=str(batch.id), count=5)
+
+    def test_batch_signal_broiler_cycle_fires_subscription(self, db):
+        """Lines 75-80: broiler batch on cycle-tier org calls activate_cycle_subscription.delay."""
+        from unittest.mock import patch
+        from apps.infrastructure.tenants.models import Organization
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.farm.flocks.tasks import activate_cycle_subscription
+        from apps.farm.flocks.models import Batch
+
+        org = Organization.objects.create(
+            name="Cycle Org", subdomain="cycleorg1", plan_tier="cycle"
+        )
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org), patch.object(
+            activate_cycle_subscription, "delay"
+        ) as mock_delay:
+            Batch.objects.create(
+                org=org, farm=farm, house=house,
+                batch_name="Cycle Broiler",
+                bird_type="broiler",
+                placement_date=datetime.date.today(),
+                initial_count=500,
+                current_count=500,
+                status="active",
+            )
+
+        mock_delay.assert_called_once()
+
+    def test_batch_signal_broiler_cycle_delay_exception_swallowed(self, db):
+        """Lines 81-82: activate_cycle_subscription.delay() exception is swallowed."""
+        from unittest.mock import patch
+        from apps.infrastructure.tenants.models import Organization
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.farm.flocks.tasks import activate_cycle_subscription
+        from apps.farm.flocks.models import Batch
+
+        org = Organization.objects.create(
+            name="Cycle Org 2", subdomain="cycleorg2", plan_tier="cycle"
+        )
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org), patch.object(
+            activate_cycle_subscription, "delay", side_effect=Exception("Celery down")
+        ):
+            Batch.objects.create(
+                org=org, farm=farm, house=house,
+                batch_name="Cycle Broiler 2",
+                bird_type="broiler",
+                placement_date=datetime.date.today(),
+                initial_count=500,
+                current_count=500,
+                status="active",
+            )
+
+    def test_batch_close_deactivate_exception_swallowed(self, db):
+        """Lines 101-102: deactivate_cycle_subscription.delay() exception on close is swallowed."""
+        from unittest.mock import patch
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.farm.flocks.tasks import deactivate_cycle_subscription
+
+        org = _make_org("sigedge7")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org):
+            batch = _make_batch(org, farm, house)
+
+        with set_tenant_context(org), patch.object(
+            deactivate_cycle_subscription, "delay", side_effect=Exception("Celery down")
+        ):
+            from apps.farm.flocks.services import BatchService
+            BatchService(org).close_batch(batch_id=str(batch.id))
+
+
+# ── flocks/views.py — easy GET branches ──────────────────────────────────────
+
+class TestFlocksViewGets:
+
+    def _setup(self, db, subdomain):
+        from apps.infrastructure.tenants.models import Organization
+        from apps.infrastructure.accounts.models import CustomUser
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        org = Organization.objects.create(name="View Org", subdomain=subdomain)
+        user = CustomUser.objects.create_user(
+            email=f"{subdomain}@example.com",
+            password="testpass123",
+            username=subdomain,
+            org=org,
+        )
+        farm = _make_farm(org)
+        house = _make_house(org, farm, capacity=500)
+        with set_tenant_context(org):
+            batch = _make_batch(org, farm, house, initial_count=200)
+        return org, user, batch
+
+    def test_mortality_log_get_renders_form(self, db, client):
+        """MortalityLogView.get renders the modal form."""
+        org, user, batch = self._setup(db, "flocksviewget1")
+        client.force_login(user)
+        response = client.get(f"/batches/{batch.pk}/mortality/")
+        assert response.status_code == 200
+
+    def test_mortality_recent_get_renders_table(self, db, client):
+        """MortalityRecentView.get renders the mortality table partial."""
+        org, user, batch = self._setup(db, "flocksviewget2")
+        client.force_login(user)
+        response = client.get(f"/batches/{batch.pk}/mortality/recent/")
+        assert response.status_code == 200
+
+    def test_batch_close_get_renders_modal(self, db, client):
+        """BatchCloseView.get renders the close confirmation modal."""
+        org, user, batch = self._setup(db, "flocksviewget3")
+        client.force_login(user)
+        response = client.get(f"/batches/{batch.pk}/close/")
+        assert response.status_code == 200

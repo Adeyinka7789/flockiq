@@ -606,6 +606,15 @@
           </svg>
           <span class="sb-text">Market</span>
         </a>
+        <a href="{% url 'finance:roi_calculator' %}"
+           class="sb-item {% if app_name == 'finance' and url_name == 'roi_calculator' %}active{% endif %}">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          </svg>
+          <span class="sb-text">ROI Report</span>
+        </a>
 
         <!-- SETTINGS -->
         <div class="sb-group"><span class="sb-text sb-group-label">Settings</span></div>
@@ -752,7 +761,7 @@
               </svg>
               <span id="bell-count"
                     hx-get="{% url 'notifications:bell' %}"
-                    hx-trigger="load, every 60s, refreshBell from:body"
+                    hx-trigger="load, every 120s, refreshBell from:body"
                     hx-swap="innerHTML">
               </span>
             </button>
@@ -1052,13 +1061,11 @@
       evt.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
     });
 
-    // Session expiry: 401 → redirect to login preserving current path
-    // CSRF failure: 403 → reload page to get a fresh CSRF token
+    // Session expiry or CSRF failure: redirect to login preserving current page.
+    // Never reload on 403 — if the session has expired the reload will just loop.
     document.addEventListener('htmx:responseError', function(evt) {
-      if (evt.detail.xhr.status === 401) {
-        window.location.href = '/login/?next=' + window.location.pathname;
-      } else if (evt.detail.xhr.status === 403) {
-        window.location.reload();
+      if (evt.detail.xhr.status === 401 || evt.detail.xhr.status === 403) {
+        window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
       }
     });
 
@@ -1071,18 +1078,17 @@
       }
     });
 
-    // Robust Guard: Check the server's response code and content BEFORE swapping
+    // Guard: block HTMX from swapping 401/403 bodies into page fragments.
+    // Navigation is handled by htmx:responseError and the HX-Redirect handler above.
     document.addEventListener('htmx:beforeSwap', function(evt) {
-      // 1. Catch 401 Unauthorized or 403 Forbidden statuses early
       if (evt.detail.xhr.status === 401 || evt.detail.xhr.status === 403) {
-        window.location.href = '/login/';
         evt.detail.shouldSwap = false;
         return;
       }
-      // 2. Fallback: If the response text contains a login form element, stop the swap and redirect
+      // Fallback: stop HTMX swapping a full login page into a fragment target
       var responseText = evt.detail.xhr.responseText;
       if (responseText.includes('name="password"') || responseText.includes('Forgot password?')) {
-        window.location.href = '/login/';
+        window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
         evt.detail.shouldSwap = false;
       }
     });

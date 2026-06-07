@@ -26,6 +26,16 @@ urlpatterns = [
         name="breakeven",
     ),
     path(
+        "finance/roi/",
+        views.ROIReportView.as_view(),
+        name="roi_calculator",
+    ),
+    path(
+        "finance/roi/batch/<uuid:batch_pk>/",
+        views.ROIReportBatchView.as_view(),
+        name="roi_calculator_batch",
+    ),
+    path(
         "finance/roi/<uuid:batch_pk>/",
         views.ROICalculatorView.as_view(),
         name="roi",

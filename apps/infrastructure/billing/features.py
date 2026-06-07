@@ -16,6 +16,7 @@ PLAN_FEATURES = {
         'weather_alerts': True,
         'sms_notifications': False,
         'white_label': False,
+        'roi_calculator': False,
         'team_members': 1,
     },
     'cycle': {
@@ -35,6 +36,7 @@ PLAN_FEATURES = {
         'weather_alerts': True,
         'sms_notifications': False,
         'white_label': False,
+        'roi_calculator': True,
         'team_members': 2,
     },
     'monthly': {
@@ -54,6 +56,7 @@ PLAN_FEATURES = {
         'weather_alerts': True,
         'sms_notifications': True,
         'white_label': False,
+        'roi_calculator': True,
         'team_members': 5,
     },
     'yearly': {
@@ -73,6 +76,7 @@ PLAN_FEATURES = {
         'weather_alerts': True,
         'sms_notifications': True,
         'white_label': True,
+        'roi_calculator': True,
         'team_members': 999,
     },
 }
