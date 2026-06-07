@@ -38,9 +38,14 @@ def enable_rls(table_name: str) -> list:
       2. Create the tenant isolation policy using app.current_org_id.
       3. Force RLS even for the table owner (prevents owner-bypass).
 
-    The policy uses current_setting(..., TRUE): if the session variable is not set,
-    the function returns NULL, the uuid cast produces NULL, and org_id = NULL is always
-    false — zero rows are returned. This is the correct safe-default behaviour.
+    The policy uses current_setting(..., TRUE) wrapped in NULLIF(..., ''):
+    PostgreSQL reverts a transaction-scoped SET LOCAL to the EMPTY STRING (not NULL)
+    once the transaction ends, so a bare current_setting(..., TRUE)::uuid raises
+    'invalid input syntax for type uuid: ""' on the next context-less query that
+    reuses the connection (e.g. via PgBouncer, or super-admin .unscoped() reads).
+    NULLIF(current_setting('app.current_org_id', TRUE), '') maps both the unset and
+    the reverted-empty states to NULL, so org_id = NULL is always false and zero
+    rows are returned — the correct fail-closed behaviour, with no error.
     Never use current_setting(..., FALSE) — it raises an error when unset.
     """
     return [
@@ -52,7 +57,7 @@ def enable_rls(table_name: str) -> list:
             sql=f"""
                 CREATE POLICY tenant_isolation ON {table_name}
                     USING (
-                        org_id = current_setting('app.current_org_id', TRUE)::uuid
+                        org_id = NULLIF(current_setting('app.current_org_id', TRUE), '')::uuid
                     );
             """,
             reverse_sql=f"DROP POLICY IF EXISTS tenant_isolation ON {table_name};",

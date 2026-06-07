@@ -6,6 +6,7 @@ from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
+from apps.infrastructure.core.rls import assert_tenant_context
 from apps.infrastructure.core.services import BaseService
 
 logger = structlog.get_logger(__name__)
@@ -31,6 +32,7 @@ class BatchService(BaseService):
         breed_name: str = "",
         notes: str = "",
     ):
+        assert_tenant_context()
         from apps.farm.farms.models import Farm, House
         from apps.farm.flocks.exceptions import (
             HouseCapacityExceededError,
@@ -85,6 +87,7 @@ class BatchService(BaseService):
     # ── Batch close ────────────────────────────────────────────────────────
 
     def close_batch(self, batch_id: str, notes: str = ""):
+        assert_tenant_context()
         from apps.farm.flocks.exceptions import BatchAlreadyClosedError
         from apps.farm.flocks.models import Batch
 
@@ -122,6 +125,7 @@ class BatchService(BaseService):
         date: datetime.date = None,
         notes: str = "",
     ):
+        assert_tenant_context()
         from apps.farm.flocks.exceptions import (
             BatchClosedError,
             MortalityExceedsLiveBirdsError,

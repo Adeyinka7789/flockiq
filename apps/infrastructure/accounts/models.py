@@ -6,6 +6,36 @@ from django.db import models
 from apps.infrastructure.accounts.impersonation import ImpersonationLog  # noqa: F401
 
 
+class TenantUserManager(models.Manager):
+    """
+    Tenant-scoped manager for CustomUser.
+
+    Use this (tenant_objects) for any query that lists or counts users belonging
+    to the current org: team management pages, notification recipient resolution,
+    analytics owner lookups.
+
+    DO NOT use for auth flows (login, session reload, password reset, email
+    verification, impersonation lookups). Those must use the default `objects`
+    manager which is unscoped.
+
+    Why RLS is intentionally omitted from accounts_user:
+        Django's authentication backend calls User._default_manager.get(pk=...)
+        and get_by_natural_key(email) without any tenant context. The session
+        middleware also calls User.objects.get(pk=...) on every request before
+        TenantMiddleware has had a chance to set app.current_org_id. Enabling
+        RLS on this table would break login and session management entirely.
+        This manager provides the ORM-layer tenant guard without requiring
+        DB-level RLS.
+    """
+
+    def get_queryset(self):
+        from apps.infrastructure.core.rls import get_current_org
+        org = get_current_org()
+        if org is None:
+            return super().get_queryset().none()
+        return super().get_queryset().filter(org=org)
+
+
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -62,7 +92,8 @@ class CustomUser(AbstractUser):
 
     email = models.EmailField(unique=True)
 
-    objects = UserManager()
+    objects = UserManager()           # default — used by Django auth; unscoped
+    tenant_objects = TenantUserManager()  # use for all tenant-scoped user queries
 
     class Meta:
         db_table = "accounts_user"

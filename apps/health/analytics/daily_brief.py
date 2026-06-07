@@ -274,8 +274,8 @@ class DailyBriefService(BaseService):
         from apps.infrastructure.notifications.models import NotificationLog
         from apps.infrastructure.accounts.models import CustomUser
 
-        owner = CustomUser.objects.filter(
-            org=self.org, role__in=["owner", "manager"]
+        owner = CustomUser.tenant_objects.filter(
+            role__in=["owner", "manager"]
         ).first()
         if not owner:
             return

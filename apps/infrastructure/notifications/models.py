@@ -83,7 +83,7 @@ class OutboxEvent(models.Model):
     body = models.TextField()
     body_html = models.TextField(blank=True)
     channel = models.CharField(max_length=10, choices=CHANNEL_CHOICES)
-    idempotency_key = models.CharField(max_length=100, unique=True)
+    idempotency_key = models.CharField(max_length=255, unique=True)
     status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="pending")
     attempts = models.IntegerField(default=0)
     max_attempts = models.IntegerField(default=3)

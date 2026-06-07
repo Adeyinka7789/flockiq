@@ -24,39 +24,45 @@ def _make_org(subdomain="testtasks"):
 
 def _make_farm(org, name="Task Farm"):
     from apps.farm.farms.models import Farm
-    farm = Farm(
-        org=org,
-        name=name,
-        location="Lagos",
-        latitude=Decimal("6.5244"),
-        longitude=Decimal("3.3792"),
-        farm_type="broiler",
-    )
-    farm.clean()
-    farm.save()
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        farm = Farm(
+            org=org,
+            name=name,
+            location="Lagos",
+            latitude=Decimal("6.5244"),
+            longitude=Decimal("3.3792"),
+            farm_type="broiler",
+        )
+        farm.clean()
+        farm.save()
     return farm
 
 
 def _make_house(org, farm, capacity=2000, name="House T1"):
     from apps.farm.farms.models import House
-    return House.objects.create(
-        org=org, farm=farm, name=name, capacity=capacity, house_type="broiler"
-    )
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        return House.objects.create(
+            org=org, farm=farm, name=name, capacity=capacity, house_type="broiler"
+        )
 
 
 def _make_batch(org, farm, house, bird_type="broiler", days_old=21):
     from apps.farm.flocks.models import Batch
-    return Batch.objects.create(
-        org=org,
-        farm=farm,
-        house=house,
-        batch_name=f"Batch-{bird_type}",
-        bird_type=bird_type,
-        placement_date=datetime.date.today() - datetime.timedelta(days=days_old),
-        initial_count=1000,
-        current_count=1000,
-        status="active",
-    )
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        return Batch.objects.create(
+            org=org,
+            farm=farm,
+            house=house,
+            batch_name=f"Batch-{bird_type}",
+            bird_type=bird_type,
+            placement_date=datetime.date.today() - datetime.timedelta(days=days_old),
+            initial_count=1000,
+            current_count=1000,
+            status="active",
+        )
 
 
 def _make_template(name="Daily Check", breed="both", frequency="daily", cycle_day=None):
@@ -72,15 +78,17 @@ def _make_template(name="Daily Check", breed="both", frequency="daily", cycle_da
 
 def _make_task(org, farm, batch=None, status="pending", due_date=None):
     from apps.farm.tasks.models import FarmTask
-    return FarmTask.objects.create(
-        org=org,
-        farm=farm,
-        batch=batch,
-        title="Test Task",
-        due_date=due_date or datetime.date.today(),
-        status=status,
-        priority="medium",
-    )
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        return FarmTask.objects.create(
+            org=org,
+            farm=farm,
+            batch=batch,
+            title="Test Task",
+            due_date=due_date or datetime.date.today(),
+            status=status,
+            priority="medium",
+        )
 
 
 def _set_rls(org_id):

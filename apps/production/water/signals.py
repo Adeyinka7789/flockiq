@@ -67,18 +67,20 @@ def _calculate_and_update(instance):
 
 def _fire_water_drop_notification(instance):
     from apps.infrastructure.notifications.services import NotificationService
+    from apps.infrastructure.core.rls import set_tenant_context
 
     try:
-        NotificationService(instance.org).send(
-            event_type="water_drop",
-            context={
-                "farm_name": instance.farm.name if instance.farm_id else "",
-                "batch_name": (
-                    instance.batch.batch_name if instance.batch_id else ""
-                ),
-                "value": float(instance.litres_consumed),
-            },
-        )
+        with set_tenant_context(instance.org):
+            NotificationService(instance.org).send(
+                event_type="water_drop",
+                context={
+                    "farm_name": instance.farm.name if instance.farm_id else "",
+                    "batch_name": (
+                        instance.batch.batch_name if instance.batch_id else ""
+                    ),
+                    "value": float(instance.litres_consumed),
+                },
+            )
         logger.critical(
             "water.anomaly.detected",
             log_id=str(instance.pk),

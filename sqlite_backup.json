@@ -1,0 +1,257 @@
+[
+{
+  "model": "axes.accessattempt",
+  "pk": 1,
+  "fields": {
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0",
+    "ip_address": "127.0.0.1",
+    "username": "michael@testfarm.com",
+    "http_accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "path_info": "/login/",
+    "attempt_time": "2026-06-07T10:43:12.223Z",
+    "get_data": "next=/profile/",
+    "post_data": "csrfmiddlewaretoken=fZNPO436ccLqtoECBRcgNpStfJyla3wIw25SdqMfsFPqpB2AViNMQhNyF8m6ktVW\nemail=michael@testfarm.com\npassword=********************",
+    "failures_since_start": 1
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 1,
+  "fields": {
+    "month": 1,
+    "product_type": "eggs",
+    "demand_index": 7,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 2,
+  "fields": {
+    "month": 2,
+    "product_type": "eggs",
+    "demand_index": 6,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 3,
+  "fields": {
+    "month": 3,
+    "product_type": "eggs",
+    "demand_index": 6,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 4,
+  "fields": {
+    "month": 4,
+    "product_type": "eggs",
+    "demand_index": 7,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 5,
+  "fields": {
+    "month": 5,
+    "product_type": "eggs",
+    "demand_index": 6,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 6,
+  "fields": {
+    "month": 6,
+    "product_type": "eggs",
+    "demand_index": 5,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 7,
+  "fields": {
+    "month": 7,
+    "product_type": "eggs",
+    "demand_index": 7,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 8,
+  "fields": {
+    "month": 8,
+    "product_type": "eggs",
+    "demand_index": 8,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 9,
+  "fields": {
+    "month": 9,
+    "product_type": "eggs",
+    "demand_index": 7,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 10,
+  "fields": {
+    "month": 10,
+    "product_type": "eggs",
+    "demand_index": 8,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 11,
+  "fields": {
+    "month": 11,
+    "product_type": "eggs",
+    "demand_index": 9,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 12,
+  "fields": {
+    "month": 12,
+    "product_type": "eggs",
+    "demand_index": 10,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 13,
+  "fields": {
+    "month": 1,
+    "product_type": "live_birds",
+    "demand_index": 7,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 14,
+  "fields": {
+    "month": 2,
+    "product_type": "live_birds",
+    "demand_index": 6,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 15,
+  "fields": {
+    "month": 3,
+    "product_type": "live_birds",
+    "demand_index": 7,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 16,
+  "fields": {
+    "month": 4,
+    "product_type": "live_birds",
+    "demand_index": 8,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 17,
+  "fields": {
+    "month": 5,
+    "product_type": "live_birds",
+    "demand_index": 6,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 18,
+  "fields": {
+    "month": 6,
+    "product_type": "live_birds",
+    "demand_index": 5,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 19,
+  "fields": {
+    "month": 7,
+    "product_type": "live_birds",
+    "demand_index": 6,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 20,
+  "fields": {
+    "month": 8,
+    "product_type": "live_birds",
+    "demand_index": 7,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 21,
+  "fields": {
+    "month": 9,
+    "product_type": "live_birds",
+    "demand_index": 7,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 22,
+  "fields": {
+    "month": 10,
+    "product_type": "live_birds",
+    "demand_index": 8,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 23,
+  "fields": {
+    "month": 11,
+    "product_type": "live_birds",
+    "demand_index": 9,
+    "notes": ""
+  }
+},
+{
+  "model": "market.seasonaldemandindex",
+  "pk": 24,
+  "fields": {
+    "month": 12,
+    "product_type": "live_birds",
+    "demand_index": 10,
+    "notes": ""
+  }
+}
+]

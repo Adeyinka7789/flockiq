@@ -1,5 +1,5 @@
 import structlog
-
+import dj_database_url
 from .base import *  # noqa: F401, F403
 
 DEBUG = True
@@ -12,12 +12,12 @@ INSTALLED_APPS += [  # noqa: F405
 
 INTERNAL_IPS = ["127.0.0.1"]
 
-# SQLite fallback for early local dev (override DATABASE_URL in .env for Postgres)
+
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",  # noqa: F405
-    }
+    "default": dj_database_url.config(
+        default="postgresql://flockiq_app:flockiq_dev_pass@localhost:5432/flockiq_dev",
+        conn_max_age=0,
+    )
 }
 
 # Simpler cache for dev if Redis is not running

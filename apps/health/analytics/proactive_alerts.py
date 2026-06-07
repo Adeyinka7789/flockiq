@@ -189,8 +189,7 @@ class ProactiveAlertEngine:
         today = date.today()
 
         with set_tenant_context(self.org):
-            owner = CustomUser.objects.filter(
-                org=self.org,
+            owner = CustomUser.tenant_objects.filter(
                 role__in=['owner', 'manager'],
                 is_active=True,
             ).first()

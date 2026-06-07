@@ -147,8 +147,7 @@ class NotificationService(BaseService):
                 return 0
 
         from apps.infrastructure.accounts.models import CustomUser
-        recipients = CustomUser.objects.filter(
-            org=self.org,
+        recipients = CustomUser.tenant_objects.filter(
             role__in=rule.notify_roles,
             is_active=True,
         )

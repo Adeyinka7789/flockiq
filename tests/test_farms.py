@@ -107,11 +107,13 @@ class TestHouseModel:
 
     def _create_farm(self, org, name="Test Farm"):
         from apps.farm.farms.models import Farm
+        from apps.infrastructure.core.rls import set_tenant_context
         farm = Farm(org=org, name=name, location="Lagos",
                     latitude=Decimal("6.5244"), longitude=Decimal("3.3792"),
                     farm_type="layer")
         farm.clean()
-        farm.save()
+        with set_tenant_context(org):
+            farm.save()
         return farm
 
     def test_house_str(self, db):

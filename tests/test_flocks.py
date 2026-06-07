@@ -28,36 +28,42 @@ def _make_org(subdomain="testflock"):
 
 def _make_farm(org, name="Flock Farm"):
     from apps.farm.farms.models import Farm
+    from apps.infrastructure.core.rls import set_tenant_context
     farm = Farm(
         org=org, name=name, location="Lagos",
         latitude=Decimal("6.5244"), longitude=Decimal("3.3792"),
         farm_type="broiler",
     )
     farm.clean()
-    farm.save()
+    with set_tenant_context(org):
+        farm.save()
     return farm
 
 
 def _make_house(org, farm, capacity=5000, name="House A"):
     from apps.farm.farms.models import House
-    return House.objects.create(
-        org=org, farm=farm, name=name, capacity=capacity, house_type="broiler"
-    )
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        return House.objects.create(
+            org=org, farm=farm, name=name, capacity=capacity, house_type="broiler"
+        )
 
 
 def _make_batch(org, farm, house, bird_type="broiler", initial_count=1000, status="active"):
     from apps.farm.flocks.models import Batch
-    return Batch.objects.create(
-        org=org,
-        farm=farm,
-        house=house,
-        batch_name=f"Test Batch {bird_type}",
-        bird_type=bird_type,
-        placement_date=datetime.date.today() - datetime.timedelta(days=21),
-        initial_count=initial_count,
-        current_count=initial_count,
-        status=status,
-    )
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        return Batch.objects.create(
+            org=org,
+            farm=farm,
+            house=house,
+            batch_name=f"Test Batch {bird_type}",
+            bird_type=bird_type,
+            placement_date=datetime.date.today() - datetime.timedelta(days=21),
+            initial_count=initial_count,
+            current_count=initial_count,
+            status=status,
+        )
 
 
 # ── 1. test_batch_created_with_correct_initial_count ──────────────────────────

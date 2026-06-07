@@ -32,6 +32,7 @@ def on_batch_created_generate_vaccinations(sender, instance, created, **kwargs):
 
 def _generate_vaccination_schedule(batch):
     from .models import VaccinationSchedule
+    from apps.infrastructure.core.rls import set_tenant_context
 
     schedule = (
         LAYER_VACCINATION_SCHEDULE
@@ -54,7 +55,8 @@ def _generate_vaccination_schedule(batch):
         )
 
     try:
-        VaccinationSchedule.objects.bulk_create(records)
+        with set_tenant_context(batch.org):
+            VaccinationSchedule.objects.bulk_create(records, ignore_conflicts=True)
         logger.info(
             "health.vaccinations_scheduled",
             batch_id=str(batch.id),

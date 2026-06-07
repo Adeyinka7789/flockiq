@@ -27,36 +27,42 @@ def _make_user(org, email=None, username=None):
 
 def _make_farm(org, name="Health Farm"):
     from apps.farm.farms.models import Farm
-    farm = Farm(
-        org=org, name=name, location="Abuja",
-        latitude=Decimal("9.0579"), longitude=Decimal("7.4951"),
-        farm_type="layer",
-    )
-    farm.clean()
-    farm.save()
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        farm = Farm(
+            org=org, name=name, location="Abuja",
+            latitude=Decimal("9.0579"), longitude=Decimal("7.4951"),
+            farm_type="layer",
+        )
+        farm.clean()
+        farm.save()
     return farm
 
 
 def _make_house(org, farm):
     from apps.farm.farms.models import House
-    return House.objects.create(
-        org=org, farm=farm, name="House 1", capacity=2000, house_type="layer",
-    )
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        return House.objects.create(
+            org=org, farm=farm, name="House 1", capacity=2000, house_type="layer",
+        )
 
 
 def _make_batch(org, farm, house, bird_type="layer", placement_date=None, status="active"):
     from apps.farm.flocks.models import Batch
+    from apps.infrastructure.core.rls import set_tenant_context
     if placement_date is None:
         placement_date = datetime.date.today() - datetime.timedelta(days=10)
-    return Batch.objects.create(
-        org=org, farm=farm, house=house,
-        batch_name=f"Batch {bird_type}",
-        bird_type=bird_type,
-        placement_date=placement_date,
-        initial_count=500,
-        current_count=500,
-        status=status,
-    )
+    with set_tenant_context(org):
+        return Batch.objects.create(
+            org=org, farm=farm, house=house,
+            batch_name=f"Batch {bird_type}",
+            bird_type=bird_type,
+            placement_date=placement_date,
+            initial_count=500,
+            current_count=500,
+            status=status,
+        )
 
 
 # ── 1. VaccinationSchedule — signal auto-generation ─────────────────────────────
@@ -524,17 +530,23 @@ class TestHealthRLSIsolation:
         assert count_a == 7
         assert count_b == 7
 
-        # Confirm cross-tenant isolation: both orgs together have exactly 14 records.
-        # SQLite stores UUIDs as hex (no hyphens), so use .hex for raw SQL.
+        # Confirm cross-tenant isolation at the raw-SQL layer. Under PostgreSQL
+        # FORCE RLS the non-superuser test role can only see rows of the org in
+        # the active context, so a single cross-tenant query returns 0. Count
+        # each org inside its own context and sum — 7 + 7 == 14.
+        # SQLite stores UUIDs as hex (no hyphens); PostgreSQL also accepts the
+        # hyphenless form as a uuid literal, so .hex is portable.
         from django.db import connection
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT COUNT(*) FROM health_vaccinationschedule"
-                " WHERE org_id IN (%s, %s)",
-                [org_a.id.hex, org_b.id.hex],
-            )
-            total = cursor.fetchone()[0]
-        assert total == 14
+
+        def _raw_count(org):
+            with set_tenant_context(org), connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT COUNT(*) FROM health_vaccinationschedule WHERE org_id = %s",
+                    [org.id.hex],
+                )
+                return cursor.fetchone()[0]
+
+        assert _raw_count(org_a) + _raw_count(org_b) == 14
 
     def test_medication_rls_isolation(self, db):
         from apps.health.health.services import HealthService

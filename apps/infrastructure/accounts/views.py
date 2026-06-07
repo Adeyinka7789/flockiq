@@ -123,7 +123,7 @@ class UserListView(APIView):
     permission_classes = [IsManagerOrAbove]
 
     def get(self, request):
-        users = CustomUser.objects.filter(org=request.user.org).order_by("email")
+        users = CustomUser.tenant_objects.order_by("email")
         serializer = UserProfileSerializer(users, many=True)
         return Response({"data": serializer.data})
 
@@ -521,7 +521,7 @@ class TeamListView(LoginRequiredMixin, View):
     def get(self, request):
         if request.user.role not in ("owner", "manager"):
             return redirect("dashboard")
-        all_users = CustomUser.objects.filter(org=request.user.org)
+        all_users = CustomUser.tenant_objects.all()
         active_count = all_users.filter(is_active=True).count()
         unique_roles = all_users.values_list("role", flat=True).distinct().count()
         q = request.GET.get("q", "").strip()
@@ -558,7 +558,7 @@ class InviteUserView(LoginRequiredMixin, View):
 
         from apps.infrastructure.billing.features import get_plan_features
         features = get_plan_features(request.user.org.plan_tier)
-        current_members = CustomUser.objects.filter(org=request.user.org).count()
+        current_members = CustomUser.tenant_objects.count()
         if current_members >= features['team_members']:
             return render(request, "accounts/_invite_form.html", {
                 "error": (

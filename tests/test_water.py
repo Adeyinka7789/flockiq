@@ -28,34 +28,40 @@ def _make_user(org, email, username):
 
 def _make_farm(org, name="Water Farm"):
     from apps.farm.farms.models import Farm
-    farm = Farm(
-        org=org, name=name, location="Abuja",
-        latitude=Decimal("9.0765"), longitude=Decimal("7.3986"),
-        farm_type="layer",
-    )
-    farm.clean()
-    farm.save()
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        farm = Farm(
+            org=org, name=name, location="Abuja",
+            latitude=Decimal("9.0765"), longitude=Decimal("7.3986"),
+            farm_type="layer",
+        )
+        farm.clean()
+        farm.save()
     return farm
 
 
 def _make_house(org, farm):
     from apps.farm.farms.models import House
-    return House.objects.create(
-        org=org, farm=farm, name="House A", capacity=2000, house_type="layer",
-    )
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        return House.objects.create(
+            org=org, farm=farm, name="House A", capacity=2000, house_type="layer",
+        )
 
 
 def _make_batch(org, farm, house, status="active"):
     from apps.farm.flocks.models import Batch
-    return Batch.objects.create(
-        org=org, farm=farm, house=house,
-        batch_name="Water Test Batch",
-        bird_type="layer",
-        placement_date=datetime.date.today() - datetime.timedelta(days=20),
-        initial_count=1000,
-        current_count=1000,
-        status=status,
-    )
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        return Batch.objects.create(
+            org=org, farm=farm, house=house,
+            batch_name="Water Test Batch",
+            bird_type="layer",
+            placement_date=datetime.date.today() - datetime.timedelta(days=20),
+            initial_count=1000,
+            current_count=1000,
+            status=status,
+        )
 
 
 def _log_water(org, batch, litres_consumed=40, record_date=None):
@@ -125,15 +131,16 @@ class TestWaterLogModel:
         house = _make_house(org, farm)
         # Small batch so requirement is low and we can trigger anomaly easily
         from apps.farm.flocks.models import Batch
-        batch = Batch.objects.create(
-            org=org, farm=farm, house=house,
-            batch_name="Anomaly Batch",
-            bird_type="layer",
-            placement_date=datetime.date.today() - datetime.timedelta(days=10),
-            initial_count=200,
-            current_count=200,
-            status="active",
-        )
+        with set_tenant_context(org):
+            batch = Batch.objects.create(
+                org=org, farm=farm, house=house,
+                batch_name="Anomaly Batch",
+                bird_type="layer",
+                placement_date=datetime.date.today() - datetime.timedelta(days=10),
+                initial_count=200,
+                current_count=200,
+                status="active",
+            )
         # requirement = (200/200)*40 = 40L; 80% threshold = 32L; log 10L → anomaly
         with set_tenant_context(org):
             log = _log_water(org, batch, litres_consumed=10)
@@ -147,15 +154,16 @@ class TestWaterLogModel:
         farm = _make_farm(org)
         house = _make_house(org, farm)
         from apps.farm.flocks.models import Batch
-        batch = Batch.objects.create(
-            org=org, farm=farm, house=house,
-            batch_name="Normal Batch",
-            bird_type="layer",
-            placement_date=datetime.date.today() - datetime.timedelta(days=10),
-            initial_count=200,
-            current_count=200,
-            status="active",
-        )
+        with set_tenant_context(org):
+            batch = Batch.objects.create(
+                org=org, farm=farm, house=house,
+                batch_name="Normal Batch",
+                bird_type="layer",
+                placement_date=datetime.date.today() - datetime.timedelta(days=10),
+                initial_count=200,
+                current_count=200,
+                status="active",
+            )
         # requirement = 40L; 80% = 32L; log 35L → no anomaly
         with set_tenant_context(org):
             log = _log_water(org, batch, litres_consumed=35)
@@ -175,23 +183,23 @@ class TestWaterService:
         org = _make_org("waternotif")
         farm = _make_farm(org)
         house = _make_house(org, farm)
-        batch = Batch.objects.create(
-            org=org, farm=farm, house=house,
-            batch_name="Notif Batch",
-            bird_type="layer",
-            placement_date=datetime.date.today() - datetime.timedelta(days=10),
-            initial_count=200,
-            current_count=200,
-            status="active",
-        )
-
         user = _make_user(org, "waternotif@example.com", "waternotif")
-        AlertRule.objects.filter(org=org, event_type="water_drop").update(
-            channels=["in_app"],
-            notify_roles=["owner"],
-            is_active=True,
-            cooldown_minutes=0,
-        )
+        with set_tenant_context(org):
+            batch = Batch.objects.create(
+                org=org, farm=farm, house=house,
+                batch_name="Notif Batch",
+                bird_type="layer",
+                placement_date=datetime.date.today() - datetime.timedelta(days=10),
+                initial_count=200,
+                current_count=200,
+                status="active",
+            )
+            AlertRule.objects.filter(org=org, event_type="water_drop").update(
+                channels=["in_app"],
+                notify_roles=["owner"],
+                is_active=True,
+                cooldown_minutes=0,
+            )
         user.role = "owner"
         user.save()
 

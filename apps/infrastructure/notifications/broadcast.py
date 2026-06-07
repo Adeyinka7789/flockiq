@@ -2,6 +2,7 @@ from django.core.mail import send_mass_mail
 from django.conf import settings
 
 from apps.infrastructure.accounts.models import CustomUser
+from apps.infrastructure.core.rls import set_tenant_context
 from apps.infrastructure.notifications.models import NotificationLog, BroadcastNotification
 
 
@@ -24,15 +25,20 @@ def send_broadcast(broadcast: BroadcastNotification) -> int:
         if not user.org_id:
             continue
         if broadcast.channel in ('in_app', 'both'):
-            NotificationLog.objects.create(
-                org=user.org,
-                event_type='announcement',
-                title=broadcast.title,
-                body=broadcast.message,
-                severity='info',
-                channel='in_app',
-                recipient=user,
-            )
+            # NotificationLog is RLS-protected and each recipient may belong to a
+            # different org. The broadcast runs from the super-admin's no-org
+            # request context, so set the per-recipient tenant context explicitly
+            # before writing — otherwise the INSERT is blocked / mis-scoped.
+            with set_tenant_context(user.org):
+                NotificationLog.objects.create(
+                    org=user.org,
+                    event_type='announcement',
+                    title=broadcast.title,
+                    body=broadcast.message,
+                    severity='info',
+                    channel='in_app',
+                    recipient=user,
+                )
         count += 1
 
     if broadcast.channel in ('email', 'both'):

@@ -2,7 +2,7 @@ import time
 
 import structlog
 from django.conf import settings
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, HttpResponseForbidden
 
 from .rls import set_tenant_context
 
@@ -131,9 +131,22 @@ class TenantMiddleware:
     def __call__(self, request):
         host = request.get_host().split(":")[0]  # Strip port
 
-        # Dev / health-check bypass
+        # Dev / health-check bypass.
+        # In production the tenant is resolved from the subdomain; on localhost /
+        # testserver there is no tenant subdomain, so fall back to the authenticated
+        # user's org (mirroring the AUTH_SUBDOMAINS branch below). Without this, every
+        # tenant-scoped query (TenantAwareManager, CustomUser.tenant_objects,
+        # assert_tenant_context()) runs with no context and returns empty / raises.
+        # The Django test client always uses the 'testserver' host, so this is also
+        # what gives request-driven tests a tenant context.
         if host in self.DEV_HOSTS or host.startswith("192.168."):
-            request.org = None
+            org = None
+            if getattr(request, "user", None) and request.user.is_authenticated:
+                org = getattr(request.user, "org", None)
+            request.org = org
+            if org:
+                with set_tenant_context(org):
+                    return self.get_response(request)
             return self.get_response(request)
 
         parts = host.split(".")
@@ -151,6 +164,28 @@ class TenantMiddleware:
                 org = getattr(request.user, "org", None)
             request.org = org
             if org:
+                # Re-verify org is still active — the session-cached user.org
+                # may be stale if the org was deactivated after the session started.
+                from django.core.cache import cache
+                from apps.infrastructure.tenants.models import Organization
+
+                cache_key = f"org_active:{org.id}"
+                is_active = cache.get(cache_key)
+                if is_active is None:
+                    try:
+                        org = Organization.objects.get(id=org.id, is_active=True)
+                        cache.set(cache_key, True, timeout=300)  # 5 min TTL
+                    except Organization.DoesNotExist:
+                        cache.set(cache_key, False, timeout=60)
+                        logger.warning(
+                            "tenant.inactive_org_blocked",
+                            org_id=str(org.id),
+                            subdomain=subdomain,
+                        )
+                        return HttpResponseForbidden("Organisation is inactive")
+                elif not is_active:
+                    return HttpResponseForbidden("Organisation is inactive")
+
                 with set_tenant_context(org):
                     return self.get_response(request)
             return self.get_response(request)

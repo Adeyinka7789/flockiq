@@ -27,16 +27,18 @@ def _make_org(subdomain="testweather"):
 
 def _make_farm(org, name="Weather Farm", lat="9.0579", lng="7.4951"):
     from apps.farm.farms.models import Farm
-    farm = Farm(
-        org=org,
-        name=name,
-        location="Abuja",
-        latitude=Decimal(lat),
-        longitude=Decimal(lng),
-        farm_type="broiler",
-    )
-    farm.clean()
-    farm.save()
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        farm = Farm(
+            org=org,
+            name=name,
+            location="Abuja",
+            latitude=Decimal(lat),
+            longitude=Decimal(lng),
+            farm_type="broiler",
+        )
+        farm.clean()
+        farm.save()
     return farm
 
 

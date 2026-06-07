@@ -25,32 +25,38 @@ def _make_user(org, email=None):
 
 def _make_farm(org):
     from apps.farm.farms.models import Farm
+    from apps.infrastructure.core.rls import set_tenant_context
     farm = Farm(
         org=org, name="Finance Farm", location="Lagos",
         latitude=Decimal("6.5244"), longitude=Decimal("3.3792"),
         farm_type="broiler",
     )
     farm.clean()
-    farm.save()
+    with set_tenant_context(org):
+        farm.save()
     return farm
 
 
 def _make_house(org, farm):
     from apps.farm.farms.models import House
-    return House.objects.create(org=org, farm=farm, name="House A", capacity=5000, house_type="broiler")
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        return House.objects.create(org=org, farm=farm, name="House A", capacity=5000, house_type="broiler")
 
 
 def _make_batch(org, farm, house, count=5000):
     from apps.farm.flocks.models import Batch
-    return Batch.objects.create(
-        org=org, farm=farm, house=house,
-        batch_name="Finance Batch",
-        bird_type="broiler",
-        placement_date=datetime.date.today() - datetime.timedelta(days=40),
-        initial_count=count,
-        current_count=count,
-        status="active",
-    )
+    from apps.infrastructure.core.rls import set_tenant_context
+    with set_tenant_context(org):
+        return Batch.objects.create(
+            org=org, farm=farm, house=house,
+            batch_name="Finance Batch",
+            bird_type="broiler",
+            placement_date=datetime.date.today() - datetime.timedelta(days=40),
+            initial_count=count,
+            current_count=count,
+            status="active",
+        )
 
 
 def _record_expense(org, farm, batch, amount_kobo, category="feed"):

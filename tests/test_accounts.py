@@ -165,7 +165,12 @@ def test_user_cannot_see_other_org_users():
 
     client = APIClient()
     client.force_authenticate(user=manager_a)
-    response = client.get("/api/v1/users/")
+    # Hit the request on org_a's tenant subdomain so TenantMiddleware resolves
+    # the tenant by subdomain and sets the RLS context for the view. (JWT auth
+    # via force_authenticate runs at the DRF view layer, after the middleware,
+    # so request.user is anonymous at middleware time and cannot establish the
+    # tenant context on a non-subdomain host.)
+    response = client.get("/api/v1/users/", HTTP_HOST="orga.flockiq.com")
 
     assert response.status_code == 200
     emails = [u["email"] for u in response.data["data"]]

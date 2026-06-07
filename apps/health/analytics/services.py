@@ -4,6 +4,7 @@ from decimal import Decimal
 import structlog
 import waffle
 
+from apps.infrastructure.core.rls import assert_tenant_context
 from apps.infrastructure.core.services import BaseService
 
 logger = structlog.get_logger(__name__)
@@ -109,6 +110,7 @@ class AnomalyDetectionService(BaseService):
     def check_mortality_anomaly(self, batch) -> dict:
         if not waffle.switch_is_active(self.FLAG):
             return UNAVAILABLE_FLAG_OFF
+        assert_tenant_context()
 
         from apps.farm.flocks.models import MortalityLog
 
@@ -231,10 +233,7 @@ class AnomalyDetectionService(BaseService):
     def _get_manager(self):
         from apps.infrastructure.accounts.models import CustomUser
 
-        return (
-            CustomUser.objects.filter(org=self.org)
-            .first()
-        )
+        return CustomUser.tenant_objects.first()
 
 
 class TheftDetectionService(BaseService):
@@ -328,7 +327,7 @@ class TheftDetectionService(BaseService):
     def _get_manager(self):
         from apps.infrastructure.accounts.models import CustomUser
 
-        return CustomUser.objects.filter(org=self.org).first()
+        return CustomUser.tenant_objects.first()
 
 
 class SaleTimingService(BaseService):
@@ -474,6 +473,7 @@ class DiagnosisEngine(BaseService):
     def diagnose(self, symptom_list: list, batch=None) -> dict:
         if not waffle.switch_is_active(self.FLAG):
             return UNAVAILABLE_FLAG_OFF
+        assert_tenant_context()
 
         symptom_set = frozenset(symptom_list)
 

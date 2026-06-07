@@ -5,6 +5,7 @@ import structlog
 from django.db import transaction
 from django.db.models import Sum
 
+from apps.infrastructure.core.rls import assert_tenant_context
 from apps.infrastructure.core.services import BaseService
 
 logger = structlog.get_logger(__name__)
@@ -24,6 +25,7 @@ class FinanceService(BaseService):
         notes: str = "",
         recorded_by=None,
     ):
+        assert_tenant_context()
         from .models import SalesRecord
         from apps.farm.flocks.models import Batch
         from apps.infrastructure.core.services import LedgerService
@@ -202,6 +204,7 @@ class FinanceService(BaseService):
 
     def recalculate_summary(self, batch) -> "BatchFinancialSummary":
         """Public entry-point called from signals."""
+        assert_tenant_context()
         return self._update_financial_summary(batch)
 
     def _update_financial_summary(self, batch) -> "BatchFinancialSummary":
