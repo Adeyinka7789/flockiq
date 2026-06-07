@@ -1,4 +1,5 @@
 import json
+import time
 from collections import Counter
 from datetime import date, timedelta
 
@@ -509,6 +510,7 @@ class ImpersonateStartView(SuperAdminMixin, View):
 
         request.session['_impersonator_id'] = str(request.user.pk)
         request.session['_impersonated_user_id'] = str(target.pk)
+        request.session['_impersonation_started_at'] = time.time()
         request.session.modified = True
 
         ImpersonationLog.objects.create(

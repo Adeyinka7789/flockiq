@@ -150,6 +150,10 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 
+# Max lifetime of a superadmin impersonation session (seconds) before it is
+# automatically revoked by ImpersonationMiddleware.
+IMPERSONATION_MAX_SECONDS = config('IMPERSONATION_MAX_SECONDS', default=1800, cast=int)
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},

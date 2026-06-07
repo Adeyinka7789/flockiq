@@ -1,37 +1,69 @@
+import time
+
 import structlog
+from django.conf import settings
 from django.http import Http404, HttpResponse
 
 from .rls import set_tenant_context
 
 logger = structlog.get_logger(__name__)
+IMPERSONATION_MAX_SECONDS = getattr(settings, 'IMPERSONATION_MAX_SECONDS', 30 * 60)
 
 
 class ImpersonationMiddleware:
     """
     If _impersonated_user_id is in session, swap request.user to the
     impersonated user for this request. Original admin identity preserved.
+
+    Hardened: re-verifies the real user is still an admin on every request,
+    enforces a TTL on the impersonation session, and refuses to impersonate
+    privileged (super_admin / superuser) targets.
     """
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        impersonated_user_id = request.session.get('_impersonated_user_id')
+        request.is_impersonating = False
+        request.impersonator = None
 
-        if impersonated_user_id and request.user.is_authenticated:
-            try:
-                from apps.infrastructure.accounts.models import CustomUser
-                impersonated = CustomUser.objects.get(
-                    pk=impersonated_user_id, is_active=True)
-                request.impersonator = request.user
-                request.user = impersonated
-                request.is_impersonating = True
-            except CustomUser.DoesNotExist:
-                del request.session['_impersonated_user_id']
-                request.is_impersonating = False
-        else:
-            request.is_impersonating = False
-            request.impersonator = None
+        impersonated_id = request.session.get('_impersonated_user_id')
+        started_at = request.session.get('_impersonation_started_at')
+
+        if impersonated_id and request.user.is_authenticated:
+            real_user = request.user
+            is_admin = real_user.is_superuser or \
+                       getattr(real_user, 'role', '') == 'super_admin'
+            expired = not started_at or \
+                      (time.time() - started_at) > IMPERSONATION_MAX_SECONDS
+
+            if not is_admin or expired:
+                for k in ('_impersonated_user_id', '_impersonator_id',
+                          '_impersonation_started_at'):
+                    request.session.pop(k, None)
+                request.session.modified = True
+                logger.warning(
+                    "impersonation.revoked",
+                    extra={
+                        "reason": "not_admin" if not is_admin else "expired",
+                        "real_user": str(real_user.pk)
+                    }
+                )
+            else:
+                try:
+                    from apps.infrastructure.accounts.models import CustomUser
+                    impersonated = CustomUser.objects.get(
+                        pk=impersonated_id, is_active=True
+                    )
+                    if impersonated.is_superuser or \
+                       getattr(impersonated, 'role', '') == 'super_admin':
+                        raise CustomUser.DoesNotExist
+                    request.impersonator = real_user
+                    request.user = impersonated
+                    request.is_impersonating = True
+                except CustomUser.DoesNotExist:
+                    request.session.pop('_impersonated_user_id', None)
+                    request.session.modified = True
 
         return self.get_response(request)
 
