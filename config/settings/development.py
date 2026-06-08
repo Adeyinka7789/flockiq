@@ -12,6 +12,24 @@ INSTALLED_APPS += [  # noqa: F405
 
 INTERNAL_IPS = ["127.0.0.1"]
 
+# --- Sentry: disabled locally ---
+SENTRY_DSN = ""  # base.py skips sentry_sdk.init() when this is empty
+
+# --- Django Silk: always on locally ---
+# base.py only wires Silk when ENABLE_SILK is set in the env, and that check has
+# already run by the time this module loads. So enable it explicitly here.
+ENABLE_SILK = True
+if "silk" not in INSTALLED_APPS:  # noqa: F405
+    INSTALLED_APPS += ["silk"]  # noqa: F405
+    MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]  # noqa: F405
+    SILKY_PYTHON_PROFILER = True
+    SILKY_ANALYZE_QUERIES = True
+    SILKY_MAX_RECORDED_REQUESTS = 1000
+    SILKY_MAX_RECORDED_REQUESTS_CHECK_PERCENT = 10
+    SILKY_AUTHENTICATION = True
+    SILKY_AUTHORISATION = True
+    SILKY_META = True
+
 
 DATABASES = {
     "default": dj_database_url.config(

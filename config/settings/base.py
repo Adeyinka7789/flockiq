@@ -1,9 +1,60 @@
+import logging
 from pathlib import Path
 from decouple import config, Csv
 import dj_database_url
 from django.utils.translation import gettext_lazy as _
 
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# --- Sentry error monitoring ---
+# Active only when SENTRY_DSN is set (empty in development → disabled).
+# NOTE: this is the SINGLE Sentry init for the whole project. production.py
+# inherits this via `from .base import *` — do NOT add a second init there.
+SENTRY_DSN = config("SENTRY_DSN", default="")
+
+
+def _sentry_before_send(event, hint):
+    """Filter out noisy non-actionable errors."""
+    # Don't send 404s to Sentry
+    if "exc_info" in hint:
+        exc_type, exc_value, tb = hint["exc_info"]
+        from django.http import Http404
+
+        if isinstance(exc_value, Http404):
+            return None
+    return event
+
+
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            DjangoIntegration(
+                transaction_style="url",
+                middleware_spans=True,
+            ),
+            CeleryIntegration(
+                monitor_beat_tasks=True,
+            ),
+            RedisIntegration(),
+            LoggingIntegration(
+                level=logging.INFO,
+                event_level=logging.ERROR,
+            ),
+        ],
+        traces_sample_rate=0.2,  # 20% of requests for performance
+        profiles_sample_rate=0.1,
+        send_default_pii=False,  # GDPR — no PII in error reports
+        environment=config("DJANGO_ENV", default="development"),
+        release=config("GIT_COMMIT_SHA", default="local"),
+        before_send=_sentry_before_send,
+    )
 
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-me-in-production")
 
@@ -88,6 +139,21 @@ MIDDLEWARE = [
     "django_structlog.middlewares.RequestMiddleware",
     "axes.middleware.AxesMiddleware",
 ]
+
+# --- Django Silk (query/request profiling) ---
+# Only enabled when ENABLE_SILK=True. Off by default in production; always on
+# in development.py. URL wiring lives in config/urls.py guarded by this flag.
+ENABLE_SILK = config("ENABLE_SILK", default=False, cast=bool)
+if ENABLE_SILK:
+    INSTALLED_APPS += ["silk"]
+    MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]
+    SILKY_PYTHON_PROFILER = True
+    SILKY_ANALYZE_QUERIES = True
+    SILKY_MAX_RECORDED_REQUESTS = 1000
+    SILKY_MAX_RECORDED_REQUESTS_CHECK_PERCENT = 10
+    SILKY_AUTHENTICATION = True  # require login for /silk/
+    SILKY_AUTHORISATION = True  # require staff status
+    SILKY_META = True
 
 ROOT_URLCONF = "config.urls"
 
@@ -364,6 +430,23 @@ LOGGING = {
         "celery": {"handlers": ["console"], "level": "INFO", "propagate": False},
     },
 }
+
+# --- Papertrail log shipping (optional) ---
+# Ships logs over syslog via the stdlib SysLogHandler when host+port are set.
+# NOTE: production.py overrides LOGGING wholesale, so it re-applies this block
+# itself. This base wiring covers development and any env that keeps base LOGGING.
+PAPERTRAIL_HOST = config("PAPERTRAIL_HOST", default="")
+PAPERTRAIL_PORT = config("PAPERTRAIL_PORT", default=0, cast=int)
+
+if PAPERTRAIL_HOST and PAPERTRAIL_PORT:
+    import logging.handlers
+
+    LOGGING["handlers"]["papertrail"] = {
+        "class": "logging.handlers.SysLogHandler",
+        "address": (PAPERTRAIL_HOST, PAPERTRAIL_PORT),
+        "formatter": "json",
+    }
+    LOGGING["root"]["handlers"].append("papertrail")
 
 structlog.configure(
     processors=[

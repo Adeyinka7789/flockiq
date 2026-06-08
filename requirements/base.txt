@@ -34,6 +34,13 @@ cryptography==46.0.7
 django-auditlog==3.0.*
 django-structlog==8.*
 
+# Monitoring & Profiling
+sentry-sdk[django]>=2.0.0
+django-silk>=5.0.0
+# NOTE: Papertrail ships logs via the stdlib logging.handlers.SysLogHandler,
+# so no extra package is required (the prompt's "python-logging-handlers" is
+# unnecessary and was intentionally omitted to keep the build reproducible).
+
 # Storage
 Pillow==12.2.0
 django-storages==1.14.*

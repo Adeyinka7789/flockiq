@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from apps.infrastructure.core.health import health_check, ping
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
@@ -69,7 +70,18 @@ urlpatterns = [
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+    # ── Monitoring (always available, not DEBUG-only) ────────────────────────
+    # NOTE: /health/ is already taken by the health app's dashboard, so the
+    # monitoring health check is served at /healthz/ (k8s-style convention).
+    path("healthz/", health_check, name="health_check"),
+    path("ping/", ping, name="ping"),
 ]
+
+# Django Silk profiling UI — wired whenever ENABLE_SILK is on (any environment).
+if getattr(settings, "ENABLE_SILK", False):
+    from silk import urls as silk_urls
+
+    urlpatterns += [path("silk/", include(silk_urls))]
 
 if settings.DEBUG:
     # API documentation — only exposed outside production. AllowAny lets the

@@ -118,16 +118,9 @@ EMAIL_USE_SSL = True
 DEFAULT_FROM_EMAIL = "FlockIQ <noreply@flockiq.com>"
 
 # ── Sentry ────────────────────────────────────────────────────────────────────
-SENTRY_DSN = config("SENTRY_DSN", default="")
-if SENTRY_DSN:
-    import sentry_sdk
-
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        traces_sample_rate=0.1,
-        profiles_sample_rate=0.05,
-        environment="production",
-    )
+# Sentry is initialised ONCE in base.py (imported above). Set SENTRY_DSN and
+# DJANGO_ENV=production in the environment. Do NOT re-init here — a second
+# sentry_sdk.init() would clobber the integrations configured in base.py.
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 LOGGING = {
@@ -163,3 +156,20 @@ LOGGING = {
         "apps": {"handlers": ["file"], "level": "INFO", "propagate": False},
     },
 }
+
+# ── Papertrail log shipping ───────────────────────────────────────────────────
+# production.py replaces LOGGING wholesale (above), so the Papertrail wiring in
+# base.py does not apply here — re-apply it against this LOGGING dict.
+PAPERTRAIL_HOST = config("PAPERTRAIL_HOST", default="")
+PAPERTRAIL_PORT = config("PAPERTRAIL_PORT", default=0, cast=int)
+
+if PAPERTRAIL_HOST and PAPERTRAIL_PORT:
+    import logging.handlers
+
+    LOGGING["handlers"]["papertrail"] = {
+        "class": "logging.handlers.SysLogHandler",
+        "address": (PAPERTRAIL_HOST, PAPERTRAIL_PORT),
+        "formatter": "verbose",
+    }
+    for _logger in LOGGING["loggers"].values():
+        _logger["handlers"].append("papertrail")
