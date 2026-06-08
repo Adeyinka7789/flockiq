@@ -67,6 +67,9 @@ class Organization(models.Model):
 
     # Meta
     is_active = models.BooleanField(default=True)
+    suspension_reason = models.CharField(
+        max_length=500, blank=True,
+        help_text="Reason shown to the org owner when the account is suspended")
     onboarding_complete = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

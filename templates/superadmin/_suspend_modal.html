@@ -1,0 +1,42 @@
+<div class="p-6">
+  <h3 class="text-lg font-semibold text-gray-900 mb-1">
+    Suspend {{ org.name }}
+  </h3>
+  <p class="text-sm text-gray-500 mb-4">
+    All users in this organisation will be immediately logged out and blocked
+    from logging in. The account owner will receive an email with your reason.
+  </p>
+
+  {% if error %}
+  <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-sm text-red-600 mb-4">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <form hx-post="{% url 'superadmin:suspend_org' org.pk %}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML"
+        hx-disabled-elt="button[type=submit]">
+    {% csrf_token %}
+    <label class="block text-sm font-medium text-gray-700 mb-1">
+      Reason for suspension <span class="text-red-500">*</span>
+    </label>
+    <textarea name="suspension_reason" rows="3" required
+              placeholder="e.g. Overdue payment, Policy violation..."
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                     focus:ring-2 focus:ring-red-500 focus:border-red-500 mb-4"></textarea>
+    <div class="flex gap-3 justify-end">
+      <button type="button"
+              @click="$dispatch('close-modal')"
+              class="px-4 py-2 text-sm text-gray-600 border border-gray-200
+                     rounded-lg hover:bg-gray-50">
+        Cancel
+      </button>
+      <button type="submit"
+              class="px-4 py-2 text-sm font-medium text-white bg-red-600
+                     hover:bg-red-700 rounded-lg">
+        Suspend Account
+      </button>
+    </div>
+  </form>
+</div>

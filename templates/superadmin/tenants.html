@@ -123,16 +123,21 @@
                 <span style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block"></span>
                 SUSPENDED
               </span>
+              {% if org.suspension_reason %}
+              <div style="font-size:11px;color:#b91c1c;margin-top:4px;max-width:220px;line-height:1.4"
+                   title="{{ org.suspension_reason }}">
+                {{ org.suspension_reason|truncatechars:70 }}
+              </div>
+              {% endif %}
               {% endif %}
             </td>
             <td>
               <div style="display:flex;gap:6px">
                 {% if org.is_active %}
                 <button class="sa-action-btn suspend"
-                        hx-post="{% url 'superadmin:tenant_action' org.pk %}"
-                        hx-vals='{"action":"suspend"}'
-                        hx-confirm="Suspend {{ org.name }}?"
-                        hx-swap="none">
+                        hx-get="{% url 'superadmin:suspend_modal' org.pk %}"
+                        hx-target="#modal-body"
+                        hx-swap="innerHTML">
                   Suspend
                 </button>
                 {% else %}

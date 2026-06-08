@@ -151,8 +151,11 @@ class TestTenantMiddleware:
         assert response.status_code == 200
         assert captured["org"].id == org.id
 
-    def test_inactive_org_raises_404(self, db, rf):
-        """A subdomain belonging to an inactive org raises Http404."""
+    def test_inactive_org_redirects_authenticated_user(self, db, rf, tenant_user):
+        """An authenticated user on a suspended org's subdomain is logged out
+        and bounced to /login/?suspended=1 (no longer a bare 404)."""
+        from django.contrib.sessions.middleware import SessionMiddleware
+
         from apps.infrastructure.tenants.models import Organization
         from apps.infrastructure.core.middleware import TenantMiddleware
 
@@ -164,5 +167,32 @@ class TestTenantMiddleware:
 
         middleware = TenantMiddleware(lambda req: HttpResponse("should not reach"))
         request = rf.get("/", SERVER_NAME="inactivefarm.flockiq.com")
-        with pytest.raises(Http404):
-            middleware(request)
+        # logout() needs a session attached.
+        SessionMiddleware(lambda r: HttpResponse()).process_request(request)
+        request.session.save()
+        request.user = tenant_user  # authenticated, non-superadmin
+
+        response = middleware(request)
+        assert response.status_code == 302
+        assert "/login/?suspended=1" in response["Location"]
+
+    def test_inactive_org_anonymous_falls_through(self, db, rf):
+        """Anonymous requests to a suspended subdomain fall through so the
+        login page can render with a suspension banner (no redirect loop)."""
+        from django.contrib.auth.models import AnonymousUser
+
+        from apps.infrastructure.tenants.models import Organization
+        from apps.infrastructure.core.middleware import TenantMiddleware
+
+        Organization.objects.create(
+            name="Inactive Farm 2",
+            subdomain="inactivefarm2",
+            is_active=False,
+        )
+
+        middleware = TenantMiddleware(lambda req: HttpResponse("login page"))
+        request = rf.get("/", SERVER_NAME="inactivefarm2.flockiq.com")
+        request.user = AnonymousUser()
+
+        response = middleware(request)
+        assert response.status_code == 200

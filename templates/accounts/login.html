@@ -11,6 +11,27 @@
     </p>
   </div>
 
+  {% if suspension_error or request.GET.suspended %}
+  <div class="bg-red-50 border border-red-200 rounded-lg px-4 py-4 mb-4">
+    <div class="flex items-start gap-3">
+      <svg class="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      </svg>
+      <div>
+        <p class="text-sm font-semibold text-red-800">Account Suspended</p>
+        <p class="text-sm text-red-700 mt-1">
+          Your organisation's account has been suspended. Please contact
+          <a href="mailto:{{ support_email|default:'support@flockiq.com' }}"
+             class="underline font-medium">{{ support_email|default:'support@flockiq.com' }}</a>
+          to resolve this.
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   {% if success_msg %}
   <div class="rounded-lg bg-green-50 border border-green-200 px-4 py-2.5 text-[13px] text-green-800 mb-4">
     {{ success_msg }}

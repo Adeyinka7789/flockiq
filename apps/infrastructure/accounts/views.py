@@ -154,6 +154,17 @@ class WebLoginView(View):
         user = authenticate(request, username=email, password=password)
 
         if user is not None:
+            # Block login for users whose organisation has been suspended.
+            # Superadmins (no org / super_admin role) are never affected.
+            org = getattr(user, 'org', None)
+            is_privileged = user.is_superuser or getattr(user, 'role', '') == 'super_admin'
+            if org is not None and not is_privileged and not org.is_active:
+                return render(request, 'accounts/login.html', {
+                    'suspension_error': True,
+                    'support_email': django_settings.SUPPORT_EMAIL,
+                    'email': email,
+                }, status=403)
+
             if not getattr(user, 'email_verified', True):
                 return render(request, 'accounts/login.html', {
                     'error': 'Please verify your email before logging in.',

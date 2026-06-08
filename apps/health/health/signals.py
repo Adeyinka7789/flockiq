@@ -42,7 +42,10 @@ def _generate_vaccination_schedule(batch):
 
     records = []
     for vaccine_name, recommended_day, route in schedule:
-        due_date = batch.placement_date + datetime.timedelta(days=recommended_day)
+        placement_date = batch.placement_date
+        if isinstance(placement_date, str):
+            placement_date = datetime.datetime.strptime(placement_date, '%Y-%m-%d').date()
+        due_date = placement_date + datetime.timedelta(days=recommended_day)
         records.append(
             VaccinationSchedule(
                 org=batch.org,

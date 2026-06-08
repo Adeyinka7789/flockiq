@@ -2,7 +2,7 @@ import time
 
 import structlog
 from django.conf import settings
-from django.http import Http404, HttpResponse, HttpResponseForbidden
+from django.http import Http404, HttpResponse
 
 from .rls import set_tenant_context
 
@@ -128,6 +128,52 @@ class TenantMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
+    @staticmethod
+    def _is_privileged(user):
+        """Superadmins are never affected by org suspension."""
+        return bool(getattr(user, "is_superuser", False)) or \
+            getattr(user, "role", "") == "super_admin"
+
+    @staticmethod
+    def _org_active_cached(org_id):
+        """Return whether the org is active, using a short-lived cache to avoid
+        a DB hit on every request. Suspensions are cached only briefly so a
+        re-activation propagates quickly; superadmin actions invalidate the key
+        immediately (see superadmin views)."""
+        from django.core.cache import cache
+
+        from apps.infrastructure.tenants.models import Organization
+
+        cache_key = f"org_active:{org_id}"
+        is_active = cache.get(cache_key)
+        if is_active is None:
+            is_active = Organization.objects.filter(id=org_id, is_active=True).exists()
+            cache.set(cache_key, is_active, timeout=300 if is_active else 60)
+        return is_active
+
+    def _suspended_response(self, request, **log_kwargs):
+        """Log an authenticated user out and bounce them to the login page."""
+        from django.contrib.auth import logout
+        from django.shortcuts import redirect
+
+        logout(request)
+        logger.warning("tenant.suspended_user_kicked", **log_kwargs)
+        return redirect("/login/?suspended=1")
+
+    def _kick_if_suspended(self, request, org):
+        """Return a redirect response if the authenticated user's org has been
+        suspended, otherwise None. Superadmins and active impersonation
+        sessions are never kicked. Anonymous users are left alone so the login
+        page can render (and to avoid a redirect loop after logout)."""
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return None
+        if self._is_privileged(user) or getattr(request, "is_impersonating", False):
+            return None
+        if not self._org_active_cached(org.id):
+            return self._suspended_response(request, org_id=str(org.id))
+        return None
+
     def __call__(self, request):
         host = request.get_host().split(":")[0]  # Strip port
 
@@ -145,6 +191,9 @@ class TenantMiddleware:
                 org = getattr(request.user, "org", None)
             request.org = org
             if org:
+                kicked = self._kick_if_suspended(request, org)
+                if kicked is not None:
+                    return kicked
                 with set_tenant_context(org):
                     return self.get_response(request)
             return self.get_response(request)
@@ -165,27 +214,11 @@ class TenantMiddleware:
             request.org = org
             if org:
                 # Re-verify org is still active — the session-cached user.org
-                # may be stale if the org was deactivated after the session started.
-                from django.core.cache import cache
-                from apps.infrastructure.tenants.models import Organization
-
-                cache_key = f"org_active:{org.id}"
-                is_active = cache.get(cache_key)
-                if is_active is None:
-                    try:
-                        org = Organization.objects.get(id=org.id, is_active=True)
-                        cache.set(cache_key, True, timeout=300)  # 5 min TTL
-                    except Organization.DoesNotExist:
-                        cache.set(cache_key, False, timeout=60)
-                        logger.warning(
-                            "tenant.inactive_org_blocked",
-                            org_id=str(org.id),
-                            subdomain=subdomain,
-                        )
-                        return HttpResponseForbidden("Organisation is inactive")
-                elif not is_active:
-                    return HttpResponseForbidden("Organisation is inactive")
-
+                # may be stale if the org was deactivated after the session
+                # started. Suspended users are logged out and bounced to login.
+                kicked = self._kick_if_suspended(request, org)
+                if kicked is not None:
+                    return kicked
                 with set_tenant_context(org):
                     return self.get_response(request)
             return self.get_response(request)
@@ -194,11 +227,23 @@ class TenantMiddleware:
         from apps.infrastructure.tenants.models import Organization  # noqa: PLC0415
 
         try:
-            # Organization has RLS disabled — safe without a context
-            org = Organization.objects.get(subdomain=subdomain, is_active=True)
+            # Organization has RLS disabled — safe without a context.
+            # Resolve regardless of is_active so suspended-org users get a clear
+            # "suspended" bounce to login rather than a bare 404.
+            org = Organization.objects.get(subdomain=subdomain)
         except Organization.DoesNotExist:
             logger.warning("tenant.not_found", subdomain=subdomain, host=host)
             raise Http404(f"No active tenant for subdomain: {subdomain}")
+
+        if not org.is_active:
+            user = getattr(request, "user", None)
+            # Authenticated, non-superadmin users are logged out and redirected.
+            # Anonymous users fall through so the login page can render with the
+            # suspension banner (and to avoid a post-logout redirect loop).
+            if user and user.is_authenticated and not self._is_privileged(user):
+                return self._suspended_response(
+                    request, subdomain=subdomain, org_id=str(org.id)
+                )
 
         request.org = org
 

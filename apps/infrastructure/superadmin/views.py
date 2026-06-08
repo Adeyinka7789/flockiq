@@ -5,6 +5,9 @@ from collections import Counter
 from datetime import date, timedelta
 
 import structlog
+from django.conf import settings
+from django.core.cache import cache
+from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.http import HttpResponse
@@ -31,6 +34,70 @@ def get_client_ip(request):
         'remote_addr': remote_addr,
         'x_forwarded_for': x_forwarded_for,
     }
+
+
+def invalidate_org_active_cache(org_id):
+    """Drop the TenantMiddleware org-active cache so suspension / activation
+    takes effect on the org's very next request instead of after the TTL."""
+    cache.delete(f'org_active:{org_id}')
+
+
+def _org_owner(org):
+    """Return the org's owner user (role='owner'), falling back to any member.
+
+    Uses the reverse FK (related_name='users'), whose default manager is
+    unscoped — safe here because superadmin runs without a tenant context.
+    """
+    owner = org.users.filter(role='owner').first()
+    if not owner:
+        owner = org.users.first()
+    return owner
+
+
+def send_suspension_email(org):
+    """Notify the org owner that their account has been suspended."""
+    owner = _org_owner(org)
+    recipient = (owner.email if owner and owner.email else None) or org.owner_email
+    if not recipient:
+        return
+    name = (owner.get_full_name() if owner else '') or recipient
+    send_mail(
+        subject='Your FlockIQ account has been suspended',
+        message=(
+            f'Dear {name},\n\n'
+            f'Your FlockIQ account ({org.name}) has been suspended.\n\n'
+            f'Reason: {org.suspension_reason or "Please contact support for details."}\n\n'
+            f'If you believe this is an error or would like to resolve this, '
+            f'please contact us at {settings.SUPPORT_EMAIL}.\n\n'
+            f'The FlockIQ Team'
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[recipient],
+        fail_silently=True,
+    )
+
+
+def send_reactivation_email(org):
+    """Notify the org owner that their account has been reactivated."""
+    owner = _org_owner(org)
+    recipient = (owner.email if owner and owner.email else None) or org.owner_email
+    if not recipient:
+        return
+    name = (owner.get_full_name() if owner else '') or recipient
+    login_url = settings.SITE_URL.rstrip('/') + '/login/'
+    send_mail(
+        subject='Your FlockIQ account has been reactivated',
+        message=(
+            f'Dear {name},\n\n'
+            f'Good news — your FlockIQ account ({org.name}) is active again.\n\n'
+            f'You can log in again at {login_url}.\n\n'
+            f'If you have any questions, contact us at {settings.SUPPORT_EMAIL}.\n\n'
+            f'The FlockIQ Team'
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[recipient],
+        fail_silently=True,
+    )
 
 
 class SuperAdminDashboardView(SuperAdminMixin, View):
@@ -165,12 +232,23 @@ class SuperAdminTenantActionView(SuperAdminMixin, View):
         action = request.POST.get('action')
 
         if action == 'suspend':
+            # Reason may arrive via the HTMX hx-prompt header or a POST field.
+            reason = (request.headers.get('HX-Prompt')
+                      or request.POST.get('suspension_reason', '')).strip()
             org.is_active = False
+            org.suspension_reason = reason
             org.save()
+            invalidate_org_active_cache(org.id)
+            send_suspension_email(org)
+            logger.info("superadmin.org_suspended", org_id=str(org.id), reason=reason)
             msg = f'{org.name} suspended.'
         elif action == 'activate':
             org.is_active = True
+            org.suspension_reason = ''
             org.save()
+            invalidate_org_active_cache(org.id)
+            send_reactivation_email(org)
+            logger.info("superadmin.org_activated", org_id=str(org.id))
             msg = f'{org.name} activated.'
         elif action == 'change_plan':
             new_plan = request.POST.get('plan_tier')
@@ -187,6 +265,46 @@ class SuperAdminTenantActionView(SuperAdminMixin, View):
         response['HX-Trigger'] = json.dumps({'showToast': {'message': msg, 'type': 'success'}})
         response['HX-Refresh'] = 'true'
         return response
+
+
+class SuspendOrgModalView(SuperAdminMixin, View):
+    """GET — render the suspend-reason modal fragment into the global modal."""
+
+    def get(self, request, pk):
+        org = get_object_or_404(Organization, pk=pk)
+        return render(request, 'superadmin/_suspend_modal.html', {'org': org})
+
+
+class SuspendOrgView(SuperAdminMixin, View):
+    """POST — suspend an org with a required reason and notify the owner.
+
+    Returns the success fragment on completion, or re-renders the modal with an
+    error if no reason was supplied. (Re-rendered at 200 — htmx 1.9.10 does not
+    swap non-2xx responses, and the textarea's `required` attr is the first-line
+    client-side guard.)
+    """
+
+    def post(self, request, pk):
+        org = get_object_or_404(Organization, pk=pk)
+        reason = request.POST.get('suspension_reason', '').strip()
+
+        if not reason:
+            return render(request, 'superadmin/_suspend_modal.html', {
+                'org': org,
+                'error': 'Please provide a reason for suspension.',
+            })
+
+        org.is_active = False
+        org.suspension_reason = reason
+        org.save(update_fields=['is_active', 'suspension_reason', 'updated_at'])
+        invalidate_org_active_cache(org.id)
+        send_suspension_email(org)
+        logger.info("superadmin.org_suspended", org_id=str(org.id), reason=reason)
+
+        return render(request, 'superadmin/_suspend_success.html', {
+            'org': org,
+            'owner': _org_owner(org),
+        })
 
 
 class BroadcastCreateView(SuperAdminMixin, View):
@@ -426,6 +544,7 @@ class BillingManageOrgView(SuperAdminMixin, View):
                 org.subscription_status = 'active'
                 org.is_active = True
                 org.save()
+                invalidate_org_active_cache(org.id)
                 msg = f'Grace period set for {org.name}'
             else:
                 msg = 'End date required'
@@ -447,6 +566,9 @@ class BillingManageOrgView(SuperAdminMixin, View):
                 org.subscription_status = new_status
                 org.is_active = new_status == 'active'
                 org.save()
+                invalidate_org_active_cache(org.id)
+                if not org.is_active:
+                    send_suspension_email(org)
                 msg = f'{org.name} status → {new_status}'
             else:
                 msg = 'Invalid status'
