@@ -725,6 +725,15 @@ class BatchExcelExportView(LoginRequiredMixin, View):
 # ── DRF API views ───────────────────────────────────────────────────────────────
 
 class BatchListAPIView(APIView):
+    """
+    List and create batches for the authenticated tenant.
+
+    GET  /api/v1/batches/  → List batches (optional ?status= filter), scoped to
+                             the current organisation via RLS.
+    POST /api/v1/batches/  → Create a batch for the given farm and house.
+                             Triggers vaccination schedule generation automatically.
+    """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -772,6 +781,8 @@ class BatchListAPIView(APIView):
 
 
 class BatchDetailAPIView(APIView):
+    """GET /api/v1/batches/<uuid>/ → Batch detail, scoped to the current org via RLS."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
@@ -789,6 +800,11 @@ class BatchDetailAPIView(APIView):
 
 
 class MortalityLogAPIView(APIView):
+    """
+    POST /api/v1/batches/<uuid>/mortality/ → Record a mortality event for the batch.
+    Live-bird counts are decremented atomically and an audit log entry is written.
+    """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
@@ -825,6 +841,11 @@ class MortalityLogAPIView(APIView):
 
 
 class BatchCloseAPIView(APIView):
+    """
+    POST /api/v1/batches/<uuid>/close/ → Close out an active batch.
+    Frees the house and finalises the batch's performance summary.
+    """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):

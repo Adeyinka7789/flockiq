@@ -273,8 +273,24 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "FlockIQ API",
-    "DESCRIPTION": "AI-powered poultry farm management SaaS",
+    "DESCRIPTION": (
+        "AI-powered poultry farm management platform API. "
+        "Multi-tenant, breed-specific, built for West Africa."
+    ),
     "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "TAGS": [
+        {"name": "farms", "description": "Farm and house management"},
+        {"name": "batches", "description": "Batch and flock operations"},
+        {"name": "production", "description": "Egg, feed, water, waste logs"},
+        {"name": "health", "description": "Vaccinations, medications, health records"},
+        {"name": "analytics", "description": "AI forecasts, anomaly detection, farm memory"},
+        {"name": "finance", "description": "Sales, expenses, P&L"},
+        {"name": "notifications", "description": "Alerts and notifications"},
+        {"name": "billing", "description": "Subscription and billing"},
+        {"name": "auth", "description": "Authentication and account management"},
+    ],
 }
 
 # --- Forms ---

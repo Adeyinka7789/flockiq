@@ -2,12 +2,17 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView,
+)
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
     TokenVerifyView,
 )
+from rest_framework.permissions import AllowAny
 
 from django.views.generic import TemplateView
 from . import views
@@ -61,12 +66,37 @@ urlpatterns = [
     path("", include("apps.finance.market.urls")),
     path("", include(superadmin_urls)),
     path("admin/", admin.site.urls),
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
 ]
 
 if settings.DEBUG:
+    # API documentation — only exposed outside production. AllowAny lets the
+    # docs be browsed freely in development; the Swagger "Authorize" button still
+    # lets you supply a JWT to exercise authenticated endpoints.
+    urlpatterns += [
+        # Schema (raw OpenAPI JSON/YAML)
+        path(
+            "api/schema/",
+            SpectacularAPIView.as_view(permission_classes=[AllowAny]),
+            name="schema",
+        ),
+        # Swagger UI — interactive browser docs
+        path(
+            "api/docs/",
+            SpectacularSwaggerView.as_view(
+                url_name="schema", permission_classes=[AllowAny]
+            ),
+            name="swagger-ui",
+        ),
+        # ReDoc — alternative cleaner read-only docs
+        path(
+            "api/redoc/",
+            SpectacularRedocView.as_view(
+                url_name="schema", permission_classes=[AllowAny]
+            ),
+            name="redoc",
+        ),
+    ]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -2,7 +2,7 @@ import ipaddress
 import json
 import time
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import structlog
 from django.conf import settings
@@ -13,6 +13,7 @@ from django.db.models import Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views import View
 
 from apps.infrastructure.billing.models import PaymentRecord
@@ -117,7 +118,9 @@ class SuperAdminDashboardView(SuperAdminMixin, View):
             .aggregate(total=Sum('current_count'))['total'] or 0
         )
 
-        this_month_start = today.replace(day=1)
+        this_month_start = timezone.make_aware(
+            datetime.combine(today.replace(day=1), datetime.min.time())
+        )
         mrr = (
             PaymentRecord.objects.unscoped()
             .filter(status='success', paid_at__gte=this_month_start)
@@ -135,7 +138,13 @@ class SuperAdminDashboardView(SuperAdminMixin, View):
 
             rev = (
                 PaymentRecord.objects.unscoped()
-                .filter(status='success', paid_at__gte=month_start, paid_at__lte=month_end)
+                .filter(
+                    status='success',
+                    paid_at__gte=timezone.make_aware(
+                        datetime.combine(month_start, datetime.min.time())),
+                    paid_at__lte=timezone.make_aware(
+                        datetime.combine(month_end, datetime.max.time())),
+                )
                 .aggregate(total=Sum('amount_kobo'))['total'] or 0
             )
             revenue_trend.append({'month': month_start.strftime('%b').upper(), 'revenue': rev // 100})
@@ -455,7 +464,9 @@ class BillingControlView(SuperAdminMixin, View):
         from datetime import date, timedelta
 
         today = date.today()
-        this_month = today.replace(day=1)
+        this_month = timezone.make_aware(
+            datetime.combine(today.replace(day=1), datetime.min.time())
+        )
 
         mrr = PaymentRecord.objects.unscoped().filter(
             status='success',
@@ -473,7 +484,7 @@ class BillingControlView(SuperAdminMixin, View):
         ).count()
 
         grace_period = Organization.objects.filter(
-            grace_period_ends_at__gte=today,
+            grace_period_ends_at__gte=timezone.now(),
         ).count()
 
         q = request.GET.get('q', '').strip()
@@ -538,7 +549,6 @@ class BillingManageOrgView(SuperAdminMixin, View):
         if action == 'grace_period':
             end_date = request.POST.get('grace_end_date')
             if end_date:
-                from django.utils import timezone
                 naive = datetime.strptime(end_date, '%Y-%m-%d')
                 org.grace_period_ends_at = timezone.make_aware(naive)
                 org.subscription_status = 'active'
@@ -554,7 +564,6 @@ class BillingManageOrgView(SuperAdminMixin, View):
             if org.trial_ends_at:
                 org.trial_ends_at += timedelta(days=days)
             else:
-                from django.utils import timezone
                 org.trial_ends_at = timezone.now() + timedelta(days=days)
             org.subscription_status = 'trial'
             org.save()
@@ -664,7 +673,6 @@ class ImpersonateStopView(View):
     """Stop impersonation and return to super admin."""
 
     def post(self, request):
-        from django.utils import timezone
         from apps.infrastructure.accounts.impersonation import ImpersonationLog
 
         impersonated_id = request.session.get('_impersonated_user_id')

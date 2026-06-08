@@ -147,163 +147,14 @@
 
   </div>
   
-   <!-- AI DAILY BRIEF -->
-  {% if plan_features.ai_daily_brief %}
-  {% if daily_brief.alerts or daily_brief.recommendations %}
-  <div style="background:#ffffff;
-              border: 1px solid #344e86;
-              border-radius:16px;padding:20px 24px;
-              margin-bottom:16px;color:#1e293b;
-              position:relative;overflow:hidden">
-
-    <div style="position:absolute;width:150px;height:150px;
-                border-radius:50%;background:rgba(0,0,0,0.01);
-                right:-30px;top:-40px;pointer-events:none"></div>
-
-    <div style="display:flex;align-items:flex-start;
-                justify-content:space-between;margin-bottom:14px">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <div style="width:7px;height:7px;border-radius:50%;
-                      background:#8bc87a;
-                      animation:blink 2s ease-in-out infinite"></div>
-          <span style="font-size:11px;font-weight:700;
-                      color:#64748b;
-                      text-transform:uppercase;letter-spacing:0.08em">
-            AI Daily Brief
-          </span>
-        </div>
-        <div style="font-size:16px;font-weight:800;color:#1e293b">
-          {% if daily_brief.total_issues == 0 %}
-            All {{ daily_brief.active_batches }} batch{{ daily_brief.active_batches|pluralize:"es" }} normal ✓
-          {% elif daily_brief.total_issues == 1 %}
-            1 issue needs your attention
-          {% else %}
-            {{ daily_brief.total_issues }} issues need attention
-          {% endif %}
-        </div>
-      </div>
-      <a href="{% url 'analytics:analytics' %}"
-        style="font-size:11px;color:#344e86;
-                text-decoration:none;font-weight:600;
-                background:rgba(52, 78, 134, 0.08);
-                padding:5px 10px;border-radius:8px">
-        Full report →
-      </a>
-    </div>
-
-    {% for alert in daily_brief.alerts|slice:":2" %}
-    <div style="display:flex;gap:10px;align-items:flex-start;
-                padding:10px 12px;margin-bottom:6px;
-                background:rgba(0,0,0,0.03);
-                border-radius:10px;
-                border-left:3px solid {% if alert.severity == 'critical' %}#ef4444{% else %}#f59e0b{% endif %}">
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:2px">
-          {{ alert.title }}
-        </div>
-        <div style="font-size:11px;color:#475569;line-height:1.5">
-          {{ alert.body|truncatechars:120 }}
-        </div>
-      </div>
-    </div>
-    {% endfor %}
-
-    {% for rec in daily_brief.recommendations|slice:":2" %}
-    <div style="display:flex;gap:10px;align-items:center;
-                padding:8px 12px;margin-bottom:4px;
-                background:rgba(0,0,0,0.02);
-                border-radius:8px">
-      <span style="font-size:13px">
-        {% if rec.type == 'sale_timing' %}💰
-        {% elif rec.type == 'vaccination' %}💉
-        {% elif rec.type == 'tasks' %}📋
-        {% else %}💡{% endif %}
-      </span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600;color:#334155">{{ rec.title }}</div>
-        <div style="font-size:11px;color:#64748b">
-          {{ rec.body|truncatechars:80 }}
-        </div>
-      </div>
-      {% if rec.batch %}
-      <a href="{% url 'flocks:detail' rec.batch.pk %}"
-        style="font-size:11px;color:#22c55e;text-decoration:none;
-                font-weight:600;flex-shrink:0">
-        View →
-      </a>
-      {% endif %}
-    </div>
-    {% endfor %}
-
-    {% if has_patterns %}
-    <div style="display:flex;align-items:center;gap:8px;
-                margin-top:10px;padding:10px 14px;
-                background:rgba(255,255,255,0.08);
-                border-radius:10px;font-size:12px;color:#1e293b">
-      <span>🧠</span>
-      <span>
-        Farm memory detected
-        <strong>{{ today_brief.patterns_detected|length }}
-        pattern{{ today_brief.patterns_detected|length|pluralize }}</strong> —
-        <a href="{% url 'analytics:analytics' %}"
-           style="color:#3d5a99;font-weight:700">
-          View patterns →
-        </a>
-      </span>
-    </div>
-    {% endif %}
-
-  </div>
-  {% endif %}
-  {% endif %}
-
-  <!-- Farm Memory: learned per-farm baseline -->
-  {% if farm_baseline %}
-  <div class="bg-white rounded-xl border border-earth-200 shadow-sm p-4 mb-4">
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="font-semibold text-gray-800 flex items-center gap-2">
-        <span>🧠</span> Farm Memory
-      </h3>
-      <span class="text-xs px-2 py-1 rounded-full
-        {% if farm_baseline.confidence == 'high' %}bg-green-100 text-green-700
-        {% elif farm_baseline.confidence == 'medium' %}bg-blue-100 text-blue-700
-        {% else %}bg-gray-100 text-gray-500{% endif %}">
-        {{ farm_baseline.confidence_label }}
-      </span>
-    </div>
-    <div class="grid grid-cols-2 gap-3">
-      <div>
-        <p class="text-xs text-gray-400">Your avg FCR</p>
-        <p class="text-lg font-bold text-gray-800">
-          {{ farm_baseline.avg_fcr|floatformat:2 }}
-        </p>
-      </div>
-      <div>
-        <p class="text-xs text-gray-400">Your avg mortality</p>
-        <p class="text-lg font-bold text-gray-800">
-          {{ farm_baseline.avg_mortality_rate_pct|floatformat:1 }}%
-        </p>
-      </div>
-    </div>
-    {% if farm_baseline.source == 'breed_benchmark' %}
-    <p class="text-xs text-gray-400 mt-3">
-      {{ farm_baseline.confidence_label }}
-    </p>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <!-- Quick action buttons -->
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+  <!-- SECTION 1: Quick Actions bar -->
+  <div class="flex flex-wrap gap-3 mb-6">
     <a href="{% url 'farms:list' %}"
-       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
-              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
-              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
-              transition:all 0.15s"
-       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
-       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
-      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+       class="flex items-center gap-2 px-4 py-2.5 bg-white
+              border border-gray-200 rounded-xl text-sm font-medium
+              text-gray-700 hover:bg-gray-50 hover:border-gray-300
+              transition shadow-sm">
+      <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24"
            stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round"
               d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
@@ -311,13 +162,11 @@
       Manage Farms
     </a>
     <a href="{% url 'flocks:list' %}"
-       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
-              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
-              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
-              transition:all 0.15s"
-       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
-       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
-      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+       class="flex items-center gap-2 px-4 py-2.5 bg-white
+              border border-gray-200 rounded-xl text-sm font-medium
+              text-gray-700 hover:bg-gray-50 hover:border-gray-300
+              transition shadow-sm">
+      <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24"
            stroke="currentColor" stroke-width="2">
         <circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/>
         <circle cx="12" cy="15" r="3"/>
@@ -325,13 +174,11 @@
       Active Batches
     </a>
     <a href="{% url 'tasks:list' %}"
-       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
-              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
-              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
-              transition:all 0.15s"
-       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
-       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
-      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+       class="flex items-center gap-2 px-4 py-2.5 bg-white
+              border border-gray-200 rounded-xl text-sm font-medium
+              text-gray-700 hover:bg-gray-50 hover:border-gray-300
+              transition shadow-sm">
+      <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24"
            stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round"
               d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/>
@@ -339,13 +186,11 @@
       Today's Tasks
     </a>
     <a href="{% url 'health:calendar' %}"
-       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
-              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
-              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
-              transition:all 0.15s"
-       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
-       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
-      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+       class="flex items-center gap-2 px-4 py-2.5 bg-white
+              border border-gray-200 rounded-xl text-sm font-medium
+              text-gray-700 hover:bg-gray-50 hover:border-gray-300
+              transition shadow-sm">
+      <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24"
            stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round"
               d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -353,13 +198,11 @@
       Vaccinations
     </a>
     <a href="{% url 'market:prices' %}"
-       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
-              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
-              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
-              transition:all 0.15s"
-       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
-       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
-      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+       class="flex items-center gap-2 px-4 py-2.5 bg-white
+              border border-gray-200 rounded-xl text-sm font-medium
+              text-gray-700 hover:bg-gray-50 hover:border-gray-300
+              transition shadow-sm">
+      <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24"
            stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round"
               d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
@@ -367,13 +210,11 @@
       Market Prices
     </a>
     <a href="{% url 'billing:billing_page' %}"
-       style="display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
-              background:white;border:1.5px solid #e2e8f0;border-radius:10px;
-              font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
-              transition:all 0.15s"
-       onmouseover="this.style.borderColor='#3d5a99';this.style.background='#e8eef8'"
-       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
-      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+       class="flex items-center gap-2 px-4 py-2.5 bg-white
+              border border-gray-200 rounded-xl text-sm font-medium
+              text-gray-700 hover:bg-gray-50 hover:border-gray-300
+              transition shadow-sm">
+      <svg class="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24"
            stroke="currentColor" stroke-width="2">
         <rect x="2" y="5" width="20" height="14" rx="2"/>
         <path stroke-linecap="round" d="M2 10h20"/>
@@ -382,8 +223,162 @@
     </a>
   </div>
 
+  <!-- SECTION 2: AI Daily Brief + Farm Memory side by side -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-6 mb-16 items-stretch">
+
+    <!-- Card 1: AI Daily Brief — Blue left border -->
+    {% if plan_features.ai_daily_brief %}
+    {% if daily_brief.alerts or daily_brief.recommendations %}
+    <div class="bg-white rounded-2xl shadow-sm border border-blue-500 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-green-400"></span>
+          <span class="text-xs font-semibold text-gray-500
+                       uppercase tracking-wide">AI Daily Brief</span>
+        </div>
+        <a href="{% url 'analytics:analytics' %}"
+           class="text-xs text-blue-600 hover:underline font-medium">Full report →</a>
+      </div>
+
+      <div style="font-size:16px;font-weight:800;color:#1e293b;margin-bottom:14px">
+        {% if daily_brief.total_issues == 0 %}
+          All {{ daily_brief.active_batches }} batch{{ daily_brief.active_batches|pluralize:"es" }} normal ✓
+        {% elif daily_brief.total_issues == 1 %}
+          1 issue needs your attention
+        {% else %}
+          {{ daily_brief.total_issues }} issues need attention
+        {% endif %}
+      </div>
+
+      {% for alert in daily_brief.alerts|slice:":2" %}
+      <div style="display:flex;gap:10px;align-items:flex-start;
+                  padding:10px 12px;margin-bottom:6px;
+                  background:rgba(0,0,0,0.03);
+                  border-radius:10px;
+                  border-left:3px solid {% if alert.severity == 'critical' %}#ef4444{% else %}#f59e0b{% endif %}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:2px">
+            {{ alert.title }}
+          </div>
+          <div style="font-size:11px;color:#475569;line-height:1.5">
+            {{ alert.body|truncatechars:120 }}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      {% for rec in daily_brief.recommendations|slice:":2" %}
+      <div style="display:flex;gap:10px;align-items:center;
+                  padding:8px 12px;margin-bottom:4px;
+                  background:rgba(0,0,0,0.02);
+                  border-radius:8px">
+        <span style="font-size:13px">
+          {% if rec.type == 'sale_timing' %}💰
+          {% elif rec.type == 'vaccination' %}💉
+          {% elif rec.type == 'tasks' %}📋
+          {% else %}💡{% endif %}
+        </span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:#334155">{{ rec.title }}</div>
+          <div style="font-size:11px;color:#64748b">
+            {{ rec.body|truncatechars:80 }}
+          </div>
+        </div>
+        {% if rec.batch %}
+        <a href="{% url 'flocks:detail' rec.batch.pk %}"
+          style="font-size:11px;color:#22c55e;text-decoration:none;
+                  font-weight:600;flex-shrink:0">
+          View →
+        </a>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+      {% if has_patterns %}
+      <div style="display:flex;align-items:center;gap:8px;
+                  margin-top:10px;padding:10px 14px;
+                  background:rgba(255,255,255,0.08);
+                  border-radius:10px;font-size:12px;color:#1e293b">
+        <span>🧠</span>
+        <span>
+          Farm memory detected
+          <strong>{{ today_brief.patterns_detected|length }}
+          pattern{{ today_brief.patterns_detected|length|pluralize }}</strong> —
+          <a href="{% url 'analytics:analytics' %}"
+             style="color:#3d5a99;font-weight:700">
+            View patterns →
+          </a>
+        </span>
+      </div>
+      {% endif %}
+
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Card 2: Farm Memory — Green left border -->
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100
+                border-1 border-green-500 p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L20 12l-6.714 2.143L11 21l-2.286-6.857L2 12l6.714-2.143L11 3z"/>
+          </svg>
+          <span class="text-xs font-semibold text-gray-500
+                       uppercase tracking-wide">Farm Memory</span>
+        </div>
+        {% if farm_baseline and farm_baseline.confidence != 'none' %}
+        <span class="text-xs px-2 py-1 rounded-full
+                     bg-green-50 text-green-700 font-medium">
+          {{ farm_baseline.confidence_label }}
+        </span>
+        {% endif %}
+      </div>
+
+      {% if farm_baseline and farm_baseline.confidence != 'none' %}
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <p class="text-xs text-gray-400 mb-1">Your avg FCR</p>
+          <p class="text-2xl font-bold text-gray-900">
+            {{ farm_baseline.avg_fcr|floatformat:2 }}
+          </p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-400 mb-1">Your avg mortality</p>
+          <p class="text-2xl font-bold text-gray-900">
+            {{ farm_baseline.avg_mortality_rate_pct|floatformat:1 }}%
+          </p>
+        </div>
+      </div>
+      {% if farm_baseline.source == 'breed_benchmark' %}
+      <p class="text-xs text-gray-400 mt-3">
+        {{ farm_baseline.confidence_label }}
+      </p>
+      {% endif %}
+      {% else %}
+      <div class="flex flex-col items-center justify-center
+                  py-6 text-center">
+        <svg class="w-8 h-8 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L20 12l-6.714 2.143L11 21l-2.286-6.857L2 12l6.714-2.143L11 3z"/>
+        </svg>
+        <p class="text-sm font-medium text-gray-500 mb-1">
+          No farm history yet
+        </p>
+        <p class="text-xs text-gray-400">
+          Complete your first batch to unlock farm memory
+        </p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
   <!-- 30-day trend charts -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
+  <div class="mb-10" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:32px">
 
     <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden">
       <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">
@@ -408,7 +403,7 @@
   </div>
 
   <!-- Active batches table — full width -->
-  <div>
+  <div class="mb-10">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <span style="font-size:16px;font-weight:700;color:#1a2744">Active Batches</span>
       <a href="{% url 'flocks:list' %}"
