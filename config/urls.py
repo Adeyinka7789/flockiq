@@ -19,7 +19,7 @@ from django.views.generic import TemplateView
 from . import views
 
 from apps.infrastructure.accounts.views import WebLoginView, WebLogoutView, SignupView
-from apps.infrastructure.core.views import DashboardView, SessionCheckView, custom_404, custom_500
+from apps.infrastructure.core.views import DashboardView, SessionCheckView, custom_404, custom_500, user_manual_pdf
 from apps.infrastructure.core.search import GlobalSearchView
 from apps.infrastructure.superadmin import urls as superadmin_urls
 
@@ -46,6 +46,7 @@ urlpatterns = [
     path("login/", WebLoginView.as_view(), name="login"),
     path("logout/", WebLogoutView.as_view(), name="logout"),
     path("signup/", SignupView.as_view(), name="signup"),
+    path("docs/user-manual/", user_manual_pdf, name="user_manual_pdf"),
 
     # ── App URLs ──────────────────────────────────────────────────────────────
     path("", include("apps.infrastructure.tenants.urls")),

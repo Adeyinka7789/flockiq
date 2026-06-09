@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FlockIQ User Manual v{{ version }}</title>
+<style>
+/* ── Page setup ──────────────────────────────────────────────────────── */
+@page {
+  size: A4;
+  margin: 25mm 20mm 25mm 20mm;
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font-size: 9pt;
+    color: #888;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  @bottom-left {
+    content: "FlockIQ User Manual v{{ version }}";
+    font-size: 9pt;
+    color: #888;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+}
+
+@page cover {
+  @bottom-right { content: none; }
+  @bottom-left  { content: none; }
+}
+
+/* ── Reset ───────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Typography ──────────────────────────────────────────────────────── */
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.65;
+  color: #1e293b;
+}
+
+h1 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 22pt;
+  color: #1a4731;
+  margin-top: 0;
+  margin-bottom: 14pt;
+  padding-bottom: 6pt;
+  border-bottom: 2pt solid #6aaa57;
+  page-break-before: always;
+}
+
+h1.no-break { page-break-before: avoid; }
+
+h2 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 13pt;
+  color: #1a4731;
+  margin-top: 20pt;
+  margin-bottom: 8pt;
+}
+
+h3 {
+  font-size: 11pt;
+  font-weight: 700;
+  color: #334155;
+  margin-top: 14pt;
+  margin-bottom: 6pt;
+}
+
+p { margin-bottom: 9pt; }
+
+ul, ol {
+  margin-left: 18pt;
+  margin-bottom: 9pt;
+}
+
+li { margin-bottom: 3pt; }
+
+strong { color: #0f172a; }
+
+a { color: #1a4731; text-decoration: underline; }
+
+/* ── Cover page ──────────────────────────────────────────────────────── */
+.cover-page {
+  page: cover;
+  height: 247mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  page-break-after: always;
+}
+
+.cover-logo-badge {
+  width: 80pt;
+  height: 80pt;
+  background: #1a4731;
+  border-radius: 16pt;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14pt auto;
+}
+
+.cover-logo-initials {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 30pt;
+  font-weight: 900;
+  color: #6aaa57;
+  line-height: 1;
+}
+
+.cover-brand {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 44pt;
+  font-weight: 700;
+  color: #1a4731;
+  margin-bottom: 4pt;
+  letter-spacing: -1pt;
+}
+
+.cover-tagline {
+  font-size: 13pt;
+  color: #6aaa57;
+  margin-bottom: 36pt;
+  font-weight: 600;
+}
+
+.cover-rule {
+  width: 60mm;
+  border: none;
+  border-top: 2pt solid #e2e8f0;
+  margin: 0 auto 36pt auto;
+}
+
+.cover-doc-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 26pt;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 10pt;
+}
+
+.cover-meta {
+  font-size: 10.5pt;
+  color: #64748b;
+  line-height: 2;
+}
+
+.cover-meta strong { color: #1e293b; }
+
+.cover-footer {
+  position: absolute;
+  bottom: 16mm;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 9pt;
+  color: #94a3b8;
+}
+
+/* ── Table of contents ───────────────────────────────────────────────── */
+.toc {
+  page-break-after: always;
+}
+
+.toc-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 18pt;
+  color: #1a4731;
+  margin-bottom: 20pt;
+  padding-bottom: 6pt;
+  border-bottom: 2pt solid #6aaa57;
+}
+
+.toc-section-group { margin-bottom: 12pt; }
+
+.toc-section-label {
+  font-size: 8pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6aaa57;
+  margin-bottom: 6pt;
+}
+
+.toc-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4pt 0;
+  border-bottom: 1pt dotted #e2e8f0;
+}
+
+.toc-item-num {
+  font-weight: 700;
+  color: #1a4731;
+  min-width: 18pt;
+  font-size: 10pt;
+}
+
+.toc-item-title {
+  flex: 1;
+  padding-left: 4pt;
+  font-size: 10pt;
+}
+
+.toc-item-page {
+  font-weight: 600;
+  color: #64748b;
+  font-size: 9.5pt;
+  min-width: 24pt;
+  text-align: right;
+}
+
+/* ── Tables ──────────────────────────────────────────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10pt 0 14pt 0;
+  font-size: 9.5pt;
+  page-break-inside: avoid;
+}
+
+th {
+  background: #1a4731;
+  color: #ffffff;
+  padding: 7pt 9pt;
+  text-align: left;
+  font-weight: 700;
+  font-size: 9pt;
+}
+
+td {
+  padding: 5pt 9pt;
+  border-bottom: 0.5pt solid #e2e8f0;
+  vertical-align: top;
+}
+
+tr:nth-child(even) td { background: #f8fafc; }
+
+/* ── Code / pre ──────────────────────────────────────────────────────── */
+code {
+  font-family: 'Courier New', Courier, monospace;
+  background: #f1f5f9;
+  padding: 1pt 4pt;
+  border-radius: 3pt;
+  font-size: 9pt;
+  color: #0f172a;
+}
+
+pre {
+  font-family: 'Courier New', Courier, monospace;
+  background: #f1f5f9;
+  padding: 10pt 12pt;
+  border-radius: 4pt;
+  font-size: 9pt;
+  margin: 10pt 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Tip / warning boxes ─────────────────────────────────────────────── */
+.tip-box {
+  background: #edfae8;
+  border-left: 4pt solid #6aaa57;
+  padding: 9pt 13pt;
+  margin: 12pt 0;
+  border-radius: 0 4pt 4pt 0;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+
+.tip-box strong { color: #1a4731; }
+
+.warning-box {
+  background: #fef3c7;
+  border-left: 4pt solid #d97706;
+  padding: 9pt 13pt;
+  margin: 12pt 0;
+  border-radius: 0 4pt 4pt 0;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+
+.warning-box strong { color: #92400e; }
+
+/* ── Section intro ───────────────────────────────────────────────────── */
+.section-intro {
+  background: #f0fdf4;
+  border: 1pt solid #bbf7d0;
+  border-radius: 5pt;
+  padding: 10pt 13pt;
+  margin-bottom: 16pt;
+  font-size: 10pt;
+  color: #166534;
+}
+
+/* ── Step list ───────────────────────────────────────────────────────── */
+.step-list { list-style: none; margin-left: 0; counter-reset: steps; }
+.step-list li {
+  counter-increment: steps;
+  padding-left: 28pt;
+  position: relative;
+  margin-bottom: 8pt;
+}
+.step-list li::before {
+  content: counter(steps);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18pt;
+  height: 18pt;
+  background: #1a4731;
+  color: white;
+  border-radius: 50%;
+  font-size: 8.5pt;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 18pt;
+}
+
+/* ── Sub-section divider ─────────────────────────────────────────────── */
+.sub-divider {
+  border: none;
+  border-top: 0.5pt solid #e2e8f0;
+  margin: 16pt 0;
+}
+
+/* ── Grade badge ─────────────────────────────────────────────────────── */
+.grade-badge {
+  display: inline-block;
+  background: #1a4731;
+  color: white;
+  font-weight: 700;
+  font-size: 11pt;
+  padding: 2pt 8pt;
+  border-radius: 4pt;
+  margin-right: 4pt;
+}
+
+/* ── Keep together ───────────────────────────────────────────────────── */
+.keep-together { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  COVER PAGE                                                        -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="cover-page">
+
+  <div class="cover-logo-badge">
+    <span class="cover-logo-initials">FQ</span>
+  </div>
+
+  <div class="cover-brand">FlockIQ</div>
+  <div class="cover-tagline">AI-Powered Poultry Farm Management</div>
+
+  <hr class="cover-rule">
+
+  <div class="cover-doc-title">User Manual</div>
+
+  <div class="cover-meta">
+    <div><strong>Version:</strong> {{ version }}</div>
+    <div><strong>Generated:</strong> {{ generated_date }}</div>
+    <div><strong>Support:</strong> {{ support_email }}</div>
+    <div><strong>Platform:</strong> {{ site_url }}</div>
+  </div>
+
+  <div class="cover-footer">
+    Published by ADM Tech Hub &nbsp;·&nbsp; Confidential &nbsp;·&nbsp; © 2026 FlockIQ
+  </div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  TABLE OF CONTENTS                                                 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="toc">
+  <div class="toc-title">Table of Contents</div>
+
+  <div class="toc-section-group">
+    <div class="toc-item">
+      <span class="toc-item-num">1</span>
+      <span class="toc-item-title">Getting Started</span>
+      <span class="toc-item-page">3</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-item-num">2</span>
+      <span class="toc-item-title">Daily Farm Operations</span>
+      <span class="toc-item-page">8</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-item-num">3</span>
+      <span class="toc-item-title">AI Insights</span>
+      <span class="toc-item-page">14</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-item-num">4</span>
+      <span class="toc-item-title">Farm Credit Score</span>
+      <span class="toc-item-page">18</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-item-num">5</span>
+      <span class="toc-item-title">Market Intelligence</span>
+      <span class="toc-item-page">22</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-item-num">6</span>
+      <span class="toc-item-title">Batch Management</span>
+      <span class="toc-item-page">26</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-item-num">7</span>
+      <span class="toc-item-title">Billing &amp; Subscription</span>
+      <span class="toc-item-page">30</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-item-num">8</span>
+      <span class="toc-item-title">Team Management</span>
+      <span class="toc-item-page">34</span>
+    </div>
+    <div class="toc-item">
+      <span class="toc-item-num">9</span>
+      <span class="toc-item-title">Support &amp; Troubleshooting</span>
+      <span class="toc-item-page">37</span>
+    </div>
+  </div>
+
+  <div style="margin-top: 28pt; padding: 12pt; background: #f0fdf4; border-radius: 5pt; font-size: 9.5pt; color: #166534;">
+    <strong>How to use this manual:</strong> Each section covers a specific area of FlockIQ.
+    Start with Section 1 if you are new to the platform. Experienced users can jump directly
+    to the section they need. All features described are available on paid plans.
+    Some AI features require a minimum of 21 days of data before they activate.
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  SECTION 1 — GETTING STARTED                                       -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h1>1. Getting Started</h1>
+
+<h2>1.1 What Is FlockIQ?</h2>
+<p>
+FlockIQ is an AI-powered poultry farm management platform built for Nigerian and West African
+farmers. It replaces paper logbooks with a structured digital system that tracks mortality,
+feed consumption, egg production, water usage, vaccinations, and farm finances — then turns that
+data into clear, actionable insights.
+</p>
+<p>
+Every calculation uses real breed standards published by Cobb, Ross, Hy-Line, and ISA — so when
+FlockIQ tells you your FCR is poor, it is comparing your performance against the same benchmarks
+used by commercial integrators worldwide.
+</p>
+
+<h2>1.2 Who Should Use FlockIQ?</h2>
+<table>
+  <tr><th>Role</th><th>How FlockIQ Helps</th></tr>
+  <tr><td><strong>Farm Owner</strong></td><td>Track profitability per batch, view the Farm Credit Score, manage subscriptions and team access</td></tr>
+  <tr><td><strong>Farm Manager</strong></td><td>Monitor all operational metrics, receive anomaly alerts, review AI Daily Brief</td></tr>
+  <tr><td><strong>Supervisor</strong></td><td>Oversee data entry for assigned houses, manage daily tasks</td></tr>
+  <tr><td><strong>Data Entry Staff</strong></td><td>Log daily mortality, feed, eggs, and water records</td></tr>
+  <tr><td><strong>Vet Advisor</strong></td><td>Access health records and vaccination schedules</td></tr>
+</table>
+
+<h2>1.3 System Requirements</h2>
+<table>
+  <tr><th>Requirement</th><th>Minimum</th><th>Recommended</th></tr>
+  <tr><td>Browser</td><td>Chrome 90, Firefox 90, Safari 15, Edge 90</td><td>Chrome (latest version)</td></tr>
+  <tr><td>Internet</td><td>2G/EDGE (offline mode available)</td><td>3G or Wi-Fi</td></tr>
+  <tr><td>Device</td><td>Smartphone (320px screen)</td><td>Tablet or laptop</td></tr>
+</table>
+
+<div class="tip-box">
+  <strong>✅ No installation required.</strong> FlockIQ runs entirely in your web browser.
+  Offline data entry works automatically — records sync when connectivity is restored.
+</div>
+
+<h2>1.4 Creating Your Account</h2>
+<ol class="step-list">
+  <li>Visit <strong>{{ site_url }}/signup/</strong> in your browser.</li>
+  <li>Enter your full name, email address, phone number, and a password.</li>
+  <li>Select your country and state/region — this sets your currency (₦ NGN) and timezone (WAT).</li>
+  <li>Enter your farm or business name. This becomes your organisation name and determines your unique subdomain (e.g., <code>myfarm.flockiq.com</code>).</li>
+  <li>Click <strong>Create Account</strong>. You will be taken to an email verification page.</li>
+</ol>
+
+<h2>1.5 Email Verification</h2>
+<p>
+After signing up, FlockIQ sends a confirmation email from <strong>noreply@flockiq.com</strong>
+to the address you registered. Click the <strong>Verify Email</strong> button in that email.
+The link expires after 1 hour.
+</p>
+
+<div class="warning-box">
+  <strong>⚠️ Did not receive the email?</strong> Check your spam or junk folder.
+  If the link has expired, log in and click <strong>Resend Verification Email</strong>
+  from the banner displayed on your dashboard.
+</div>
+
+<h2>1.6 Completing Onboarding (3 Steps)</h2>
+<p>
+After email verification, a setup wizard guides you through three steps that must be completed
+before the dashboard activates.
+</p>
+
+<div class="keep-together">
+<h3>Step 1 — Create Your Farm</h3>
+<p>Enter your farm's name, location (address), and state. A farm is your physical property.
+You can add multiple farms under one account.</p>
+
+<h3>Step 2 — Add a House (Pen)</h3>
+<p>A house is a structure on your farm where birds are kept. Enter the house name and capacity
+(maximum birds it can hold). One farm can have many houses.</p>
+
+<h3>Step 3 — Start Your First Batch</h3>
+<p>A batch is one production cycle inside a house. Select:</p>
+<ul>
+  <li><strong>Bird type</strong> — Broiler or Layer</li>
+  <li><strong>Breed</strong> — Cobb 500, Ross 308, Hy-Line Brown, ISA Brown, or a custom name</li>
+  <li><strong>Placement date</strong> — when day-old chicks (DOCs) were placed</li>
+  <li><strong>Initial count</strong> — number of DOCs placed</li>
+  <li><strong>Hatchery</strong> (optional) — where DOCs were sourced (links to the Hatchery Directory)</li>
+</ul>
+</div>
+
+<h2>1.7 Understanding Your Dashboard</h2>
+<p>The main dashboard appears as soon as onboarding is complete. It shows:</p>
+<table>
+  <tr><th>Dashboard Card</th><th>What It Shows</th></tr>
+  <tr><td><strong>Active Batches</strong></td><td>All currently running production cycles across all farms, with live bird count</td></tr>
+  <tr><td><strong>Today's Tasks</strong></td><td>System-generated and custom tasks due today, with completion status</td></tr>
+  <tr><td><strong>AI Insights</strong></td><td>Latest anomaly alerts, 14-day egg forecasts, and harvest recommendations</td></tr>
+  <tr><td><strong>Weather</strong></td><td>Current temperature and conditions at your farm location</td></tr>
+  <tr><td><strong>Recent Activity</strong></td><td>The last 10 data entries across all batches</td></tr>
+  <tr><td><strong>Farm Credit Score</strong></td><td>Your current grade and score (visible after at least 1 closed batch)</td></tr>
+</table>
+
+<div class="tip-box">
+  <strong>Quick Actions:</strong> The top navigation bar gives access to Farms, Batches,
+  Production, Health, Finance, Market Intelligence, and Settings. The search bar (top centre)
+  finds any batch, farm, task, or health record instantly.
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  SECTION 2 — DAILY FARM OPERATIONS                                 -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h1>2. Daily Farm Operations</h1>
+
+<div class="section-intro">
+  <strong>Why daily logging matters:</strong> Feed represents approximately 70% of total poultry
+  production costs. Consistent daily records are the foundation of your Farm Credit Score and
+  the data that powers every AI insight. Missing a week of logs is not just an operational gap —
+  it reduces your credit score and delays anomaly detection.
+</div>
+
+<h2>2.1 Logging Mortality</h2>
+<p>Record the number of birds that died on a given day. Navigate to
+<strong>Batches → [Batch Name] → Mortality Log → Record Mortality</strong>.</p>
+
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td>Date</td><td>Date the deaths occurred (defaults to today)</td></tr>
+  <tr><td>Count</td><td>Number of birds that died</td></tr>
+  <tr><td>Cause</td><td>Newcastle Disease, Coccidiosis, Heat Stress, Injury, Unknown (optional)</td></tr>
+  <tr><td>Notes</td><td>Free-text observations (optional)</td></tr>
+</table>
+
+<p><strong>What happens after you save:</strong></p>
+<ul>
+  <li>The batch's live bird count is reduced automatically.</li>
+  <li>The system compares today's mortality against your rolling 30-day average using a Z-score test.</li>
+  <li>If the count is statistically unusual, an anomaly alert is sent via SMS and in-app notification to your farm manager.</li>
+  <li>A financial write-down is posted to the farm ledger for accounting.</li>
+</ul>
+
+<div class="warning-box">
+  <strong>⚠️ Validation:</strong> You cannot log more deaths than the current live bird count.
+  The form will reject the entry with an error message.
+</div>
+
+<h2>2.2 Logging Feed Consumption</h2>
+<p>Navigate to <strong>Batches → [Batch Name] → Feed Log → Record Feed</strong>.</p>
+
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td>Date</td><td>Feed date (defaults to today)</td></tr>
+  <tr><td>Feed Type</td><td>Starter, Grower, Finisher, Layer Mash, Layer Chick Mash</td></tr>
+  <tr><td>Quantity (kg)</td><td>Kilograms of feed given to the batch</td></tr>
+  <tr><td>Brand</td><td>TopFeeds, Chikun, Ultima, Animal Care, Hybrid, Other (optional)</td></tr>
+</table>
+
+<p>The system accumulates feed data and uses it to calculate your <strong>Feed Conversion Ratio (FCR)</strong> — the kg of feed required per kg of live weight gained.</p>
+
+<table>
+  <tr><th>Breed</th><th>Target FCR</th><th>Rating at Target</th></tr>
+  <tr><td>Cobb 500 (Broiler)</td><td>≤ 1.80</td><td>Good</td></tr>
+  <tr><td>Ross 308 (Broiler)</td><td>≤ 1.75</td><td>Good</td></tr>
+  <tr><td>Hy-Line Brown (Layer)</td><td>≤ 2.20</td><td>Good</td></tr>
+  <tr><td>ISA Brown (Layer)</td><td>≤ 2.10</td><td>Good</td></tr>
+</table>
+
+<h2>2.3 Logging Egg Production (Layers)</h2>
+<p>Navigate to <strong>Batches → [Batch Name] → Production → Log Eggs</strong>.</p>
+
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td>Date</td><td>Collection date</td></tr>
+  <tr><td>Total Eggs</td><td>Total eggs collected that day</td></tr>
+  <tr><td>Cracked / Dirty</td><td>Damaged eggs, subtracted from marketable count</td></tr>
+  <tr><td>Live Hen Count</td><td>Current live hens on this date</td></tr>
+</table>
+
+<p>The system calculates <strong>Hen-Day Percentage (HDP)</strong> — the proportion of live hens
+that laid an egg today. For Hy-Line Brown, the target is ≥ 85%.</p>
+
+<h2>2.4 Logging Water Consumption</h2>
+<p>Navigate to <strong>Batches → [Batch Name] → Water Log → Record Water</strong>.</p>
+
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td>Date</td><td>Log date</td></tr>
+  <tr><td>Volume (litres)</td><td>Total litres consumed that day</td></tr>
+  <tr><td>Source</td><td>Borehole, Municipal, Rainwater, Other</td></tr>
+  <tr><td>Temperature (°C)</td><td>Ambient temperature (used to adjust expected intake)</td></tr>
+</table>
+
+<div class="tip-box">
+  <strong>Heat adjustment:</strong> Every degree above 25°C adds 10% to the expected water
+  requirement. During hot weather, ensure drinkers are always full — water stress reduces
+  both growth rates and egg production within hours.
+</div>
+
+<h2>2.5 Recording Vaccinations</h2>
+<p>Navigate to <strong>Health → Vaccinations → Record Vaccination</strong>.</p>
+
+<table>
+  <tr><th>Field</th><th>Description</th></tr>
+  <tr><td>Batch</td><td>The batch being vaccinated</td></tr>
+  <tr><td>Vaccine Name</td><td>Newcastle (Lasota), Gumboro, Marek's, Infectious Bronchitis, etc.</td></tr>
+  <tr><td>Date Administered</td><td>Actual administration date</td></tr>
+  <tr><td>Method</td><td>Drinking water, Eye drop, Injection, Spray</td></tr>
+  <tr><td>Next Due Date</td><td>System sends a reminder 48 hours before this date</td></tr>
+  <tr><td>Administered By</td><td>Staff member who performed the vaccination</td></tr>
+</table>
+
+<h2>2.6 Managing Daily Tasks</h2>
+<p>
+FlockIQ generates daily tasks automatically at midnight based on your active batches.
+These include daily mortality count, feed weighing, egg collection, water log, weekly weight
+sampling (broilers), and vaccination reminders.
+</p>
+<p>To create a custom task: go to <strong>Tasks → New Task</strong>, enter the title, assign it
+to a team member, and set a due date. The assigned person receives an in-app notification.</p>
+
+<div class="warning-box">
+  <strong>⚠️ Incomplete tasks are reported daily.</strong> At 18:00 WAT, an automated report
+  of all incomplete tasks is sent to the farm manager. Consistently incomplete tasks reduce
+  your Operational Consistency sub-score.
+</div>
+
+<div class="tip-box">
+  <strong>✅ Consistent daily logging improves your Farm Credit Score.</strong>
+  The Operational Consistency component (20% of your score) measures how regularly you
+  log data across each batch's lifetime. Even logging zero mortality is valuable —
+  it proves you checked and the flock is healthy.
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  SECTION 3 — AI INSIGHTS                                           -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h1>3. AI Insights</h1>
+
+<h2>3.1 AI Daily Brief</h2>
+<p>
+The AI Daily Brief appears at the top of your dashboard each morning. It is generated overnight
+(between 01:00 and 06:30 WAT) and summarises the most important signals across all your active batches.
+</p>
+
+<table>
+  <tr><th>Brief Section</th><th>What It Shows</th></tr>
+  <tr><td>Mortality Status</td><td>Whether yesterday's mortality was within the normal range or statistically unusual</td></tr>
+  <tr><td>Egg Production Forecast</td><td>Predicted hen-day percentage for the next 14 days (layer batches only)</td></tr>
+  <tr><td>Feed Efficiency</td><td>Current FCR compared to your breed benchmark and trend direction</td></tr>
+  <tr><td>Water Requirement</td><td>Today's recommended water target in litres based on current temperature</td></tr>
+  <tr><td>Upcoming Vaccinations</td><td>Any doses due in the next 7 days across all batches</td></tr>
+</table>
+
+<div class="warning-box">
+  <strong>⚠️ Data requirements:</strong> The egg forecast requires at least <strong>21 days</strong>
+  of egg production logs. Anomaly detection requires at least <strong>7 days</strong> of mortality
+  logs. The brief will appear partially until these thresholds are met.
+</div>
+
+<h2>3.2 Farm Memory</h2>
+<p>
+Farm Memory is FlockIQ's learning system. Every night at 01:00 WAT, the platform recomputes
+performance baselines from your closed batches:
+</p>
+<ul>
+  <li>Average daily mortality by batch age and season</li>
+  <li>Typical FCR trajectory by breed</li>
+  <li>Normal egg production curve for your flock type and local conditions</li>
+</ul>
+<p>
+These baselines make anomaly detection more accurate over time. After 3 closed batches,
+FlockIQ alerts you to deviations specific to your farm — not generic breed averages.
+After 6 batches, your Farm Credit Score reaches <strong>Established</strong> confidence level.
+</p>
+
+<h2>3.3 Proactive Alerts</h2>
+<p>Alerts are sent via <strong>SMS</strong> (to your registered phone) and <strong>in-app notifications</strong>
+(bell icon in the top navigation).</p>
+
+<table>
+  <tr><th>Alert Type</th><th>Trigger Condition</th><th>Recommended Action</th></tr>
+  <tr><td>Mortality Anomaly</td><td>Today's deaths exceed 2.5 standard deviations above the 30-day average</td><td>Inspect the flock immediately. Check for disease outbreak, equipment failure, or predator entry</td></tr>
+  <tr><td>Water Drop</td><td>Consumption is more than 20% below expected for the ambient temperature</td><td>Check drinkers, water pressure, and pipe blockages</td></tr>
+  <tr><td>Production Drop</td><td>Layer HDP falls more than 10 percentage points in 3 days</td><td>Check nutrition, lighting schedule, and disease status</td></tr>
+  <tr><td>Vaccination Due</td><td>Next dose is due within 48 hours</td><td>Prepare vaccine and schedule administration</td></tr>
+  <tr><td>Incomplete Tasks</td><td>Daily tasks not completed by 18:00 WAT</td><td>Complete overdue logs or reassign tasks</td></tr>
+  <tr><td>Subscription Expiring</td><td>Plan expires in 7, 3, or 1 day</td><td>Renew via Settings → Billing to avoid read-only mode</td></tr>
+</table>
+
+<h2>3.4 Harvest Timing Optimizer</h2>
+<p>
+For broiler batches, FlockIQ monitors live weight progression and current market prices to
+recommend the optimal harvest window. Navigate to
+<strong>Batches → [Batch Name] → Analytics → Harvest Recommendation</strong>.
+</p>
+
+<table>
+  <tr><th>Recommendation</th><th>Meaning</th></tr>
+  <tr><td><strong>Sell Now</strong></td><td>FCR is worsening fast — every additional day reduces your margin. Harvest before weight gain efficiency falls further</td></tr>
+  <tr><td><strong>Wait</strong></td><td>FCR is still improving and target weight has not been reached. Additional days add profitable weight</td></tr>
+  <tr><td><strong>Monitor</strong></td><td>FCR is near the breakeven point — watch daily and decide within 3–5 days</td></tr>
+</table>
+
+<h2>3.5 Feed Efficiency Scoring</h2>
+<p>
+Navigate to <strong>Batches → [Batch Name] → Analytics → Feed Efficiency</strong> for a
+week-by-week comparison of your FCR against the breed standard.
+</p>
+
+<table>
+  <tr><th>FCR Rating</th><th>Definition</th></tr>
+  <tr><td><strong>Excellent</strong></td><td>FCR is 5% or more better than the breed target</td></tr>
+  <tr><td><strong>Good</strong></td><td>FCR meets the breed target exactly</td></tr>
+  <tr><td><strong>Acceptable</strong></td><td>FCR is within 10% above target</td></tr>
+  <tr><td><strong>Poor</strong></td><td>FCR exceeds target by more than 10% — investigate feed quality and feeding programme</td></tr>
+</table>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  SECTION 4 — FARM CREDIT SCORE                                     -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h1>4. Farm Credit Score</h1>
+
+<h2>4.1 What Is the Farm Credit Score?</h2>
+<p>
+The Farm Credit Score is a 0–100 numerical rating of your farm's operational and financial
+performance across all closed batches. It is designed to serve as a credibility document when
+applying for farm input loans, feed credit, or agricultural grant programmes.
+</p>
+<p>
+The score is computed nightly at <strong>03:00 WAT</strong> using data from your most recent
+12 closed batches. It is accompanied by a letter <strong>grade</strong> (A+ to F) and a
+<strong>confidence level</strong> that tells a lender how much history backs the score.
+</p>
+
+<h2>4.2 The 6 Sub-Scores</h2>
+<table>
+  <tr><th>Sub-Score</th><th>Weight</th><th>What It Measures</th></tr>
+  <tr><td><strong>Financial Health</strong></td><td>30%</td><td>Consistency of profit margin across batches. Evaluated from BatchFinancialSummary records</td></tr>
+  <tr><td><strong>Operational Consistency</strong></td><td>20%</td><td>Regularity of daily data logging — mortality and feed logs relative to batch duration</td></tr>
+  <tr><td><strong>Mortality Management</strong></td><td>20%</td><td>Cumulative mortality rate per batch versus industry benchmarks</td></tr>
+  <tr><td><strong>Feed Efficiency</strong></td><td>15%</td><td>FCR versus breed benchmark for broiler batches. Layers receive a neutral 70 score</td></tr>
+  <tr><td><strong>Platform Engagement</strong></td><td>10%</td><td>Regularity of on-time subscription payments relative to months on platform</td></tr>
+  <tr><td><strong>Payment History</strong></td><td>5%</td><td>Plan tier commitment: Yearly (100) &gt; Monthly (80) &gt; Cycle (70) &gt; Trial (50)</td></tr>
+</table>
+
+<h3>Financial Health Scoring</h3>
+<table>
+  <tr><th>Profit Margin (per batch)</th><th>Sub-Score</th></tr>
+  <tr><td>≥ 30%</td><td>100</td></tr>
+  <tr><td>20 – 29%</td><td>80</td></tr>
+  <tr><td>10 – 19%</td><td>60</td></tr>
+  <tr><td>0 – 9%</td><td>40</td></tr>
+  <tr><td>Negative (loss)</td><td>20</td></tr>
+</table>
+
+<h3>Mortality Management Scoring</h3>
+<table>
+  <tr><th>Cumulative Mortality Rate</th><th>Sub-Score</th></tr>
+  <tr><td>Less than 2%</td><td>100</td></tr>
+  <tr><td>2% – 4.9%</td><td>80</td></tr>
+  <tr><td>5% – 9.9%</td><td>60</td></tr>
+  <tr><td>10% – 14.9%</td><td>40</td></tr>
+  <tr><td>15% or above</td><td>20</td></tr>
+</table>
+
+<h2>4.3 Grade Scale and Confidence Levels</h2>
+<table>
+  <tr><th>Score</th><th>Grade</th><th>Interpretation</th></tr>
+  <tr><td>90 – 100</td><td><span class="grade-badge">A+</span></td><td>Exceptional performance — very strong lending candidate</td></tr>
+  <tr><td>80 – 89</td><td><span class="grade-badge">A</span></td><td>Strong performance — reliable farming operation</td></tr>
+  <tr><td>70 – 79</td><td><span class="grade-badge">B</span></td><td>Good performance — above average operation</td></tr>
+  <tr><td>60 – 69</td><td><span class="grade-badge">C</span></td><td>Average performance — room for improvement</td></tr>
+  <tr><td>50 – 59</td><td><span class="grade-badge">D</span></td><td>Below average — requires operational improvements</td></tr>
+  <tr><td>Below 50</td><td><span class="grade-badge">F</span></td><td>Poor performance — address underlying issues first</td></tr>
+</table>
+
+<table>
+  <tr><th>Closed Batches</th><th>Confidence Level</th><th>Lender Guidance</th></tr>
+  <tr><td>1 – 2</td><td><strong>Early</strong></td><td>Indicative only — insufficient history for full assessment</td></tr>
+  <tr><td>3 – 5</td><td><strong>Growing</strong></td><td>Increasingly reliable — consider alongside other documentation</td></tr>
+  <tr><td>6 or more</td><td><strong>Established</strong></td><td>Strong historical basis — suitable for lending decisions</td></tr>
+</table>
+
+<h2>4.4 How to Improve Your Score</h2>
+<table>
+  <tr><th>Target Area</th><th>Actions That Help Your Score</th></tr>
+  <tr><td>Financial Health</td><td>Reduce feed wastage, improve selling price negotiations, track all expenses</td></tr>
+  <tr><td>Operational Consistency</td><td>Log data every single day — even if nothing unusual happened</td></tr>
+  <tr><td>Mortality Management</td><td>Maintain biosecurity protocols, vaccinate on schedule, manage heat stress</td></tr>
+  <tr><td>Feed Efficiency</td><td>Source quality DOCs, weigh feed accurately, avoid overfeeding in early weeks</td></tr>
+  <tr><td>Platform Engagement</td><td>Renew subscriptions on time; avoid lapses that break payment continuity</td></tr>
+  <tr><td>Payment History</td><td>Upgrade to a Yearly plan for the maximum payment history score</td></tr>
+</table>
+
+<h2>4.5 Downloading Your PDF Report</h2>
+<p>Navigate to <strong>Finance → Farm Credit Score → Download PDF Report</strong>.</p>
+<p>The PDF report includes your farm name, organisation ID, report date, overall score and grade,
+a bar chart of all six sub-scores, key statistics (average profit margin, mortality rate, FCR,
+total birds managed, months on platform), and a verification statement for lenders.</p>
+
+<div class="warning-box">
+  <strong>⚠️ Disclaimer:</strong> The Farm Credit Score is for informational purposes only.
+  FlockIQ does not guarantee loan approval, credit decisions, or any financial outcome.
+  The score represents performance metrics and does not constitute a financial advice or
+  a formal credit assessment. Lending decisions remain at the sole discretion of the
+  financial institution.
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  SECTION 5 — MARKET INTELLIGENCE                                   -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h1>5. Market Intelligence</h1>
+
+<h2>5.1 Feed Price Tracker</h2>
+<p>
+The Feed Price Tracker is a crowdsourced database of feed prices submitted by FlockIQ users
+across Nigeria. Prices are aggregated anonymously — your individual submission is never shown
+to other users. Only regional averages and trends are displayed.
+</p>
+
+<h3>How to Submit a Price Report</h3>
+<ol class="step-list">
+  <li>Navigate to <strong>Market → Feed Prices</strong>.</li>
+  <li>Click <strong>Report a Price</strong>.</li>
+  <li>Select the <strong>feed type</strong> (Broiler Starter, Broiler Grower, Broiler Finisher, Layer Mash, or Layer Chick Mash).</li>
+  <li>Select the <strong>brand</strong> (TopFeeds, Chikun, Ultima, Animal Care, Hybrid, or Other).</li>
+  <li>Enter the <strong>price per 25 kg bag</strong> in Naira.</li>
+  <li>Select your <strong>state</strong> and <strong>LGA</strong> (Local Government Area).</li>
+  <li>Click <strong>Submit</strong>.</li>
+</ol>
+
+<h3>Reading the Price Intelligence Dashboard</h3>
+<p>The price chart shows the community average price per 25 kg bag for each feed type over the
+past 30 days. Filter by feed type, brand, and state/region. A trend line shows whether prices
+are rising, falling, or stable in your area.</p>
+
+<div class="tip-box">
+  <strong>Why anonymity matters:</strong> No individual farm's prices are ever attributed.
+  This encourages honest reporting and prevents market distortion. Your submission contributes
+  to a fair price index that benefits every farmer who uses the platform.
+</div>
+
+<h2>5.2 Hatchery Directory</h2>
+<p>
+The Hatchery Directory lists verified and farmer-reported day-old chick (DOC) suppliers across
+Nigeria. Navigate to <strong>Market → Hatcheries</strong>.
+</p>
+
+<table>
+  <tr><th>Directory Column</th><th>Description</th></tr>
+  <tr><td>Name &amp; Location</td><td>Hatchery name, state, LGA, and contact information</td></tr>
+  <tr><td>Bird Types</td><td>Broiler, Layer, Noiler, Turkey — filter by your requirement</td></tr>
+  <tr><td>Verified Badge</td><td>ADM Tech Hub has confirmed the hatchery is actively operating</td></tr>
+  <tr><td>Community Rating</td><td>Average scores for DOC quality, delivery reliability, and overall satisfaction from farmer reviews</td></tr>
+</table>
+
+<h3>Rating a Hatchery After Batch Close</h3>
+<p>
+When you close a batch that was linked to a hatchery at creation, FlockIQ automatically
+prompts: <em>"Rate your DOC supplier for this batch."</em>
+</p>
+
+<table>
+  <tr><th>Rating Criteria</th><th>Scale</th></tr>
+  <tr><td>DOC Quality</td><td>1 – 5 stars (health and uniformity of chicks received)</td></tr>
+  <tr><td>Survival Rate (%)</td><td>Your batch's actual survival rate from placement to close</td></tr>
+  <tr><td>Delivery Reliability</td><td>1 – 5 stars (on-time delivery as promised)</td></tr>
+  <tr><td>Overall Rating</td><td>1 – 5 stars (your overall satisfaction)</td></tr>
+</table>
+
+<p>Reviews are posted anonymously — your farm name is never shown on the directory listing.</p>
+
+<h3>Suggesting a New Hatchery</h3>
+<p>If you purchased DOCs from a hatchery not yet listed, click <strong>Suggest a Hatchery</strong>
+on the directory page. Provide the name, state, LGA, and any available contact details.
+ADM Tech Hub reviews and publishes verified suggestions within 5 business days.</p>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  SECTION 6 — BATCH MANAGEMENT                                      -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h1>6. Batch Management</h1>
+
+<h2>6.1 Creating a Batch</h2>
+<p>Navigate to <strong>Batches → New Batch</strong> or select a house on the Farms page and click
+<strong>Start Batch</strong>.</p>
+
+<table>
+  <tr><th>Field</th><th>Required</th><th>Description</th></tr>
+  <tr><td>Batch Name</td><td>Yes</td><td>A name to identify this cycle (e.g., "April Broiler Run")</td></tr>
+  <tr><td>Farm</td><td>Yes</td><td>The farm this batch belongs to</td></tr>
+  <tr><td>House</td><td>Yes</td><td>The pen or house within that farm</td></tr>
+  <tr><td>Bird Type</td><td>Yes</td><td>Broiler or Layer</td></tr>
+  <tr><td>Breed</td><td>Yes</td><td>Cobb 500, Ross 308, Hy-Line Brown, ISA Brown, or custom name</td></tr>
+  <tr><td>Placement Date</td><td>Yes</td><td>Date DOCs were placed in the house</td></tr>
+  <tr><td>Initial Count</td><td>Yes</td><td>Number of DOCs placed</td></tr>
+  <tr><td>Hatchery</td><td>No</td><td>Select from the Hatchery Directory — enables post-close rating</td></tr>
+  <tr><td>DOC Price per Chick (₦)</td><td>No</td><td>Price paid per DOC — used in financial calculations</td></tr>
+  <tr><td>Supplier Name</td><td>No</td><td>Hatchery name if not yet in the directory</td></tr>
+</table>
+
+<h2>6.2 Batch Lifecycle</h2>
+<p>Every batch follows a simple state model:</p>
+<table>
+  <tr><th>State</th><th>Meaning</th><th>Data Entry</th></tr>
+  <tr><td><strong>Active</strong></td><td>Currently running — birds are in the house</td><td>Fully open — all daily logs accepted</td></tr>
+  <tr><td><strong>Closed</strong></td><td>Harvested normally</td><td>Locked — analytics and P&amp;L generated</td></tr>
+  <tr><td><strong>Culled</strong></td><td>Emergency termination before planned harvest</td><td>Locked — flagged separately in reports</td></tr>
+</table>
+
+<h2>6.3 Closing a Batch</h2>
+<p>Navigate to <strong>Batches → [Batch Name] → Close Batch</strong>.</p>
+
+<h3>For Broiler Batches</h3>
+<ul>
+  <li><strong>Final bird count</strong> — live birds at point of harvest</li>
+  <li><strong>Total live weight (kg)</strong> — used for final FCR calculation</li>
+  <li><strong>Sale price per kg (₦)</strong> — used for revenue and profit calculation</li>
+  <li><strong>Harvest date</strong></li>
+</ul>
+
+<h3>For Layer Batches</h3>
+<ul>
+  <li><strong>Depletion count</strong> — hens sold or culled at batch end</li>
+  <li><strong>Spent layer price per bird (₦)</strong></li>
+  <li><strong>Closing date</strong></li>
+</ul>
+
+<p><strong>After closing, the system generates:</strong></p>
+<ul>
+  <li>A final Batch Performance Report (FCR, mortality rate, hen-day average for layers)</li>
+  <li>A Profit &amp; Loss Summary for the batch</li>
+  <li>An updated Farm Credit Score (recomputed at 03:00 the following night)</li>
+  <li>A hatchery rating prompt (if the batch was linked to a hatchery)</li>
+</ul>
+
+<h2>6.4 Reading Batch Analytics</h2>
+<p>Navigate to <strong>Batches → [Batch Name] → Analytics</strong>.</p>
+
+<table>
+  <tr><th>Analytics Section</th><th>Contents</th></tr>
+  <tr><td>Performance Summary</td><td>Final FCR, cumulative mortality rate, average HDP (layers), total days in cycle</td></tr>
+  <tr><td>Weekly Trend Charts</td><td>Mortality, feed consumption, and egg production over the batch lifetime</td></tr>
+  <tr><td>Breed Benchmark Comparison</td><td>Your actual results versus the breed standard week by week</td></tr>
+  <tr><td>Financial Summary</td><td>Revenue, feed cost, medication cost, mortality loss, gross profit, profit margin</td></tr>
+  <tr><td>AI Forecast</td><td>Remaining predicted egg production for active layer batches (14-day horizon)</td></tr>
+</table>
+
+<div class="tip-box">
+  <strong>Exporting Batch Data:</strong> PDF and Excel exports are available from the batch
+  analytics page. PDF export requires the <code>pdf_export</code> feature to be enabled on your
+  subscription plan. Excel export is available on all paid plans.
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  SECTION 7 — BILLING & SUBSCRIPTION                                -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h1>7. Billing &amp; Subscription</h1>
+
+<h2>7.1 Plan Comparison</h2>
+<table>
+  <tr><th>Plan</th><th>Price</th><th>Duration</th><th>Best For</th></tr>
+  <tr><td><strong>Free Trial</strong></td><td>₦0</td><td>14 days</td><td>New farmers evaluating the platform — all features included</td></tr>
+  <tr><td><strong>Monthly</strong></td><td>₦30,000</td><td>30 days</td><td>Active farms wanting flexible monthly commitment</td></tr>
+  <tr><td><strong>Cycle</strong></td><td>₦15,000</td><td>42 days (per active broiler batch)</td><td>Broiler farmers who want to pay per production cycle</td></tr>
+  <tr><td><strong>Yearly</strong></td><td>₦250,000</td><td>365 days</td><td>Established farms seeking the best value and highest Credit Score</td></tr>
+</table>
+
+<p>All prices are in Nigerian Naira (₦) and processed by <strong>Paystack</strong>, Nigeria's
+leading payment gateway. FlockIQ never stores your card details.</p>
+
+<h2>7.2 What Happens When Your Trial Expires</h2>
+<p>Your 14-day trial provides full access to all features. A countdown banner appears at the
+top of every page during the final 7 days. Reminder notifications are sent at 7, 3, and 1 day
+before expiry.</p>
+
+<p>When the trial ends your account enters <strong>read-only mode</strong>:</p>
+<ul>
+  <li>All your existing data remains visible and accessible</li>
+  <li>New data entry (mortality, feed, eggs, water) is blocked</li>
+  <li>A "Subscribe Now" banner appears on the dashboard</li>
+  <li>No data is ever deleted due to trial expiry</li>
+</ul>
+
+<h2>7.3 Renewing Your Plan</h2>
+<ol class="step-list">
+  <li>Navigate to <strong>Settings → Billing</strong> (or click the subscription banner).</li>
+  <li>Select your preferred plan — Monthly, Cycle, or Yearly.</li>
+  <li>Click <strong>Subscribe</strong> — you will be redirected to the Paystack checkout.</li>
+  <li>Enter your card details or complete via bank transfer or USSD.</li>
+  <li>Your account is activated immediately upon successful payment.</li>
+</ol>
+
+<p>You will receive an email receipt from Paystack and an in-app notification confirming activation.</p>
+
+<h2>7.4 What Lapsed Access Means</h2>
+<p>If you are on a paid plan and the plan expires without renewal, your account enters
+<strong>lapsed</strong> status:</p>
+<ul>
+  <li>All existing data remains fully visible (read-only)</li>
+  <li>New data entry is blocked until you renew</li>
+  <li>A <strong>Renew Plan</strong> button appears on your dashboard</li>
+  <li>Your Farm Credit Score is preserved and visible to you</li>
+</ul>
+
+<div class="tip-box">
+  <strong>✅ Your data is always safe.</strong> FlockIQ never deletes farm data regardless of
+  subscription status. Even a lapsed or cancelled account retains full data visibility
+  indefinitely.
+</div>
+
+<h2>7.5 Payment via Paystack</h2>
+<p>Paystack supports the following payment methods:</p>
+<ul>
+  <li><strong>Debit/Credit cards</strong> — Mastercard, Visa, Verve</li>
+  <li><strong>Bank transfer</strong> — transfers via your mobile banking app</li>
+  <li><strong>USSD</strong> — for supported Nigerian banks without smartphone access</li>
+</ul>
+
+<p>If you paid via bank transfer and your account was not automatically activated, contact
+support at <strong>{{ support_email }}</strong> with your payment reference and transaction date.
+An administrator can manually verify and activate the plan.</p>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  SECTION 8 — TEAM MANAGEMENT                                       -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h1>8. Team Management</h1>
+
+<h2>8.1 Adding Team Members</h2>
+<ol class="step-list">
+  <li>Navigate to <strong>Settings → Team Members → Invite Member</strong>.</li>
+  <li>Enter the new member's email address.</li>
+  <li>Select their <strong>role</strong> (see the role table below).</li>
+  <li>Click <strong>Send Invitation</strong>.</li>
+</ol>
+<p>The invited person receives an email with a signup link. Upon registration, they are
+automatically joined to your organisation with the selected role.</p>
+
+<h2>8.2 Role Permissions</h2>
+<table>
+  <tr>
+    <th>Role</th>
+    <th>Log Data</th>
+    <th>View Reports</th>
+    <th>Manage Team</th>
+    <th>Billing</th>
+  </tr>
+  <tr><td><strong>Owner</strong></td><td>✅ Yes</td><td>✅ Yes</td><td>✅ Yes</td><td>✅ Yes</td></tr>
+  <tr><td><strong>Manager</strong></td><td>✅ Yes</td><td>✅ Yes</td><td>✅ Yes</td><td>No</td></tr>
+  <tr><td><strong>Supervisor</strong></td><td>✅ Yes</td><td>✅ Yes</td><td>No</td><td>No</td></tr>
+  <tr><td><strong>Data Entry</strong></td><td>✅ Logs only</td><td>No</td><td>No</td><td>No</td></tr>
+  <tr><td><strong>Vet Advisor</strong></td><td>Health only</td><td>Health only</td><td>No</td><td>No</td></tr>
+</table>
+
+<div class="warning-box">
+  <strong>⚠️ Only the Owner</strong> can access billing settings, cancel subscriptions,
+  or initiate account deletion. If your account Owner leaves your organisation, contact
+  support to transfer ownership.
+</div>
+
+<h2>8.3 Custom Domain Setup</h2>
+<p>
+On eligible plans, you can serve FlockIQ from your own domain
+(e.g., <code>app.myfarm.com</code>) instead of <code>myfarm.flockiq.com</code>.
+Navigate to <strong>Settings → Custom Domain</strong>.
+</p>
+
+<ol class="step-list">
+  <li>Enter your domain in the Custom Domain field (e.g., <code>app.myfarm.com</code>).</li>
+  <li>Click <strong>Generate Verification Token</strong>.</li>
+  <li>Log in to your domain registrar and add a <strong>TXT record</strong> with the token value shown.</li>
+  <li>Return to FlockIQ and click <strong>Verify Domain</strong>. DNS propagation may take up to 24 hours.</li>
+  <li>Once verified, add a <strong>CNAME record</strong> pointing to <code>app.flockiq.com</code>.</li>
+</ol>
+
+<div class="warning-box">
+  <strong>⚠️ Important order:</strong> Complete Step 4 (verification) before Step 5 (CNAME).
+  Pointing your CNAME before verification is confirmed will prevent the domain check from
+  succeeding.
+</div>
+
+<h2>8.4 Exporting Your Data</h2>
+<p>
+Under the Nigeria Data Protection Regulation (NDPR), you may request a full export of all
+data FlockIQ holds about you and your farm. Navigate to
+<strong>Settings → Data &amp; Privacy → Export My Data</strong>.
+</p>
+<p>The export ZIP file contains CSV and JSON files covering: all batch records, mortality logs,
+feed logs, egg logs, water logs, financial records, notification history, and account details.</p>
+
+<h2>8.5 Deleting Your Account</h2>
+<p>Navigate to <strong>Settings → Data &amp; Privacy → Delete Account</strong>.</p>
+<div class="warning-box">
+  <strong>⚠️ Deletion is permanent.</strong> All data will be erased after a 30-day cooling-off
+  period. You can cancel the deletion by logging in and clicking <strong>Cancel Deletion</strong>
+  within those 30 days. After the cooling-off period, erasure is irreversible.
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!--  SECTION 9 — SUPPORT & TROUBLESHOOTING                             -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<h1>9. Support &amp; Troubleshooting</h1>
+
+<h2>9.1 Submitting a Support Ticket</h2>
+<p>
+Support is available directly from within the platform. Click <strong>Contact Admin</strong>
+in the footer of any page, or navigate to <strong>Help → Contact Support</strong>.
+</p>
+<ol class="step-list">
+  <li>Describe your issue clearly — include what you were doing and what happened.</li>
+  <li>Attach a screenshot if the issue is visual (drag-and-drop or browse).</li>
+  <li>Click <strong>Submit Ticket</strong>.</li>
+</ol>
+<p>You will receive an email confirmation with your ticket number. Expect a response within
+<strong>1 business day</strong> during support hours.</p>
+
+<h2>9.2 Viewing Your Ticket History</h2>
+<p>Navigate to <strong>Help → My Support Tickets</strong> to see all submitted tickets with
+their current status (Open, In Progress, or Resolved).</p>
+
+<h2>9.3 Contact Information</h2>
+<table>
+  <tr><th>Channel</th><th>Details</th></tr>
+  <tr><td>In-app support</td><td>Footer → Contact Admin</td></tr>
+  <tr><td>Email</td><td>{{ support_email }}</td></tr>
+  <tr><td>Support hours</td><td>Monday – Friday, 08:00 – 18:00 WAT (West Africa Time)</td></tr>
+  <tr><td>Website</td><td>{{ site_url }}/contact/</td></tr>
+</table>
+
+<h2>9.4 Common Issues and Solutions</h2>
+<table>
+  <tr><th>Issue</th><th>Likely Cause</th><th>Solution</th></tr>
+  <tr>
+    <td>Session expired — cannot continue</td>
+    <td>Sessions expire after 2 hours of inactivity</td>
+    <td>Click <strong>Log In</strong> to re-authenticate. Unsaved data may be lost — submit logs as you go</td>
+  </tr>
+  <tr>
+    <td>Buttons greyed out — cannot log data</td>
+    <td>Trial expired or subscription lapsed</td>
+    <td>Go to <strong>Settings → Billing</strong> and renew or subscribe to your preferred plan</td>
+  </tr>
+  <tr>
+    <td>Cannot see some batches</td>
+    <td>Batch status filter is hiding closed batches</td>
+    <td>Check the status filter on the Batches list — toggle to show All or Closed batches</td>
+  </tr>
+  <tr>
+    <td>AI Daily Brief is not appearing</td>
+    <td>Insufficient data — minimum 21 days of logs required</td>
+    <td>Continue logging daily. The brief populates automatically once the threshold is met</td>
+  </tr>
+  <tr>
+    <td>Email verification not received</td>
+    <td>Email filtered to spam or delivery delay</td>
+    <td>Check spam/junk folder. If not found after 10 minutes, use <strong>Resend Verification Email</strong></td>
+  </tr>
+  <tr>
+    <td>Password forgotten</td>
+    <td>—</td>
+    <td>Click <strong>Forgot Password</strong> on the login page. A reset link is emailed within 2 minutes</td>
+  </tr>
+  <tr>
+    <td>Offline data not syncing</td>
+    <td>Network issue or conflict with existing record</td>
+    <td>Check <strong>Settings → Sync Status</strong>. Conflict records appear there for manual resolution</td>
+  </tr>
+  <tr>
+    <td>SMS alerts not arriving</td>
+    <td>Phone number incorrect or SMS disabled</td>
+    <td>Verify your phone number in <strong>Profile Settings</strong> and check SMS alerts are enabled in <strong>Settings → Notifications</strong></td>
+  </tr>
+</table>
+
+<div style="margin-top: 32pt; text-align: center; padding: 16pt; background: #f0fdf4; border-radius: 6pt;">
+  <div style="font-size: 11pt; font-weight: 700; color: #1a4731; margin-bottom: 6pt;">
+    Need additional help?
+  </div>
+  <div style="font-size: 10pt; color: #334155;">
+    Email: <strong>{{ support_email }}</strong><br>
+    Support hours: Monday – Friday, 08:00 – 18:00 WAT<br>
+    {{ site_url }}/contact/
+  </div>
+</div>
+
+<div style="margin-top: 36pt; text-align: center; border-top: 1pt solid #e2e8f0; padding-top: 16pt;">
+  <p style="font-size: 9pt; color: #94a3b8;">
+    FlockIQ User Manual v{{ version }} &nbsp;·&nbsp; Generated {{ generated_date }} &nbsp;·&nbsp;
+    © 2026 ADM Tech Hub. All rights reserved.<br>
+    This document is confidential and intended for FlockIQ subscribers only.
+  </p>
+</div>
+
+</body>
+</html>

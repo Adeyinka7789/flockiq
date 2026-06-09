@@ -107,3 +107,8 @@ re-applied in BOTH `base.py` (dev/other envs) and `production.py`.
 - `/silk/` requires a logged-in **staff** user (`SILKY_AUTHENTICATION` /
   `SILKY_AUTHORISATION`).
 - Run `python manage.py migrate` after first enabling Silk (creates its tables).
+
+## WeasyPrint (PDF generation)
+Requires native Pango libraries on the server:
+  sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libpangocairo-1.0-0
+Run this during VPS setup before starting the application.

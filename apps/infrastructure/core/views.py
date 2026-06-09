@@ -1,6 +1,7 @@
 import json
 from datetime import date, datetime, timedelta
 
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import redirect_to_login
 from django.db.models import Sum
@@ -305,3 +306,41 @@ class DashboardView(TemplateView):
             }
         )
         return ctx
+
+
+@login_required
+def user_manual_pdf(request):
+    """Render the FlockIQ User Manual as a downloadable PDF via WeasyPrint."""
+    from django.conf import settings
+    from django.template.loader import render_to_string
+    from django.utils import timezone
+
+    try:
+        from weasyprint import HTML
+    except (ImportError, OSError) as exc:
+        return HttpResponse(
+            f"PDF generation unavailable: {exc}\n\n"
+            "Linux: sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0 libpangocairo-1.0-0\n"
+            "Windows: install GTK3 runtime from https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer",
+            status=503,
+            content_type="text/plain",
+        )
+
+    context = {
+        "version": "1.0",
+        "generated_date": timezone.now().strftime("%B %d, %Y"),
+        "support_email": getattr(settings, "SUPPORT_EMAIL", "support@flockiq.com"),
+        "site_url": getattr(settings, "SITE_URL", "https://app.flockiq.com"),
+    }
+
+    html_string = render_to_string("docs/user_manual.html", context, request=request)
+    pdf = HTML(
+        string=html_string,
+        base_url=request.build_absolute_uri("/"),
+    ).write_pdf()
+
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = (
+        'attachment; filename="FlockIQ_User_Manual_v1.0.pdf"'
+    )
+    return response
