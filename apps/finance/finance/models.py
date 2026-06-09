@@ -5,6 +5,12 @@ from django.db import models
 
 from apps.infrastructure.core.models import TenantAwareModel
 
+CONFIDENCE_CHOICES = [
+    ("early", "Early Profile"),
+    ("growing", "Growing Profile"),
+    ("established", "Established Profile"),
+]
+
 
 class SalesRecord(TenantAwareModel):
 
@@ -103,3 +109,38 @@ class BatchFinancialSummary(TenantAwareModel):
     @property
     def total_expenses_naira(self):
         return self.total_expenses_kobo / 100
+
+
+class FarmCreditScore(TenantAwareModel):
+    """
+    Computed credit score for an organisation.
+    Recomputed after every batch close and nightly.
+    A new row is inserted on each recomputation — never updated in place.
+    """
+
+    score = models.PositiveSmallIntegerField(help_text="0-100 credit score")
+    grade = models.CharField(max_length=2, help_text="A+/A/B/C/D/F")
+    confidence = models.CharField(max_length=20, choices=CONFIDENCE_CHOICES)
+
+    financial_health_score = models.PositiveSmallIntegerField()
+    operational_consistency_score = models.PositiveSmallIntegerField()
+    mortality_management_score = models.PositiveSmallIntegerField()
+    feed_efficiency_score = models.PositiveSmallIntegerField()
+    platform_engagement_score = models.PositiveSmallIntegerField()
+    payment_history_score = models.PositiveSmallIntegerField()
+
+    batches_analysed = models.PositiveSmallIntegerField()
+    avg_profit_margin_pct = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    avg_mortality_rate_pct = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    avg_fcr = models.DecimalField(max_digits=5, decimal_places=3, null=True, blank=True)
+    total_birds_managed = models.PositiveIntegerField(default=0)
+    months_on_platform = models.PositiveSmallIntegerField(default=0)
+
+    computed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "finance_farmcreditscore"
+        ordering = ["-computed_at"]
+
+    def __str__(self):
+        return f"CreditScore({self.org_id}, {self.score}, {self.grade})"

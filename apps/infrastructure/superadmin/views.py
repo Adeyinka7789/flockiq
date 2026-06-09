@@ -984,6 +984,7 @@ class TenantDetailView(SuperAdminMixin, View):
             from apps.farm.farms.models import Farm
             from apps.farm.flocks.models import Batch
             from apps.infrastructure.billing.models import PaymentRecord
+            from apps.infrastructure.core.credit_scoring import CreditScoringService
 
             farms = list(
                 Farm.objects.annotate(
@@ -1001,6 +1002,7 @@ class TenantDetailView(SuperAdminMixin, View):
             )
             total_live_birds = sum(b.current_count for b in active_batches)
             payments = list(PaymentRecord.objects.order_by('-paid_at')[:10])
+            credit_score = CreditScoringService.get_latest(org)
 
         support_tickets = list(
             SupportTicket.objects.filter(org=org).order_by('-created_at')[:10]
@@ -1021,6 +1023,7 @@ class TenantDetailView(SuperAdminMixin, View):
             'support_tickets': support_tickets,
             'farms_count': len(farms),
             'batches_count': len(active_batches),
+            'credit_score': credit_score,
         }
         return render(request, 'superadmin/tenant_detail.html', context)
 

@@ -205,6 +205,9 @@ class BillingPageView(LoginRequiredMixin, View):
 
             farm_count = Farm.objects.filter(is_active=True).count()
 
+            from apps.infrastructure.core.credit_scoring import CreditScoringService
+            credit_score = CreditScoringService.get_latest(org)
+
         team_count = request.user.__class__.objects.filter(
             org=org, is_active=True
         ).count()
@@ -250,6 +253,7 @@ class BillingPageView(LoginRequiredMixin, View):
 
         return render(request, "billing/billing_page.html", {
             **summary,
+            "credit_score": credit_score,
             "expired": request.GET.get("expired"),
             "plan_expired": plan_expired,
             "all_plans": all_plans,

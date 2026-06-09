@@ -55,4 +55,14 @@ urlpatterns = [
         views.BreakEvenAPIView.as_view(),
         name="api_breakeven",
     ),
+    path(
+        "finance/credit-score/",
+        views.CreditScoreDetailView.as_view(),
+        name="credit_score_detail",
+    ),
+    path(
+        "finance/credit-score/pdf/",
+        views.CreditScorePDFView.as_view(),
+        name="credit_score_pdf",
+    ),
 ]

@@ -450,6 +450,68 @@
     {% endif %}
   </div>
 
+  <!-- Card: Farm Credit Score -->
+  <div class="sa-card" style="margin-top:16px">
+    <div class="sa-card-hd" style="background:#faf5ff">
+      <span class="sa-card-title" style="color:#7c3aed">Farm Credit Score</span>
+      {% if credit_score %}
+      <span style="font-size:11px;color:#8a96a8">Last computed {{ credit_score.computed_at|date:"N j, Y" }}</span>
+      {% endif %}
+    </div>
+    {% if credit_score %}
+    <div class="sa-stat-row">
+      <div class="sa-stat">
+        <div class="sa-stat-val" style="color:{% if credit_score.score >= 80 %}#16a34a{% elif credit_score.score >= 60 %}#2563eb{% elif credit_score.score >= 40 %}#d97706{% else %}#dc2626{% endif %}">
+          {{ credit_score.score }}
+        </div>
+        <div class="sa-stat-lbl">Score /100</div>
+      </div>
+      <div class="sa-stat">
+        <div class="sa-stat-val" style="color:#7c3aed">{{ credit_score.grade }}</div>
+        <div class="sa-stat-lbl">Grade</div>
+      </div>
+      <div class="sa-stat">
+        <div class="sa-stat-val" style="font-size:14px">{{ credit_score.get_confidence_display }}</div>
+        <div class="sa-stat-lbl">Confidence</div>
+      </div>
+      <div class="sa-stat">
+        <div class="sa-stat-val">{{ credit_score.batches_analysed }}</div>
+        <div class="sa-stat-lbl">Batches</div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+      <div>
+        <div style="font-size:10px;color:#8a96a8;text-transform:uppercase;letter-spacing:0.06em">Financial</div>
+        <div style="font-size:16px;font-weight:700;color:#1a2744">{{ credit_score.financial_health_score }}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#8a96a8;text-transform:uppercase;letter-spacing:0.06em">Operations</div>
+        <div style="font-size:16px;font-weight:700;color:#1a2744">{{ credit_score.operational_consistency_score }}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#8a96a8;text-transform:uppercase;letter-spacing:0.06em">Mortality</div>
+        <div style="font-size:16px;font-weight:700;color:#1a2744">{{ credit_score.mortality_management_score }}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#8a96a8;text-transform:uppercase;letter-spacing:0.06em">Feed Eff.</div>
+        <div style="font-size:16px;font-weight:700;color:#1a2744">{{ credit_score.feed_efficiency_score }}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#8a96a8;text-transform:uppercase;letter-spacing:0.06em">Platform</div>
+        <div style="font-size:16px;font-weight:700;color:#1a2744">{{ credit_score.platform_engagement_score }}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#8a96a8;text-transform:uppercase;letter-spacing:0.06em">Payment</div>
+        <div style="font-size:16px;font-weight:700;color:#1a2744">{{ credit_score.payment_history_score }}</div>
+      </div>
+    </div>
+    {% else %}
+    <div style="padding:32px;text-align:center;color:#8a96a8;font-size:13px">
+      No credit score yet. Score is generated after the first batch is closed.
+    </div>
+    {% endif %}
+  </div>
+
   <!-- Card: Suspension Details (only if suspended) -->
   {% if not org.is_active and org.suspension_reason %}
   <div class="sa-card" style="border-color:#fecaca">

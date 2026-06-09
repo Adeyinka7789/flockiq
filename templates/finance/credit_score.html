@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Farm Credit Score{% endblock %}
+{% block breadcrumb %}Farm Credit Score{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8">
+
+  <!-- SECTION 1: Score Hero -->
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+      <div>
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Farm Credit Score</p>
+        {% if credit_score %}
+        <div class="flex items-end gap-4 mb-4">
+          <span class="text-7xl font-black leading-none
+            {% if credit_score.score >= 80 %}text-green-600
+            {% elif credit_score.score >= 60 %}text-blue-600
+            {% elif credit_score.score >= 40 %}text-amber-600
+            {% else %}text-red-600{% endif %}">
+            {{ credit_score.score }}
+          </span>
+          <div class="mb-2">
+            <div class="text-2xl font-bold text-gray-400">/100</div>
+            <div class="text-xl font-bold
+              {% if credit_score.grade == 'A+' or credit_score.grade == 'A' %}text-green-600
+              {% elif credit_score.grade == 'B' %}text-blue-600
+              {% elif credit_score.grade == 'C' %}text-amber-600
+              {% else %}text-red-600{% endif %}">
+              Grade {{ credit_score.grade }}
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 mb-4">
+          <span class="text-xs px-3 py-1 rounded-full font-semibold
+            {% if credit_score.confidence == 'established' %}bg-green-50 text-green-700
+            {% elif credit_score.confidence == 'growing' %}bg-blue-50 text-blue-700
+            {% else %}bg-gray-100 text-gray-500{% endif %}">
+            {{ credit_score.get_confidence_display }}
+          </span>
+          <span class="text-xs text-gray-400">
+            Based on {{ credit_score.batches_analysed }} batch{{ credit_score.batches_analysed|pluralize }}
+            · {{ credit_score.months_on_platform }} month{{ credit_score.months_on_platform|pluralize }} on platform
+          </span>
+        </div>
+
+        <p class="text-sm text-gray-600 max-w-md leading-relaxed">
+          {% if credit_score.score >= 80 %}
+          Excellent farm management. Your consistent data logging, mortality control, and profitability
+          make you a strong candidate for agricultural finance.
+          {% elif credit_score.score >= 60 %}
+          Good farm management with room to improve. Focus on the areas below to strengthen your credit profile.
+          {% elif credit_score.score >= 40 %}
+          Your farm profile is developing. Consistent data logging and improving profitability will raise your score.
+          {% else %}
+          Your credit profile needs improvement. Start by logging data daily and closing batches with full records.
+          {% endif %}
+        </p>
+        {% else %}
+        <p class="text-2xl font-bold text-gray-400 mb-2">No score yet</p>
+        <p class="text-sm text-gray-500">Complete your first batch to generate a credit score.</p>
+        {% endif %}
+      </div>
+
+      {% if credit_score %}
+      <div class="flex flex-col gap-3 shrink-0">
+        <a href="{% url 'finance:credit_score_pdf' %}"
+           class="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white
+                  text-sm font-semibold rounded-xl hover:bg-purple-700 transition">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Download PDF Report
+        </a>
+        <p class="text-xs text-gray-400 text-center">
+          Last computed {{ credit_score.computed_at|date:"N j, Y" }}
+        </p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if credit_score %}
+
+  <!-- SECTION 2: Sub-score Breakdown -->
+  <div>
+    <h2 class="text-base font-bold text-gray-800 mb-4">Score Breakdown</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for item in breakdown %}
+      <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">{{ item.label }}</span>
+          <span class="text-2xl font-black
+            {% if item.value >= 80 %}text-green-600
+            {% elif item.value >= 60 %}text-blue-600
+            {% elif item.value >= 40 %}text-amber-600
+            {% else %}text-red-600{% endif %}">
+            {{ item.value }}
+          </span>
+        </div>
+        <div class="h-2 bg-gray-100 rounded-full mb-3">
+          <div class="h-2 rounded-full transition-all
+            {% if item.value >= 80 %}bg-green-500
+            {% elif item.value >= 60 %}bg-blue-500
+            {% elif item.value >= 40 %}bg-amber-500
+            {% else %}bg-red-500{% endif %}"
+               style="width: {{ item.value }}%"></div>
+        </div>
+        <p class="text-xs text-gray-500 leading-relaxed">{{ item.tip }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- SECTION 3: Score History -->
+  {% if history|length > 1 %}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+    <h2 class="text-base font-bold text-gray-800 mb-4">Score Trend</h2>
+    <div style="height:180px;position:relative">
+      <canvas id="scoreHistoryChart"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- SECTION 4: What Lenders See -->
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+    <h2 class="text-base font-bold text-gray-800 mb-1">What Lenders See</h2>
+    <p class="text-xs text-gray-500 mb-4">This is how FlockIQ presents your farm data to financial institutions.</p>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-100">
+            <th class="text-left py-2 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">Metric</th>
+            <th class="text-right py-2 pr-4 text-xs font-semibold text-gray-400 uppercase tracking-wide">Your Farm</th>
+            <th class="text-right py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">Industry Avg</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          <tr>
+            <td class="py-3 pr-4 text-gray-600">Mortality Rate</td>
+            <td class="py-3 pr-4 text-right font-semibold text-gray-900">
+              {% if credit_score.avg_mortality_rate_pct is not None %}
+                {{ credit_score.avg_mortality_rate_pct|floatformat:1 }}%
+              {% else %}—{% endif %}
+            </td>
+            <td class="py-3 text-right text-gray-400">{{ industry_avg.mortality_rate }}</td>
+          </tr>
+          <tr>
+            <td class="py-3 pr-4 text-gray-600">Feed Conversion Ratio (FCR)</td>
+            <td class="py-3 pr-4 text-right font-semibold text-gray-900">
+              {% if credit_score.avg_fcr is not None %}
+                {{ credit_score.avg_fcr|floatformat:2 }}
+              {% else %}—{% endif %}
+            </td>
+            <td class="py-3 text-right text-gray-400">{{ industry_avg.fcr }}</td>
+          </tr>
+          <tr>
+            <td class="py-3 pr-4 text-gray-600">Avg Profit Margin</td>
+            <td class="py-3 pr-4 text-right font-semibold text-gray-900">
+              {% if credit_score.avg_profit_margin_pct is not None %}
+                {{ credit_score.avg_profit_margin_pct|floatformat:1 }}%
+              {% else %}—{% endif %}
+            </td>
+            <td class="py-3 text-right text-gray-400">{{ industry_avg.profit_margin }}</td>
+          </tr>
+          <tr>
+            <td class="py-3 pr-4 text-gray-600">Batches Completed</td>
+            <td class="py-3 pr-4 text-right font-semibold text-gray-900">{{ credit_score.batches_analysed }}</td>
+            <td class="py-3 text-right text-gray-400">—</td>
+          </tr>
+          <tr>
+            <td class="py-3 pr-4 text-gray-600">Total Birds Managed</td>
+            <td class="py-3 pr-4 text-right font-semibold text-gray-900">{{ credit_score.total_birds_managed|intcomma }}</td>
+            <td class="py-3 text-right text-gray-400">—</td>
+          </tr>
+          <tr>
+            <td class="py-3 pr-4 text-gray-600">Months on Platform</td>
+            <td class="py-3 pr-4 text-right font-semibold text-gray-900">{{ credit_score.months_on_platform }}</td>
+            <td class="py-3 text-right text-gray-400">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION 5: How to Improve -->
+  {% if improvement_tips %}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+    <h2 class="text-base font-bold text-gray-800 mb-4">How to Improve Your Score</h2>
+    <div class="space-y-3">
+      {% for tip in improvement_tips %}
+      <div class="flex gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
+        <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+          <span class="text-xs font-bold text-amber-700">{{ tip.value }}</span>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-amber-900 mb-0.5">{{ tip.label }}</p>
+          <p class="text-xs text-amber-700 leading-relaxed">{{ tip.tip }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+    <p class="text-gray-500 text-sm mb-2">No credit score yet.</p>
+    <p class="text-xs text-gray-400">Close your first batch to generate your credit profile.</p>
+  </div>
+  {% endif %}
+
+</div>
+
+{% if credit_score and history|length > 1 %}
+<script>
+(function() {
+  var ctx = document.getElementById('scoreHistoryChart');
+  if (!ctx) return;
+  new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: {{ history_labels|safe }},
+      datasets: [{
+        label: 'Credit Score',
+        data: {{ history_scores|safe }},
+        borderColor: '#9333ea',
+        backgroundColor: 'rgba(147,51,234,0.08)',
+        borderWidth: 2,
+        pointBackgroundColor: '#9333ea',
+        pointRadius: 4,
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          min: 0, max: 100,
+          grid: { color: '#f1f5f9' },
+          ticks: { font: { size: 11 }, color: '#94a3b8' }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 11 }, color: '#94a3b8' }
+        }
+      }
+    }
+  });
+})();
+</script>
+{% endif %}
+
+{% endblock %}

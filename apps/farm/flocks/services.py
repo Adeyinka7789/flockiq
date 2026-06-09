@@ -129,6 +129,17 @@ class BatchService(BaseService):
                 batch_id=str(batch.pk),
             )
 
+        # Recompute credit score for this org after every batch close.
+        try:
+            from apps.infrastructure.core.credit_scoring import CreditScoringService
+
+            CreditScoringService(self.org).compute()
+        except Exception:
+            logger.exception(
+                "flocks.credit_score_recompute_failed",
+                batch_id=str(batch.pk),
+            )
+
         self.logger.info(
             "flocks.batch_closed",
             batch_id=str(batch.pk),

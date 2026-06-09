@@ -310,3 +310,107 @@ class BreakEvenAPIView(APIView):
             except ValueError as exc:
                 return Response({"error": str(exc)}, status=404)
         return Response({"data": data})
+
+
+class CreditScoreDetailView(LoginRequiredMixin, View):
+    """GET /finance/credit-score/"""
+
+    def get(self, request):
+        import json
+
+        from apps.finance.finance.models import FarmCreditScore
+        from apps.infrastructure.core.credit_scoring import CreditScoringService
+
+        org = get_org_or_404(request)
+        with set_tenant_context(org):
+            credit_score = CreditScoringService.get_latest(org)
+            history = list(
+                FarmCreditScore.objects.filter(org=org)
+                .order_by("-computed_at")[:6]
+            )
+        history_reversed = list(reversed(history))
+
+        breakdown = []
+        improvement_tips = []
+        if credit_score:
+            breakdown = [
+                {
+                    "label": "Financial Health",
+                    "value": credit_score.financial_health_score,
+                    "tip": "Log your sales records after every harvest to improve your financial health score.",
+                },
+                {
+                    "label": "Operations",
+                    "value": credit_score.operational_consistency_score,
+                    "tip": "Log mortality and feed data daily — even zero deaths is important to record.",
+                },
+                {
+                    "label": "Mortality Management",
+                    "value": credit_score.mortality_management_score,
+                    "tip": "Your mortality rate is above benchmark. Review your vaccination schedule.",
+                },
+                {
+                    "label": "Feed Efficiency",
+                    "value": credit_score.feed_efficiency_score,
+                    "tip": "Track feed usage carefully and weigh your birds weekly to improve FCR accuracy.",
+                },
+                {
+                    "label": "Platform Engagement",
+                    "value": credit_score.platform_engagement_score,
+                    "tip": "Consistent subscription payments signal commitment to lenders.",
+                },
+                {
+                    "label": "Payment History",
+                    "value": credit_score.payment_history_score,
+                    "tip": "Upgrade to a yearly plan to show long-term commitment.",
+                },
+            ]
+            for item in breakdown:
+                if item["value"] < 60:
+                    improvement_tips.append(item)
+
+        industry_avg = {
+            "mortality_rate": "5%",
+            "fcr": "1.9",
+            "profit_margin": "20%",
+        }
+
+        history_labels = json.dumps(
+            [h.computed_at.strftime("%d %b") for h in history_reversed]
+        )
+        history_scores = json.dumps([h.score for h in history_reversed])
+
+        return render(request, "finance/credit_score.html", {
+            "credit_score": credit_score,
+            "breakdown": breakdown,
+            "improvement_tips": improvement_tips,
+            "industry_avg": industry_avg,
+            "history_labels": history_labels,
+            "history_scores": history_scores,
+            "history": history_reversed,
+        })
+
+
+class CreditScorePDFView(LoginRequiredMixin, View):
+    """GET /finance/credit-score/pdf/"""
+
+    def get(self, request):
+        from django.http import HttpResponse
+
+        from apps.infrastructure.core.credit_scoring import CreditScoringService
+        from apps.infrastructure.core.exports import generate_credit_score_pdf
+
+        org = get_org_or_404(request)
+        with set_tenant_context(org):
+            credit_score = CreditScoringService.get_latest(org)
+
+        if not credit_score:
+            from django.http import Http404
+            raise Http404("No credit score available yet.")
+
+        pdf_bytes = generate_credit_score_pdf(org, credit_score)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="FlockIQ_Credit_Report_{org.name}.pdf"'
+        )
+        return response

@@ -9,8 +9,94 @@ from reportlab.lib.units import cm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 NAVY = colors.HexColor('#3d5a99')
+PURPLE = colors.HexColor('#7c3aed')
 STRIPE = colors.HexColor('#f4f7fe')
 GRID = colors.HexColor('#e2e8f0')
+
+
+def generate_credit_score_pdf(org, credit_score) -> bytes:
+    """Return a PDF Farm Credit Report for an org."""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=2 * cm,
+        rightMargin=2 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+    )
+    styles = getSampleStyleSheet()
+    story = []
+
+    story.append(Paragraph('FlockIQ — Farm Credit Report', styles['Title']))
+    story.append(Paragraph(f'Farm: {org.name}', styles['Normal']))
+    story.append(Paragraph(f'Report Date: {date.today()}', styles['Normal']))
+    story.append(Spacer(1, 0.5 * cm))
+
+    story.append(Paragraph(f'Credit Score: {credit_score.score}/100 — Grade {credit_score.grade}', styles['h2']))
+    story.append(Paragraph(f'Confidence Level: {credit_score.get_confidence_display()}', styles['Normal']))
+    story.append(Spacer(1, 0.4 * cm))
+
+    sub_data = [
+        ['Category', 'Score', 'Weight'],
+        ['Financial Health', str(credit_score.financial_health_score), '30%'],
+        ['Operational Consistency', str(credit_score.operational_consistency_score), '20%'],
+        ['Mortality Management', str(credit_score.mortality_management_score), '20%'],
+        ['Feed Efficiency', str(credit_score.feed_efficiency_score), '15%'],
+        ['Platform Engagement', str(credit_score.platform_engagement_score), '10%'],
+        ['Payment History', str(credit_score.payment_history_score), '5%'],
+        ['Overall Score', str(credit_score.score), '100%'],
+    ]
+    t = Table(sub_data, colWidths=[8 * cm, 4 * cm, 4 * cm])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), PURPLE),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, STRIPE]),
+        ('BACKGROUND', (0, -1), (-1, -1), STRIPE),
+        ('GRID', (0, 0), (-1, -1), 0.5, GRID),
+        ('PADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 0.5 * cm))
+
+    stats_data = [
+        ['Key Statistic', 'Value'],
+        ['Batches Analysed', str(credit_score.batches_analysed)],
+        ['Total Birds Managed', str(credit_score.total_birds_managed)],
+        ['Avg Mortality Rate',
+         f'{credit_score.avg_mortality_rate_pct:.1f}%' if credit_score.avg_mortality_rate_pct is not None else 'N/A'],
+        ['Avg Profit Margin',
+         f'{credit_score.avg_profit_margin_pct:.1f}%' if credit_score.avg_profit_margin_pct is not None else 'N/A'],
+        ['Avg FCR',
+         f'{credit_score.avg_fcr:.2f}' if credit_score.avg_fcr is not None else 'N/A'],
+        ['Months on Platform', str(credit_score.months_on_platform)],
+    ]
+    t2 = Table(stats_data, colWidths=[8 * cm, 8 * cm])
+    t2.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), NAVY),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, STRIPE]),
+        ('GRID', (0, 0), (-1, -1), 0.5, GRID),
+        ('PADDING', (0, 0), (-1, -1), 6),
+    ]))
+    story.append(t2)
+    story.append(Spacer(1, 0.8 * cm))
+
+    story.append(
+        Paragraph(
+            'Verified by FlockIQ — This report was generated from verified farm management data '
+            'logged on the FlockIQ platform. FlockIQ does not guarantee credit approval.',
+            styles['Normal'],
+        )
+    )
+
+    doc.build(story)
+    return buffer.getvalue()
 
 
 def generate_batch_report(batch) -> bytes:

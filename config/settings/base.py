@@ -322,6 +322,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "billing.send_trial_expiry_reminders",
         "schedule": crontab(hour=8, minute=30),
     },
+    # Daily 03:00: recompute credit scores for all active orgs.
+    "recompute-credit-scores": {
+        "task": "core.recompute_all_credit_scores",
+        "schedule": crontab(hour=3, minute=0),
+    },
 }
 
 # --- JWT ---
