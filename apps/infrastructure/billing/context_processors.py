@@ -20,6 +20,7 @@ def trial_status(request):
         "trial_days_remaining": 0,
         "trial_expired": False,
         "on_trial": False,
+        "is_lapsed": False,
     }
 
     user = getattr(request, "user", None)
@@ -31,8 +32,16 @@ def trial_status(request):
         return empty
 
     org = getattr(user, "org", None)
-    if not org or org.plan_tier != "trial" or not org.trial_ends_at:
+    if not org:
         return empty
+
+    # Lapsed applies to paid orgs whose plan expired without renewal. It is
+    # mutually exclusive with the trial states below (which only fire for
+    # plan_tier == "trial").
+    is_lapsed = org.is_lapsed
+
+    if org.plan_tier != "trial" or not org.trial_ends_at:
+        return {**empty, "is_lapsed": is_lapsed}
 
     from django.utils import timezone
 
@@ -42,6 +51,7 @@ def trial_status(request):
         "trial_days_remaining": max(0, delta.days),
         "trial_expired": expired,
         "on_trial": not expired,
+        "is_lapsed": is_lapsed,
     }
 
 

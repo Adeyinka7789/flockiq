@@ -1,8 +1,33 @@
 import structlog
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
 
 logger = structlog.get_logger(__name__)
+
+
+def write_blocked_response(request, org):
+    """
+    Guard for data-write POST views. Returns a response to return early when the
+    org may not write (suspended or lapsed plan), or None when writes are allowed.
+
+    HTMX callers get a 402 fragment that swaps in place; plain requests are
+    redirected to the billing page.
+    """
+    from apps.infrastructure.billing.features import can_write_data
+
+    if can_write_data(org):
+        return None
+
+    if request.headers.get("HX-Request"):
+        return HttpResponse(
+            '<div class="bg-red-50 border border-red-200 rounded-lg '
+            'px-4 py-3 text-sm text-red-700">'
+            "⚠️ Your plan has expired. "
+            '<a href="/billing/" class="underline font-medium">Renew now</a> '
+            "to continue logging.</div>",
+            status=402,
+        )
+    return redirect("billing:billing_page")
 
 
 def get_org_or_404(request, org_slug=None):

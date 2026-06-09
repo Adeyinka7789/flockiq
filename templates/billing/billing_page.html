@@ -202,15 +202,14 @@
   }
   .bill-plan-cta.upgrade-cta { background: #3d5a99; color: white; }
   .bill-plan-cta.upgrade-cta:hover { background: #2d4578; }
-  .bill-plan-cta.downgrade-cta {
-    background: white; color: #4a5568;
-    border: 1.5px solid #e2e8f0;
-  }
-  .bill-plan-cta.downgrade-cta:hover { border-color: #3d5a99; color: #3d5a99; }
   .bill-plan-cta.contact-cta { background: #0f172a; color: white; }
   .bill-plan-cta.contact-cta:hover { background: #1e293b; }
   .bill-plan-cta.disabled-cta {
     background: #f4f7fe; color: #8a96a8; cursor: default;
+  }
+  .bill-plan-cta.trial-used-cta {
+    background: #f4f7fe; color: #8a96a8;
+    cursor: not-allowed; opacity: 0.4;
   }
 
   .bill-payment-section {
@@ -504,20 +503,23 @@
       <button class="bill-plan-cta disabled-cta" disabled>
         Current Plan Active
       </button>
-      {% elif p.plan_tier == 'yearly' %}
-      <a href="https://wa.me/{{ platform_config.admin_whatsapp }}"
-         target="_blank" class="bill-plan-cta contact-cta">
-        Contact Sales
-      </a>
+      {% elif p.plan_tier == 'trial' %}
+      <!-- Trial is one-time per org — never offered as a switch target. -->
+      <button class="bill-plan-cta trial-used-cta" disabled
+              title="Free trial is one-time only">
+        Trial already used
+      </button>
       {% elif p.amount_kobo > plan.amount_kobo|default:0 %}
       <button class="bill-plan-cta upgrade-cta"
               onclick="openUpgradeModal('{{ p.plan_tier }}','{{ p.name }}','{{ p.amount_naira|intcomma }}')">
         Upgrade to {{ p.name }}
       </button>
       {% else %}
-      <button class="bill-plan-cta downgrade-cta"
+      <!-- Same-price/lower tier: a billing-model switch, not a downgrade.
+           Applied at next renewal via the modal — no immediate charge. -->
+      <button class="bill-plan-cta upgrade-cta"
               onclick="openUpgradeModal('{{ p.plan_tier }}','{{ p.name }}','{{ p.amount_naira|intcomma }}')">
-        Downgrade to {{ p.name }}
+        Switch to {{ p.name }}
       </button>
       {% endif %}
     </div>
@@ -680,6 +682,28 @@
       No payment history yet.
     </div>
     {% endif %}
+  </div>
+
+  <!-- Cancel subscription — not a downgrade. To stop, the farmer simply lets
+       the plan lapse; data is retained and the account becomes read-only. -->
+  <div style="margin-top:8px;padding-top:24px;border-top:1px solid #f1f5f9">
+    <h3 style="font-size:13px;font-weight:700;color:#4a5568;margin-bottom:8px">
+      Cancel subscription
+    </h3>
+    <p style="font-size:13px;color:#8a96a8;margin-bottom:12px;line-height:1.5">
+      {% if org.plan_tier != 'trial' and org.plan_expires_at %}
+      Your plan will remain active until
+      <strong style="color:#1a2744">{{ org.plan_expires_at|date:"N j, Y" }}</strong>.
+      After that, your account becomes read-only.
+      {% else %}
+      Your account becomes read-only once your plan lapses.
+      {% endif %}
+      Your data is never deleted.
+    </p>
+    <a href="{% url 'accounts:delete_account' %}"
+       style="font-size:13px;color:#ef4444;text-decoration:none">
+      Cancel and delete account instead →
+    </a>
   </div>
 
 </div>

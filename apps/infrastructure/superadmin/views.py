@@ -175,6 +175,15 @@ class SuperAdminTenantsView(SuperAdminMixin, View):
             orgs = orgs.filter(is_active=True)
         elif status_filter == 'suspended':
             orgs = orgs.filter(is_active=False)
+        elif status_filter == 'lapsed':
+            # Mirror of Organization.is_lapsed expressed as a queryset filter:
+            # a paid plan that has expired and was not renewed.
+            from django.utils import timezone
+            orgs = (
+                orgs.exclude(plan_tier='trial')
+                .filter(plan_expires_at__lt=timezone.now())
+                .exclude(subscription_status='active')
+            )
 
         if plan_filter != 'all':
             orgs = orgs.filter(plan_tier=plan_filter)

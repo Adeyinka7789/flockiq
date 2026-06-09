@@ -162,6 +162,11 @@ class BatchCreateView(LoginRequiredMixin, View):
         org = get_org_or_404(request)
         is_htmx = request.headers.get("HX-Request") == "true"
 
+        from apps.infrastructure.core.helpers import write_blocked_response
+        blocked = write_blocked_response(request, org)
+        if blocked is not None:
+            return blocked
+
         from apps.infrastructure.billing.features import get_plan_features
         features = get_plan_features(org.plan_tier)
         with set_tenant_context(org):
@@ -486,6 +491,11 @@ class MortalityLogView(LoginRequiredMixin, View):
     def post(self, request, pk):
         form = MortalityLogForm(request.POST)
         org = get_org_or_404(request)
+
+        from apps.infrastructure.core.helpers import write_blocked_response
+        blocked = write_blocked_response(request, org)
+        if blocked is not None:
+            return blocked
 
         if form.is_valid():
             cd = form.cleaned_data

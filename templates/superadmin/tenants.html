@@ -52,6 +52,7 @@
         <option value="all" {% if active_status == 'all' %}selected{% endif %}>All Statuses</option>
         <option value="active" {% if active_status == 'active' %}selected{% endif %}>Active</option>
         <option value="suspended" {% if active_status == 'suspended' %}selected{% endif %}>Suspended</option>
+        <option value="lapsed" {% if active_status == 'lapsed' %}selected{% endif %}>Lapsed</option>
       </select>
 
       <select class="sa-filter-select" name="plan"
@@ -132,7 +133,17 @@
             <td style="font-size:12px;color:#8a96a8">{{ org.created_at|date:"M d, Y" }}</td>
             <td style="font-weight:700;font-variant-numeric:tabular-nums">{{ item.active_birds }}</td>
             <td>
-              {% if org.is_active %}
+              {% if org.is_active and org.is_lapsed %}
+              <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#dc2626">
+                <span style="width:6px;height:6px;border-radius:50%;background:#dc2626;display:inline-block"></span>
+                LAPSED
+              </span>
+              {% if org.plan_expires_at %}
+              <div style="font-size:11px;color:#b91c1c;margin-top:4px">
+                Expired {{ org.plan_expires_at|date:"M d, Y" }}
+              </div>
+              {% endif %}
+              {% elif org.is_active %}
               <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#16a34a">
                 <span style="width:6px;height:6px;border-radius:50%;background:#16a34a;display:inline-block"></span>
                 ACTIVE

@@ -96,3 +96,18 @@ def get_upgrade_plan(feature: str) -> str:
         if PLAN_FEATURES[tier].get(feature, False):
             return tier
     return 'yearly'
+
+
+def can_write_data(org) -> bool:
+    """
+    Whether an org may create/update farm data right now.
+
+    Suspended orgs (is_active False) and lapsed orgs (paid plan expired and not
+    renewed) become read-only — they keep their data but cannot log new records
+    until they renew. Trial orgs are unaffected here.
+    """
+    if not org.is_active:
+        return False
+    if org.is_lapsed:
+        return False
+    return True

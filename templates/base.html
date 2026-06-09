@@ -906,6 +906,28 @@
           <a href="{% url 'billing:billing_page' %}"
              class="font-semibold underline ml-1">Upgrade now</a>
         </div>
+        {% elif is_lapsed %}
+        <div class="sticky top-0 z-40 bg-red-50 border-b
+                    border-red-200 px-4 py-3
+                    flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            </svg>
+            <span class="text-sm font-medium text-red-800">
+              Your plan has expired. Your data is safe —
+              renew to continue logging.
+            </span>
+          </div>
+          <a href="{% url 'billing:billing_page' %}"
+             class="shrink-0 text-sm font-semibold text-red-800
+                    bg-red-100 hover:bg-red-200 px-3 py-1.5
+                    rounded-lg transition">
+            Renew now →
+          </a>
+        </div>
         {% endif %}
 
         <div class="px-4 py-6 sm:px-6 lg:px-8 max-w-7xl mx-auto">

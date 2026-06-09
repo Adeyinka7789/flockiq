@@ -420,6 +420,11 @@ class ProductionLogView(LoginRequiredMixin, View):
         form = EggProductionLogForm(request.POST)
         org = get_org_or_404(request)
 
+        from apps.infrastructure.core.helpers import write_blocked_response
+        blocked = write_blocked_response(request, org)
+        if blocked is not None:
+            return blocked
+
         if form.is_valid():
             cd = form.cleaned_data
             try:

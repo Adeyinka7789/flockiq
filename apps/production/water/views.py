@@ -39,6 +39,11 @@ class WaterLogView(LoginRequiredMixin, View):
         form = WaterLogForm(request.POST)
         org = get_org_or_404(request)
 
+        from apps.infrastructure.core.helpers import write_blocked_response
+        blocked = write_blocked_response(request, org)
+        if blocked is not None:
+            return blocked
+
         def _error(f, status=422):
             with set_tenant_context(org):
                 batch = get_object_or_404(Batch, pk=batch_pk)

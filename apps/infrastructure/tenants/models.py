@@ -144,6 +144,24 @@ class Organization(models.Model):
         )
 
     @property
+    def is_lapsed(self) -> bool:
+        """
+        A paid org whose plan has expired and was not renewed. Trial orgs are
+        never "lapsed" — their expiry is handled by the trial banner instead.
+        Lapsed orgs keep read access but lose write access (see
+        billing.features.can_write_data).
+        """
+        from django.utils import timezone
+        if self.plan_tier == "trial":
+            return False
+        if not self.plan_expires_at:
+            return False
+        return (
+            self.plan_expires_at < timezone.now()
+            and self.subscription_status != "active"
+        )
+
+    @property
     def sms_alerts_enabled(self):
         return self.settings.get("sms_alerts_enabled", True)
 
