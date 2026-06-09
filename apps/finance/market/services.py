@@ -1,7 +1,8 @@
 import datetime
 
 import structlog
-from django.db.models import Sum, Avg
+from django.db.models import Sum, Avg, Min, Max, Count
+from django.shortcuts import get_object_or_404
 
 from apps.infrastructure.core.services import BaseService
 
@@ -142,3 +143,137 @@ class MarketService(BaseService):
             price_per_unit_kobo=price_per_unit_kobo,
         )
         return price
+
+
+# ── Community Intelligence Services ──────────────────────────────────────────────
+
+class FeedPriceService:
+
+    @staticmethod
+    def get_current_prices(feed_type=None, state=None, days=30) -> dict:
+        """Returns aggregated price data for the last N days. Never returns individual submissions."""
+        from django.utils import timezone
+        from .models import FeedPriceReport
+
+        cutoff = timezone.now().date() - datetime.timedelta(days=days)
+        qs = FeedPriceReport.objects.filter(reported_date__gte=cutoff)
+        if feed_type:
+            qs = qs.filter(feed_type=feed_type)
+        if state:
+            qs = qs.filter(state=state)
+
+        national = qs.aggregate(
+            avg=Avg("price_per_25kg_bag"),
+            min=Min("price_per_25kg_bag"),
+            max=Max("price_per_25kg_bag"),
+            count=Count("id"),
+        )
+
+        by_state = list(
+            qs.values("state")
+            .annotate(avg=Avg("price_per_25kg_bag"), count=Count("id"))
+            .order_by("state")
+        )
+
+        by_brand = list(
+            qs.values("brand")
+            .annotate(avg=Avg("price_per_25kg_bag"), count=Count("id"))
+            .order_by("avg")
+        )
+
+        trend = []
+        for i in range(8, 0, -1):
+            week_start = datetime.date.today() - datetime.timedelta(weeks=i)
+            week_end = week_start + datetime.timedelta(weeks=1)
+            filter_kwargs = {"reported_date__range": [week_start, week_end]}
+            if feed_type:
+                filter_kwargs["feed_type"] = feed_type
+            week_avg = FeedPriceReport.objects.filter(**filter_kwargs).aggregate(
+                avg=Avg("price_per_25kg_bag")
+            )["avg"]
+            if week_avg:
+                trend.append({"week": week_start.strftime("%b %d"), "avg": float(week_avg)})
+
+        return {
+            "national": national,
+            "by_state": by_state,
+            "by_brand": by_brand,
+            "trend": trend,
+            "feed_type": feed_type,
+            "state": state,
+            "days": days,
+            "last_updated": datetime.datetime.now(),
+        }
+
+    @staticmethod
+    def submit_price(user, org, feed_type, brand, price, state, lga="", brand_other=""):
+        """Submit a new price report. Rate limit: 1 per feed type per day."""
+        from django.core.cache import cache
+        from .models import FeedPriceReport
+
+        cache_key = f"feed_price_{user.id}_{feed_type}"
+        if cache.get(cache_key):
+            raise ValueError(
+                "You already submitted a price for this feed type today. Come back tomorrow."
+            )
+        report = FeedPriceReport.objects.create(
+            submitted_by=user,
+            org=org,
+            feed_type=feed_type,
+            brand=brand,
+            brand_other=brand_other,
+            price_per_25kg_bag=price,
+            state=state,
+            lga=lga,
+        )
+        cache.set(cache_key, True, timeout=86400)
+        return report
+
+
+class HatcheryService:
+
+    @staticmethod
+    def get_top_hatcheries(state=None, bird_type=None, limit=20) -> list:
+        from .models import Hatchery
+
+        qs = Hatchery.objects.annotate(
+            avg_rating=Avg("reviews__overall_rating"),
+            review_count=Count("reviews"),
+            avg_survival=Avg("reviews__survival_rate_pct"),
+            avg_doc_price=Avg("reviews__price_per_doc"),
+        )
+        if state:
+            qs = qs.filter(state=state)
+        if bird_type:
+            qs = qs.filter(bird_types__contains=bird_type)
+
+        return list(qs.order_by("-avg_rating", "-review_count")[:limit])
+
+    @staticmethod
+    def submit_review(hatchery_id: int, batch, user, org, data: dict):
+        from .models import Hatchery, HatcheryReview
+
+        hatchery = get_object_or_404(Hatchery, id=hatchery_id)
+        return HatcheryReview.objects.create(
+            hatchery=hatchery,
+            batch=batch,
+            submitted_by=user,
+            org=org,
+            **data,
+        )
+
+    @staticmethod
+    def suggest_hatchery(user, org, name, state, lga="", address="", phone="", website="", bird_types=None):
+        from .models import Hatchery
+
+        return Hatchery.objects.create(
+            name=name,
+            state=state,
+            lga=lga,
+            address=address,
+            phone=phone,
+            website=website,
+            bird_types=bird_types or [],
+            is_verified=False,
+            added_by=user,
+        )

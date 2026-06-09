@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Hatchery Directory{% endblock %}
+{% block breadcrumb %}Market Intelligence — Hatchery Directory{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- Page header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-xl font-bold" style="color:#1a2744">Hatchery Directory</h1>
+      <p class="text-sm text-gray-500 mt-0.5">
+        Find quality DOC suppliers rated by FlockIQ farmers
+      </p>
+    </div>
+    <div class="flex gap-2 text-sm">
+      <a href="{% url 'market:feed_prices' %}"
+         style="padding:8px 16px;border:1.5px solid #e2e8f0;border-radius:10px;
+                color:#3d5a99;font-weight:600;text-decoration:none">
+        Feed Prices →
+      </a>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="flex flex-wrap gap-3 mb-6">
+    <select name="state"
+            onchange="this.form.submit()"
+            style="padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;
+                   font-size:13px;background:white;color:#1a2744;min-width:180px">
+      <option value="">All states</option>
+      {% for val, label in nigerian_states %}
+      <option value="{{ val }}" {% if active_state == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="bird_type"
+            onchange="this.form.submit()"
+            style="padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;
+                   font-size:13px;background:white;color:#1a2744;min-width:140px">
+      <option value="">All bird types</option>
+      <option value="broiler" {% if active_bird_type == 'broiler' %}selected{% endif %}>Broiler</option>
+      <option value="layer" {% if active_bird_type == 'layer' %}selected{% endif %}>Layer</option>
+      <option value="noiler" {% if active_bird_type == 'noiler' %}selected{% endif %}>Noiler</option>
+    </select>
+    {% if active_state or active_bird_type %}
+    <a href="{% url 'market:hatchery_directory' %}"
+       style="padding:9px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
+              font-size:13px;color:#6b7280;text-decoration:none">
+      Clear filters
+    </a>
+    {% endif %}
+  </form>
+
+  <!-- Rated hatcheries -->
+  {% if hatcheries %}
+  <h2 style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:12px">
+    Top Rated Hatcheries
+  </h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+    {% for h in hatcheries %}
+    <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;
+                padding:18px 20px;position:relative">
+
+      {% if h.is_verified %}
+      <span style="position:absolute;top:14px;right:16px;background:#f0fdf4;
+                   color:#16a34a;font-size:10px;font-weight:700;
+                   padding:3px 8px;border-radius:20px;border:1px solid #bbf7d0">
+        ✓ Verified
+      </span>
+      {% endif %}
+
+      <h3 style="font-size:14px;font-weight:700;color:#1a2744;margin:0 0 3px;
+                 padding-right:70px">
+        {{ h.name }}
+      </h3>
+      <p style="font-size:12px;color:#8a96a8;margin:0 0 10px">
+        {{ h.state }}{% if h.lga %} · {{ h.lga }}{% endif %}
+      </p>
+
+      <!-- Star rating -->
+      {% if h.avg_rating %}
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <div style="display:flex;gap:2px">
+          {% for i in "12345" %}
+          {% with i_int=forloop.counter %}
+          <span style="font-size:14px;color:{% if h.avg_rating >= i_int %}#f59e0b{% else %}#e2e8f0{% endif %}">★</span>
+          {% endwith %}
+          {% endfor %}
+        </div>
+        <span style="font-size:12px;font-weight:700;color:#1a2744">{{ h.avg_rating|floatformat:1 }}</span>
+        <span style="font-size:11px;color:#8a96a8">{{ h.review_count }} review{{ h.review_count|pluralize }}</span>
+      </div>
+      {% else %}
+      <div style="margin-bottom:8px">
+        <span style="font-size:11px;color:#8a96a8">No reviews yet</span>
+      </div>
+      {% endif %}
+
+      <!-- Metrics row -->
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+        {% if h.avg_survival %}
+        <div style="background:#f8fafc;border-radius:8px;padding:6px 10px">
+          <div style="font-size:10px;color:#8a96a8;font-weight:600">Survival Rate</div>
+          <div style="font-size:13px;font-weight:700;color:#16a34a">
+            {{ h.avg_survival|floatformat:0 }}%
+          </div>
+        </div>
+        {% endif %}
+        {% if h.avg_doc_price %}
+        <div style="background:#f8fafc;border-radius:8px;padding:6px 10px">
+          <div style="font-size:10px;color:#8a96a8;font-weight:600">Avg DOC Price</div>
+          <div style="font-size:13px;font-weight:700;color:#1a2744">
+            ₦{{ h.avg_doc_price|floatformat:0|intcomma }}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Bird type badges -->
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">
+        {% for bt in h.bird_types %}
+        <span style="background:#eff6ff;color:#3d5a99;font-size:10px;font-weight:600;
+                     padding:2px 8px;border-radius:20px;text-transform:capitalize">
+          {{ bt }}
+        </span>
+        {% endfor %}
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <a href="{% url 'market:hatchery_detail' h.pk %}"
+           style="flex:1;padding:8px;text-align:center;background:#f4f7fe;
+                  color:#3d5a99;border-radius:8px;font-size:12px;font-weight:600;
+                  text-decoration:none;border:1.5px solid #e2e8f0">
+          View Reviews →
+        </a>
+        <a href="{% url 'market:submit_hatchery_review' h.pk %}"
+           hx-get="{% url 'market:submit_hatchery_review' h.pk %}"
+           hx-target="#modal-body"
+           hx-swap="innerHTML"
+           hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))"
+           style="padding:8px 12px;background:#3d5a99;color:white;border-radius:8px;
+                  font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;
+                  white-space:nowrap">
+          Rate
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Unrated verified hatcheries -->
+  {% if hatcheries_no_reviews %}
+  <h2 style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:12px">
+    In the Directory — No Reviews Yet
+  </h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+    {% for h in hatcheries_no_reviews %}
+    <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;
+                padding:16px 20px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <h3 style="font-size:13px;font-weight:700;color:#1a2744;margin:0 0 3px">
+            {{ h.name }}
+          </h3>
+          <p style="font-size:12px;color:#8a96a8;margin:0 0 8px">
+            {{ h.state }}{% if h.lga %} · {{ h.lga }}{% endif %}
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            {% for bt in h.bird_types %}
+            <span style="background:#eff6ff;color:#3d5a99;font-size:10px;font-weight:600;
+                         padding:2px 7px;border-radius:20px;text-transform:capitalize">
+              {{ bt }}
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        <a href="{% url 'market:submit_hatchery_review' h.pk %}"
+           hx-get="{% url 'market:submit_hatchery_review' h.pk %}"
+           hx-target="#modal-body"
+           hx-swap="innerHTML"
+           hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))"
+           style="padding:6px 12px;background:#f4f7fe;color:#3d5a99;border-radius:8px;
+                  font-size:11px;font-weight:600;text-decoration:none;cursor:pointer;
+                  border:1.5px solid #e2e8f0;white-space:nowrap;flex-shrink:0">
+          Be first to rate
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if not hatcheries and not hatcheries_no_reviews %}
+  <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;
+              padding:48px 24px;text-align:center">
+    <div style="font-size:32px;margin-bottom:12px">🐣</div>
+    <h3 style="font-size:15px;font-weight:700;color:#1a2744;margin-bottom:6px">
+      No hatcheries found
+    </h3>
+    <p style="font-size:13px;color:#8a96a8;margin:0 auto 16px;max-width:320px">
+      Try removing filters, or suggest a hatchery you know to start building the directory.
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- Suggest a hatchery -->
+  <div style="background:#eff6ff;border-radius:14px;border:1.5px solid #bfdbfe;
+              padding:20px 24px;display:flex;align-items:center;
+              justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <h3 style="font-size:13px;font-weight:700;color:#1e40af;margin:0 0 3px">
+        Know a hatchery that's not listed?
+      </h3>
+      <p style="font-size:12px;color:#3b82f6;margin:0">
+        Suggest it and help other farmers find quality DOC suppliers.
+      </p>
+    </div>
+    <button hx-get="{% url 'market:suggest_hatchery' %}"
+            hx-target="#modal-body"
+            hx-swap="innerHTML"
+            hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))"
+            style="padding:9px 18px;background:#3d5a99;color:white;border:none;
+                   border-radius:9px;font-size:13px;font-weight:600;cursor:pointer">
+      + Suggest a Hatchery
+    </button>
+  </div>
+
+</div>
+{% endblock %}

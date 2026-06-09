@@ -1,0 +1,95 @@
+<form hx-post="{% url 'market:submit_feed_price' %}"
+      hx-target="#price-submitted"
+      hx-swap="innerHTML"
+      hx-indicator="#feed-submit-spinner">
+
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+  <div style="margin-bottom:12px;padding:10px 14px;background:#fef2f2;
+              border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#dc2626">
+    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+  </div>
+  {% endif %}
+
+  {% with field_style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;box-sizing:border-box;background:white;outline:none" label_style="display:block;font-size:10px;font-weight:700;color:#4a5568;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em" %}
+
+  <div style="margin-bottom:12px">
+    <label style="{{ label_style }}">Feed Type</label>
+    <select name="feed_type" required style="{{ field_style }}"
+            onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'">
+      <option value="">Select feed type…</option>
+      {% for val, label in form.fields.feed_type.choices %}
+      <option value="{{ val }}" {% if form.feed_type.value == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    {% if form.feed_type.errors %}<p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.feed_type.errors.0 }}</p>{% endif %}
+  </div>
+
+  <div style="margin-bottom:12px">
+    <label style="{{ label_style }}">Brand</label>
+    <select name="brand" required style="{{ field_style }}" id="brand-select"
+            onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'"
+            x-data="{}" @change="document.getElementById('brand-other-wrap').style.display=($event.target.value==='other'?'block':'none')">
+      {% for val, label in form.fields.brand.choices %}
+      <option value="{{ val }}" {% if form.brand.value == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    {% if form.brand.errors %}<p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.brand.errors.0 }}</p>{% endif %}
+  </div>
+
+  <div id="brand-other-wrap" style="margin-bottom:12px;display:none">
+    <label style="{{ label_style }}">Brand Name <span style="color:#8a96a8;font-weight:400">(specify)</span></label>
+    <input type="text" name="brand_other"
+           value="{{ form.brand_other.value|default:'' }}"
+           placeholder="e.g. Vital Feed"
+           style="{{ field_style }}"
+           onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'">
+    {% if form.brand_other.errors %}<p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.brand_other.errors.0 }}</p>{% endif %}
+  </div>
+
+  <div style="margin-bottom:12px">
+    <label style="{{ label_style }}">Price per 25kg bag (₦)</label>
+    <input type="number" name="price_per_25kg_bag"
+           value="{{ form.price_per_25kg_bag.value|default:'' }}"
+           min="1000" max="500000" step="50"
+           placeholder="e.g. 8500" required
+           style="{{ field_style }}"
+           onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'">
+    {% if form.price_per_25kg_bag.errors %}<p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.price_per_25kg_bag.errors.0 }}</p>{% endif %}
+  </div>
+
+  <div style="margin-bottom:12px">
+    <label style="{{ label_style }}">State</label>
+    <select name="state" required style="{{ field_style }}"
+            onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'">
+      <option value="">Select state…</option>
+      {% for val, label in form.fields.state.choices %}
+      <option value="{{ val }}" {% if form.state.value == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    {% if form.state.errors %}<p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.state.errors.0 }}</p>{% endif %}
+  </div>
+
+  <div style="margin-bottom:16px">
+    <label style="{{ label_style }}">LGA <span style="font-weight:400;color:#b0bac9">(optional)</span></label>
+    <input type="text" name="lga"
+           value="{{ form.lga.value|default:'' }}"
+           placeholder="e.g. Ikeja"
+           style="{{ field_style }}"
+           onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'">
+  </div>
+
+  {% endwith %}
+
+  <button type="submit"
+          style="width:100%;padding:11px;background:#3d5a99;color:white;border:none;
+                 border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;
+                 transition:background 0.15s"
+          onmouseover="this.style.background='#2d4578'"
+          onmouseout="this.style.background='#3d5a99'"
+          hx-disabled-elt="this">
+    <span id="feed-submit-spinner" class="htmx-indicator" style="margin-right:6px">⏳</span>
+    Submit Price Report
+  </button>
+</form>

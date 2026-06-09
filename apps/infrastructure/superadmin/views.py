@@ -970,6 +970,61 @@ class SupportTicketDetailView(SuperAdminMixin, View):
         return render(request, 'superadmin/support_ticket_detail.html', context)
 
 
+class TenantDetailView(SuperAdminMixin, View):
+    def get(self, request, pk):
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.infrastructure.notifications.models import SupportTicket
+        from django.contrib.auth import get_user_model
+        from django.db.models import Count, Q
+
+        User = get_user_model()
+        org = get_object_or_404(Organization, pk=pk)
+
+        with set_tenant_context(org):
+            from apps.farm.farms.models import Farm
+            from apps.farm.flocks.models import Batch
+            from apps.infrastructure.billing.models import PaymentRecord
+
+            farms = list(
+                Farm.objects.annotate(
+                    houses_count=Count('houses', distinct=True),
+                    active_batches_count=Count(
+                        'houses__batches',
+                        filter=Q(houses__batches__status='active'),
+                        distinct=True,
+                    ),
+                )
+            )
+            active_batches = list(
+                Batch.objects.filter(status='active')
+                .select_related('farm', 'house')
+            )
+            total_live_birds = sum(b.current_count for b in active_batches)
+            payments = list(PaymentRecord.objects.order_by('-paid_at')[:10])
+
+        support_tickets = list(
+            SupportTicket.objects.filter(org=org).order_by('-created_at')[:10]
+        )
+        team_members = list(
+            User.objects.filter(org=org).order_by('role', 'email')
+        )
+        owner = next((u for u in team_members if u.role == 'owner'), None)
+
+        context = {
+            'org': org,
+            'owner': owner,
+            'team_members': team_members,
+            'farms': farms,
+            'active_batches': active_batches,
+            'total_live_birds': total_live_birds,
+            'payments': payments,
+            'support_tickets': support_tickets,
+            'farms_count': len(farms),
+            'batches_count': len(active_batches),
+        }
+        return render(request, 'superadmin/tenant_detail.html', context)
+
+
 class SupportTicketReplyView(SuperAdminMixin, View):
     def post(self, request, pk):
         from django.conf import settings as django_settings

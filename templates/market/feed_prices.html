@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Feed Price Intelligence{% endblock %}
+{% block breadcrumb %}Market Intelligence — Feed Prices{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+
+  <!-- Page header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-xl font-bold" style="color:#1a2744">Feed Price Intelligence</h1>
+      <p class="text-sm text-gray-500 mt-0.5">
+        Crowdsourced from FlockIQ farmers across Nigeria. Updated daily.
+      </p>
+    </div>
+    <div class="flex gap-2 text-sm">
+      <a href="{% url 'market:hatchery_directory' %}"
+         style="padding:8px 16px;border:1.5px solid #e2e8f0;border-radius:10px;
+                color:#3d5a99;font-weight:600;text-decoration:none">
+        Hatchery Directory →
+      </a>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <form method="get" class="flex flex-wrap gap-3 mb-6">
+    <select name="feed_type"
+            onchange="this.form.submit()"
+            style="padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;
+                   font-size:13px;background:white;color:#1a2744;min-width:180px">
+      <option value="">All feed types</option>
+      {% for val, label in feed_types %}
+      <option value="{{ val }}" {% if active_feed_type == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="state"
+            onchange="this.form.submit()"
+            style="padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;
+                   font-size:13px;background:white;color:#1a2744;min-width:180px">
+      <option value="">All states</option>
+      {% for val, label in nigerian_states %}
+      <option value="{{ val }}" {% if active_state == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    {% if active_feed_type or active_state %}
+    <a href="{% url 'market:feed_prices' %}"
+       style="padding:9px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
+              font-size:13px;color:#6b7280;text-decoration:none">
+      Clear filters
+    </a>
+    {% endif %}
+  </form>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- LEFT: Price data -->
+    <div class="lg:col-span-2 space-y-5">
+
+      {% if data.national.count %}
+
+      <!-- National average cards -->
+      <div class="grid grid-cols-3 gap-4">
+        <div style="background:white;border-radius:14px;padding:18px 16px;
+                    border:1.5px solid #e2e8f0;text-align:center">
+          <div style="font-size:10px;font-weight:700;color:#8a96a8;
+                      text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">
+            Avg Price
+          </div>
+          <div style="font-size:22px;font-weight:800;color:#1a2744">
+            ₦{{ data.national.avg|floatformat:0|intcomma }}
+          </div>
+          <div style="font-size:11px;color:#8a96a8;margin-top:3px">per 25kg bag</div>
+        </div>
+        <div style="background:white;border-radius:14px;padding:18px 16px;
+                    border:1.5px solid #e2e8f0;text-align:center">
+          <div style="font-size:10px;font-weight:700;color:#8a96a8;
+                      text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">
+            Lowest
+          </div>
+          <div style="font-size:22px;font-weight:800;color:#16a34a">
+            ₦{{ data.national.min|floatformat:0|intcomma }}
+          </div>
+          <div style="font-size:11px;color:#8a96a8;margin-top:3px">per 25kg bag</div>
+        </div>
+        <div style="background:white;border-radius:14px;padding:18px 16px;
+                    border:1.5px solid #e2e8f0;text-align:center">
+          <div style="font-size:10px;font-weight:700;color:#8a96a8;
+                      text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">
+            Highest
+          </div>
+          <div style="font-size:22px;font-weight:800;color:#dc2626">
+            ₦{{ data.national.max|floatformat:0|intcomma }}
+          </div>
+          <div style="font-size:11px;color:#8a96a8;margin-top:3px">per 25kg bag</div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:#8a96a8;text-align:center;margin-top:-8px">
+        Based on {{ data.national.count }} report{{ data.national.count|pluralize }} · Last 30 days
+      </p>
+
+      <!-- Price trend chart -->
+      {% if data.trend %}
+      <div style="background:white;border-radius:14px;padding:20px;border:1.5px solid #e2e8f0">
+        <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:14px">
+          8-Week Price Trend
+        </div>
+        <canvas id="feedTrendChart" height="120"></canvas>
+      </div>
+      {% endif %}
+
+      <!-- Price by state table -->
+      {% if data.by_state %}
+      <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;overflow:hidden">
+        <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0">
+          <h3 style="font-size:13px;font-weight:700;color:#1a2744;margin:0">Price by State</h3>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#f8fafc">
+              <th style="padding:10px 16px;text-align:left;font-size:10px;font-weight:700;
+                         color:#8a96a8;text-transform:uppercase;letter-spacing:0.05em">State</th>
+              <th style="padding:10px 16px;text-align:right;font-size:10px;font-weight:700;
+                         color:#8a96a8;text-transform:uppercase;letter-spacing:0.05em">Avg Price</th>
+              <th style="padding:10px 16px;text-align:right;font-size:10px;font-weight:700;
+                         color:#8a96a8;text-transform:uppercase;letter-spacing:0.05em">Reports</th>
+              <th style="padding:10px 16px;text-align:right;font-size:10px;font-weight:700;
+                         color:#8a96a8;text-transform:uppercase;letter-spacing:0.05em">vs National</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in data.by_state %}
+            {% with national_avg=data.national.avg %}
+            {% with diff_pct=row.avg|add:"-0"|floatformat:0 %}
+            <tr style="border-top:1px solid #f1f5f9">
+              <td style="padding:11px 16px;font-size:13px;color:#1a2744;font-weight:500">
+                {{ row.state }}
+              </td>
+              <td style="padding:11px 16px;text-align:right;font-size:13px;
+                         font-weight:700;color:#1a2744">
+                ₦{{ row.avg|floatformat:0|intcomma }}
+              </td>
+              <td style="padding:11px 16px;text-align:right;font-size:12px;color:#8a96a8">
+                {{ row.count }}
+              </td>
+              <td style="padding:11px 16px;text-align:right">
+                {% if national_avg %}
+                  {% if row.avg < national_avg %}
+                    <span style="font-size:11px;font-weight:700;color:#16a34a;
+                                 background:#f0fdf4;padding:3px 8px;border-radius:20px">
+                      Below avg
+                    </span>
+                  {% elif row.avg > national_avg %}
+                    <span style="font-size:11px;font-weight:700;color:#dc2626;
+                                 background:#fef2f2;padding:3px 8px;border-radius:20px">
+                      Above avg
+                    </span>
+                  {% else %}
+                    <span style="font-size:11px;color:#8a96a8">At avg</span>
+                  {% endif %}
+                {% endif %}
+              </td>
+            </tr>
+            {% endwith %}
+            {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      <!-- Brand comparison -->
+      {% if data.by_brand %}
+      <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;overflow:hidden">
+        <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0">
+          <h3 style="font-size:13px;font-weight:700;color:#1a2744;margin:0">Brand Comparison</h3>
+          <p style="font-size:11px;color:#8a96a8;margin:3px 0 0">Ranked cheapest to most expensive</p>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#f8fafc">
+              <th style="padding:10px 16px;text-align:left;font-size:10px;font-weight:700;
+                         color:#8a96a8;text-transform:uppercase;letter-spacing:0.05em">Brand</th>
+              <th style="padding:10px 16px;text-align:right;font-size:10px;font-weight:700;
+                         color:#8a96a8;text-transform:uppercase;letter-spacing:0.05em">Avg Price</th>
+              <th style="padding:10px 16px;text-align:right;font-size:10px;font-weight:700;
+                         color:#8a96a8;text-transform:uppercase;letter-spacing:0.05em">Reports</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in data.by_brand %}
+            <tr style="border-top:1px solid #f1f5f9">
+              <td style="padding:11px 16px;font-size:13px;color:#1a2744;font-weight:500;
+                         text-transform:capitalize">
+                {{ row.brand|title }}
+              </td>
+              <td style="padding:11px 16px;text-align:right;font-size:13px;
+                         font-weight:700;color:#1a2744">
+                ₦{{ row.avg|floatformat:0|intcomma }}
+              </td>
+              <td style="padding:11px 16px;text-align:right;font-size:12px;color:#8a96a8">
+                {{ row.count }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+      {% else %}
+      <!-- Empty state -->
+      <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;
+                  padding:48px 24px;text-align:center">
+        <div style="font-size:32px;margin-bottom:12px">📊</div>
+        <h3 style="font-size:15px;font-weight:700;color:#1a2744;margin-bottom:6px">
+          No price reports yet
+        </h3>
+        <p style="font-size:13px;color:#8a96a8;max-width:300px;margin:0 auto">
+          Be the first to report feed prices in your area. Your data helps all farmers.
+        </p>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- RIGHT: Submit form -->
+    <div>
+      <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;
+                  padding:20px;position:sticky;top:80px">
+        <h3 style="font-size:14px;font-weight:700;color:#1a2744;margin:0 0 4px">
+          Report Today's Price
+        </h3>
+        <p style="font-size:11px;color:#8a96a8;margin:0 0 16px">
+          Your submission is anonymous and helps all farmers.
+        </p>
+
+        <div id="price-submitted">
+          {% include "market/_feed_price_form.html" with form=form %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% if data.trend %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const ctx = document.getElementById('feedTrendChart');
+  if (!ctx) return;
+  const trend = {{ trend_json|safe }};
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: trend.map(t => t.week),
+      datasets: [{
+        label: '{% if active_state %}{{ active_state }}{% else %}National{% endif %} Avg (₦)',
+        data: trend.map(t => t.avg),
+        borderColor: '#3d5a99',
+        backgroundColor: 'rgba(61,90,153,0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        tension: 0.3,
+        fill: true,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          ticks: {
+            callback: v => '₦' + v.toLocaleString(),
+            font: { size: 11 },
+          },
+          grid: { color: '#f1f5f9' },
+        },
+        x: { ticks: { font: { size: 11 } } },
+      },
+    },
+  });
+});
+</script>
+{% endif %}
+{% endblock %}

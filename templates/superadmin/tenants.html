@@ -178,10 +178,10 @@
                   Activate
                 </button>
                 {% endif %}
-                <a href="/admin/tenants/organization/{{ org.pk }}/change/"
+                <a href="{% url 'superadmin:tenant_detail' org.pk %}"
                    class="sa-action-btn manage"
                    style="text-decoration:none;display:inline-flex;align-items:center">
-                  Edit
+                  View →
                 </a>
               </div>
             </td>

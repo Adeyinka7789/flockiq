@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}{{ hatchery.name }}{% endblock %}
+{% block breadcrumb %}Hatchery Directory — {{ hatchery.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+
+  <!-- Back link -->
+  <a href="{% url 'market:hatchery_directory' %}"
+     style="display:inline-flex;align-items:center;gap:6px;font-size:13px;
+            color:#3d5a99;text-decoration:none;margin-bottom:20px">
+    ← Back to Directory
+  </a>
+
+  <!-- Header -->
+  <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;
+              padding:24px;margin-bottom:20px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;
+                flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <h1 style="font-size:20px;font-weight:800;color:#1a2744;margin:0">
+            {{ hatchery.name }}
+          </h1>
+          {% if hatchery.is_verified %}
+          <span style="background:#f0fdf4;color:#16a34a;font-size:10px;font-weight:700;
+                       padding:3px 9px;border-radius:20px;border:1px solid #bbf7d0">
+            ✓ Verified
+          </span>
+          {% endif %}
+        </div>
+        <p style="font-size:13px;color:#8a96a8;margin:0 0 10px">
+          {{ hatchery.state }}{% if hatchery.lga %} · {{ hatchery.lga }}{% endif %}
+          {% if hatchery.address %} · {{ hatchery.address }}{% endif %}
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          {% for bt in hatchery.bird_types %}
+          <span style="background:#eff6ff;color:#3d5a99;font-size:11px;font-weight:600;
+                       padding:3px 10px;border-radius:20px;text-transform:capitalize">
+            {{ bt }}
+          </span>
+          {% endfor %}
+          {% if hatchery.phone %}
+          <a href="tel:{{ hatchery.phone }}"
+             style="background:#f0fdf4;color:#16a34a;font-size:11px;font-weight:600;
+                    padding:3px 10px;border-radius:20px;text-decoration:none">
+            📞 {{ hatchery.phone }}
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      <button hx-get="{% url 'market:submit_hatchery_review' hatchery.pk %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML"
+              hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))"
+              style="padding:10px 20px;background:#3d5a99;color:white;border:none;
+                     border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">
+        Rate This Hatchery
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+    <!-- Ratings summary -->
+    <div>
+      <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;padding:20px">
+        <h3 style="font-size:13px;font-weight:700;color:#1a2744;margin:0 0 16px">
+          Rating Summary
+        </h3>
+
+        {% if stats.total %}
+
+        <!-- Overall -->
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:40px;font-weight:800;color:#1a2744;line-height:1">
+            {{ stats.avg_overall|floatformat:1 }}
+          </div>
+          <div style="display:flex;justify-content:center;gap:3px;margin:4px 0">
+            {% for i in "12345" %}
+            {% with i_int=forloop.counter %}
+            <span style="font-size:16px;color:{% if stats.avg_overall >= i_int %}#f59e0b{% else %}#e2e8f0{% endif %}">★</span>
+            {% endwith %}
+            {% endfor %}
+          </div>
+          <div style="font-size:11px;color:#8a96a8">
+            {{ stats.total }} review{{ stats.total|pluralize }}
+          </div>
+        </div>
+
+        <!-- Category breakdown -->
+        {% with cats=stats %}
+        <div style="space-y:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:11px;color:#4a5568;font-weight:500">DOC Quality</span>
+            <span style="font-size:12px;font-weight:700;color:#1a2744">{{ cats.avg_quality|floatformat:1 }} / 5</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:11px;color:#4a5568;font-weight:500">Delivery</span>
+            <span style="font-size:12px;font-weight:700;color:#1a2744">{{ cats.avg_delivery|floatformat:1 }} / 5</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-size:11px;color:#4a5568;font-weight:500">Survival Rate</span>
+            <span style="font-size:12px;font-weight:700;color:#16a34a">{{ cats.avg_survival|floatformat:0 }}%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:11px;color:#4a5568;font-weight:500">Avg DOC Price</span>
+            <span style="font-size:12px;font-weight:700;color:#1a2744">₦{{ cats.avg_price|floatformat:0|intcomma }}</span>
+          </div>
+        </div>
+        {% endwith %}
+
+        {% else %}
+        <div style="text-align:center;padding:20px 0;color:#8a96a8">
+          <div style="font-size:28px;margin-bottom:8px">🐣</div>
+          <p style="font-size:12px">No reviews yet. Be the first!</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Reviews list -->
+    <div class="md:col-span-2">
+      <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;
+                  overflow:hidden">
+        <div style="padding:16px 20px;border-bottom:1px solid #e2e8f0">
+          <h3 style="font-size:13px;font-weight:700;color:#1a2744;margin:0">
+            Farmer Reviews
+            <span style="font-weight:400;color:#8a96a8;font-size:12px;margin-left:6px">
+              (anonymised)
+            </span>
+          </h3>
+        </div>
+
+        {% if reviews %}
+        {% for review in reviews %}
+        <div style="padding:16px 20px;border-top:1px solid #f1f5f9">
+          <div style="display:flex;align-items:center;justify-content:space-between;
+                      margin-bottom:8px">
+            <div style="display:flex;gap:2px">
+              {% for i in "12345" %}
+              {% with i_int=forloop.counter %}
+              <span style="font-size:14px;color:{% if review.overall_rating >= i_int %}#f59e0b{% else %}#e2e8f0{% endif %}">★</span>
+              {% endwith %}
+              {% endfor %}
+            </div>
+            <span style="font-size:11px;color:#8a96a8">{{ review.created_at|date:"d M Y" }}</span>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+            <div style="font-size:11px;color:#4a5568">
+              DOC Quality: <strong>{{ review.doc_quality_rating }}/5</strong>
+            </div>
+            <div style="font-size:11px;color:#4a5568">
+              Delivery: <strong>{{ review.delivery_reliability }}/5</strong>
+            </div>
+            <div style="font-size:11px;color:#16a34a">
+              Survival: <strong>{{ review.survival_rate_pct }}%</strong>
+            </div>
+            <div style="font-size:11px;color:#4a5568">
+              Batch: <strong>{{ review.batch_size|intcomma }} DOCs</strong>
+            </div>
+            <div style="font-size:11px;color:#4a5568">
+              Price paid: <strong>₦{{ review.price_per_doc }}/DOC</strong>
+            </div>
+          </div>
+
+          {% if review.comment %}
+          <p style="font-size:12px;color:#374151;line-height:1.5;
+                    background:#f8fafc;border-radius:8px;padding:10px 12px;
+                    margin:0;font-style:italic">
+            "{{ review.comment }}"
+          </p>
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        {% else %}
+        <div style="padding:40px 24px;text-align:center;color:#8a96a8">
+          <p style="font-size:13px">No reviews yet for this hatchery.</p>
+          <button hx-get="{% url 'market:submit_hatchery_review' hatchery.pk %}"
+                  hx-target="#modal-body"
+                  hx-swap="innerHTML"
+                  hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))"
+                  style="margin-top:12px;padding:9px 18px;background:#3d5a99;color:white;
+                         border:none;border-radius:9px;font-size:12px;font-weight:600;
+                         cursor:pointer">
+            Write the first review
+          </button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

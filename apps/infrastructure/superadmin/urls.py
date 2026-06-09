@@ -7,6 +7,7 @@ app_name = 'superadmin'
 urlpatterns = [
     path('superadmin/', views.SuperAdminDashboardView.as_view(), name='dashboard'),
     path('superadmin/tenants/', views.SuperAdminTenantsView.as_view(), name='tenants'),
+    path('superadmin/tenants/<uuid:pk>/', views.TenantDetailView.as_view(), name='tenant_detail'),
     path('superadmin/tenants/<uuid:pk>/action/', views.SuperAdminTenantActionView.as_view(), name='tenant_action'),
     path('superadmin/tenants/<uuid:pk>/suspend-modal/', views.SuspendOrgModalView.as_view(), name='suspend_modal'),
     path('superadmin/tenants/<uuid:pk>/suspend/', views.SuspendOrgView.as_view(), name='suspend_org'),

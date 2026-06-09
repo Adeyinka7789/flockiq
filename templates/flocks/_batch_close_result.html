@@ -14,3 +14,20 @@
   </div>
   {% endif %}
 </div>
+
+{% if not batch.hatchery_review %}
+<div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;
+            padding:14px 16px;margin-top:12px">
+  <p style="font-size:12px;font-weight:600;color:#1e40af;margin:0 0 8px">
+    🐣 Help other farmers — rate your DOC supplier
+  </p>
+  <p style="font-size:11px;color:#3b82f6;margin:0 0 10px;line-height:1.4">
+    Your experience with {{ batch.breed_name|default:"your" }} chicks helps farmers
+    in Nigeria find reliable hatcheries.
+  </p>
+  <a href="{% url 'market:hatchery_directory' %}"
+     style="font-size:12px;color:#3d5a99;font-weight:600;text-decoration:underline">
+    Rate your DOC supplier →
+  </a>
+</div>
+{% endif %}

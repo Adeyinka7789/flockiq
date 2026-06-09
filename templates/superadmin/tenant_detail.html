@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+{% load static humanize %}
+{% block title %}{{ org.name }} — Tenant Detail{% endblock %}
+{% block breadcrumb %}{{ org.name }}{% endblock %}
+
+{% block content %}
+<style>
+  /* ----- base styles (unchanged) ----- */
+  .sa-wrap { max-width: 1100px; margin: 0 auto; }
+  .sa-card { background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;margin-bottom:16px; }
+  .sa-card-hd { display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #f1f5f9; }
+  .sa-card-title { font-size:14px;font-weight:700;color:#1a2744; }
+  .sa-badge { display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;background:#e8eef8;color:#2d4578;border-radius:30px;font-size:10px;font-weight:800; }
+  .sa-table { width:100%;border-collapse:collapse; }
+  .sa-table th { text-align:left;padding:10px 16px;font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;letter-spacing:0.07em;background:#fafafa;border-bottom:1px solid #e2e8f0; }
+  .sa-table td { padding:12px 16px;font-size:13px;border-bottom:1px solid #f8faff;color:#1a2744;vertical-align:middle; }
+  .sa-table tr:last-child td { border-bottom:none; }
+  .sa-table tr:hover td { background:#fafbff; }
+  .sa-stat-row { display:flex;gap:12px;padding:14px 20px;border-bottom:1px solid #f1f5f9;flex-wrap:wrap; }
+  .sa-stat { text-align:center;min-width:90px; }
+  .sa-stat-val { font-size:20px;font-weight:800;color:#1a2744; }
+  .sa-stat-lbl { font-size:10px;font-weight:700;color:#8a96a8;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px; }
+  .sa-action-btn { padding:7px 14px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid;transition:all 0.15s;text-decoration:none;display:inline-flex;align-items:center; }
+  .sa-action-btn.suspend { border-color:#fecaca;color:#dc2626;background:#fee2e2; }
+  .sa-action-btn.activate { border-color:#bbf7d0;color:#166534;background:#dcfce7; }
+  .sa-action-btn.impersonate { border-color:#bfdbfe;color:#2563eb;background:#eff6ff; }
+  .pill { padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase; white-space: nowrap; }
+  .pill-active    { background:#edfae8;color:#166534; }
+  .pill-suspended { background:#fee2e2;color:#dc2626; }
+  .pill-lapsed    { background:#fee2e2;color:#dc2626; }
+  .pill-trial     { background:#f1f5f9;color:#475569; }
+  .pill-monthly   { background:#e8eef8;color:#2d4578; }
+  .pill-cycle     { background:#fef3c7;color:#92400e; }
+  .pill-yearly    { background:#edfae8;color:#166534; }
+  .pill-owner     { background:#e8eef8;color:#2d4578; }
+  .pill-manager   { background:#f1f5f9;color:#475569; }
+  .pill-worker    { background:#f8faff;color:#64748b; }
+  .pill-low       { background:#f1f5f9;color:#475569; }
+  .pill-medium    { background:#fef3c7;color:#92400e; }
+  .pill-high      { background:#fee2e2;color:#dc2626; }
+  .pill-open         { background:#e8eef8;color:#2d4578; }
+  .pill-in_progress  { background:#fef3c7;color:#92400e; }
+  .pill-resolved     { background:#edfae8;color:#166534; }
+  .pill-success   { background:#edfae8;color:#166534; }
+  .pill-pending   { background:#fef3c7;color:#92400e; }
+  .pill-failed    { background:#fee2e2;color:#dc2626; }
+
+  /* ----- RESPONSIVE FIX: force card layout on mobile, hide tables ----- */
+  /* By default (desktop): show tables, hide mobile cards */
+  .team-desktop-table, .farm-desktop-table,
+  .payments-desktop-table, .tickets-desktop-table {
+    display: block;
+  }
+  .team-mobile-cards, .farm-mobile-cards,
+  .payments-mobile-cards, .tickets-mobile-cards {
+    display: none;
+  }
+
+  /* On screens 768px and smaller: hide tables, show cards */
+  @media (max-width: 768px) {
+    .team-desktop-table, .farm-desktop-table,
+    .payments-desktop-table, .tickets-desktop-table {
+      display: none !important;
+    }
+    .team-mobile-cards, .farm-mobile-cards,
+    .payments-mobile-cards, .tickets-mobile-cards {
+      display: block !important;
+    }
+    /* ensure cards don't overflow */
+    .team-mobile-cards, .farm-mobile-cards,
+    .payments-mobile-cards, .tickets-mobile-cards,
+    .team-mobile-cards > div, .farm-mobile-cards > div,
+    .payments-mobile-cards > div, .tickets-mobile-cards > div {
+      overflow-x: hidden !important;
+      word-break: break-word;
+    }
+    /* stat row compact on small devices */
+    .sa-stat-row {
+      gap: 8px;
+      justify-content: space-between;
+    }
+    .sa-stat {
+      min-width: 70px;
+    }
+  }
+
+  /* overflow safety for any remaining tables */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+</style>
+
+<div class="sa-wrap">
+
+  <!-- Breadcrumb -->
+  <div style="font-size:12px;color:#8a96a8;margin-bottom:14px">
+    <a href="{% url 'superadmin:dashboard' %}" style="color:#3d5a99;text-decoration:none">Admin Dashboard</a>
+    <span style="margin:0 6px">›</span>
+    <a href="{% url 'superadmin:tenants' %}" style="color:#3d5a99;text-decoration:none">Tenants</a>
+    <span style="margin:0 6px">›</span>
+    <span style="color:#1a2744;font-weight:600">{{ org.name }}</span>
+  </div>
+
+  <!-- Page header -->
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="width:52px;height:52px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:white;background:{{ org.primary_colour|default:'#3d5a99' }}">
+        {{ org.name|slice:":2"|upper }}
+      </div>
+      <div>
+        <div style="font-size:22px;font-weight:800;color:#1a2744;letter-spacing:-0.3px">{{ org.name }}</div>
+        <div style="font-size:12px;color:#8a96a8;margin-top:2px">
+          {{ org.subdomain }}.flockiq.com
+          {% if org.custom_domain_verified and org.custom_domain %}
+          &nbsp;·&nbsp;{{ org.custom_domain }}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% if org.is_active %}
+      <button class="sa-action-btn suspend"
+              hx-get="{% url 'superadmin:suspend_modal' org.pk %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML">
+        Suspend
+      </button>
+      {% else %}
+      <form method="POST" action="{% url 'superadmin:tenant_action' org.pk %}" style="display:inline">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="activate">
+        <button type="submit" class="sa-action-btn activate">Reactivate</button>
+      </form>
+      {% endif %}
+      {% if owner %}
+      <form method="POST" action="{% url 'superadmin:impersonate_start' user_pk=owner.id %}" style="display:inline">
+        {% csrf_token %}
+        <button type="submit" class="sa-action-btn impersonate">Impersonate →</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Status badges -->
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px">
+    {% if org.is_active and org.is_lapsed %}
+    <span class="pill pill-lapsed">Lapsed</span>
+    {% elif org.is_active %}
+    <span class="pill pill-active">Active</span>
+    {% else %}
+    <span class="pill pill-suspended">Suspended</span>
+    {% endif %}
+    <span class="pill pill-{{ org.plan_tier }}">{{ org.plan_tier|title }} Plan</span>
+    {% if org.plan_expires_at %}
+    <span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:#f1f5f9;color:#475569">
+      Expires {{ org.plan_expires_at|date:"N j, Y" }}
+    </span>
+    {% endif %}
+    {% if org.trial_ends_at and org.plan_tier == 'trial' %}
+    <span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:#fef3c7;color:#92400e">
+      Trial ends {{ org.trial_ends_at|date:"N j, Y" }}
+    </span>
+    {% endif %}
+    {% if org.suspension_reason %}
+    <span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:#fee2e2;color:#dc2626"
+          title="{{ org.suspension_reason }}">
+      Reason: {{ org.suspension_reason|truncatechars:50 }}
+    </span>
+    {% endif %}
+  </div>
+
+  <!-- 2-column grid: Team + Farm Activity -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:16px;margin-bottom:0">
+
+    <!-- Card: Team Members -->
+    <div class="sa-card">
+      <div class="sa-card-hd">
+        <span class="sa-card-title">Team Members</span>
+        <span class="sa-badge">{{ team_members|length }}</span>
+      </div>
+      {% if team_members %}
+      <!-- Desktop table -->
+      <div class="team-desktop-table table-responsive">
+        <table class="sa-table">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Role</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for member in team_members %}
+            <tr {% if member.role == 'owner' %}style="background:#fafbff"{% endif %}>
+              <td>
+                <div style="display:flex;align-items:center;gap:9px">
+                  <div style="width:30px;height:30px;border-radius:8px;background:{% if member.role == 'owner' %}#e8eef8{% else %}#f1f5f9{% endif %};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#3d5a99;flex-shrink:0">
+                    {{ member.first_name|first|upper|default:member.email|first|upper }}
+                  </div>
+                  <div>
+                    <div style="font-size:13px;font-weight:{% if member.role == 'owner' %}700{% else %}500{% endif %};color:#1a2744">
+                      {{ member.get_full_name|default:member.email }}
+                    </div>
+                    <div style="font-size:11px;color:#8a96a8">{{ member.email }}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="pill pill-{{ member.role }}">{{ member.role|title }}</span></td>
+              <td style="font-size:12px;color:#8a96a8">{{ member.date_joined|date:"M d, Y" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <!-- Mobile cards -->
+      <div class="team-mobile-cards" style="padding:0 16px">
+        {% for member in team_members %}
+        <div style="padding:16px 0; border-bottom:1px solid #f0f2f5">
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px">
+            <div style="width:36px;height:36px;border-radius:10px;background:{% if member.role == 'owner' %}#e8eef8{% else %}#f1f5f9{% endif %};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#3d5a99;flex-shrink:0">
+              {{ member.email|slice:":1"|upper }}
+            </div>
+            <div style="flex:1; min-width:0">
+              <div style="font-size:14px;font-weight:600;color:#1a2744;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                {{ member.get_full_name|default:member.email }}
+              </div>
+              <div style="font-size:12px;color:#8a96a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ member.email }}</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-left:48px">
+            <span class="pill pill-{{ member.role }}">{{ member.role|upper }}</span>
+            <span style="font-size:12px;color:#8a96a8">Joined {{ member.date_joined|date:"M d, Y" }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="padding:32px;text-align:center;color:#8a96a8;font-size:13px">No team members yet.</div>
+      {% endif %}
+    </div>
+
+    <!-- Card: Farm Activity -->
+    <div class="sa-card">
+      <div class="sa-card-hd">
+        <span class="sa-card-title">Farm Activity</span>
+      </div>
+      <div class="sa-stat-row">
+        <div class="sa-stat">
+          <div class="sa-stat-val">{{ farms_count }}</div>
+          <div class="sa-stat-lbl">Farms</div>
+        </div>
+        <div class="sa-stat">
+          <div class="sa-stat-val">{{ batches_count }}</div>
+          <div class="sa-stat-lbl">Active Batches</div>
+        </div>
+        <div class="sa-stat">
+          <div class="sa-stat-val">{{ total_live_birds|intcomma }}</div>
+          <div class="sa-stat-lbl">Live Birds</div>
+        </div>
+      </div>
+      {% if farms %}
+      <!-- Desktop table -->
+      <div class="farm-desktop-table table-responsive">
+        <table class="sa-table">
+          <thead>
+            <tr>
+              <th>Farm</th>
+              <th>Location</th>
+              <th>Houses</th>
+              <th>Active Batches</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for farm in farms %}
+            <tr>
+              <td style="font-weight:600">{{ farm.name }}</td>
+              <td style="font-size:12px;color:#8a96a8">{{ farm.location|default:"—" }}</td>
+              <td style="font-variant-numeric:tabular-nums">{{ farm.houses_count }}</td>
+              <td style="font-variant-numeric:tabular-nums">{{ farm.active_batches_count }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <!-- Mobile cards -->
+      <div class="farm-mobile-cards" style="padding:0 16px">
+        {% for farm in farms %}
+        <div style="padding:16px 0; border-bottom:1px solid #f0f2f5">
+          <div style="font-size:15px;font-weight:700;color:#1a2744;margin-bottom:6px">{{ farm.name }}</div>
+          <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:#8a96a8">
+            <span>📍 {{ farm.location|default:"—" }}</span>
+            <span>{{ farm.houses_count }} house{{ farm.houses_count|pluralize }}</span>
+            <span>{{ farm.active_batches_count }} batch{{ farm.active_batches_count|pluralize }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="padding:32px;text-align:center;color:#8a96a8;font-size:13px">No farms created yet.</div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Card: Payment History (full width) -->
+  <div class="sa-card">
+    <div class="sa-card-hd">
+      <span class="sa-card-title">Payment History</span>
+      <a href="{% url 'superadmin:billing' %}?q={{ org.name }}"
+         style="font-size:12px;color:#3d5a99;text-decoration:none;font-weight:600">
+        View all →
+      </a>
+    </div>
+    {% if payments %}
+    <!-- Desktop table -->
+    <div class="payments-desktop-table table-responsive">
+      <table class="sa-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Plan</th>
+            <th>Amount</th>
+            <th>Reference</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for payment in payments %}
+          <tr>
+            <td style="font-size:12px;color:#8a96a8">
+              {{ payment.paid_at|date:"d M Y"|default:"—" }}
+            </td>
+            <td style="font-size:12px">
+              {{ payment.plan.name|default:"—" }}
+            </td>
+            <td style="font-weight:700;font-variant-numeric:tabular-nums">
+              ₦{% widthratio payment.amount_kobo 100 1 %}
+            </td>
+            <td style="font-size:11px;color:#8a96a8;font-family:monospace">
+              {{ payment.reference|truncatechars:20 }}
+            </td>
+            <td><span class="pill pill-{{ payment.status }}">{{ payment.status|title }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <!-- Mobile cards -->
+    <div class="payments-mobile-cards" style="padding:0 16px">
+      {% for payment in payments %}
+      <div style="padding:14px 0; border-bottom:1px solid #f0f2f5">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px">
+          <span style="font-size:16px;font-weight:800;color:#1a2744">
+            ₦{% widthratio payment.amount_kobo 100 1 %}
+          </span>
+          <span class="pill pill-{{ payment.status }}">{{ payment.status|title }}</span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:#8a96a8">
+          <span>{{ payment.plan.name|default:"—" }}</span>
+          <span>{{ payment.paid_at|date:"d M Y"|default:"—" }}</span>
+          <span style="font-family:monospace">{{ payment.reference|truncatechars:16 }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding:32px;text-align:center;color:#8a96a8;font-size:13px">No payments recorded yet.</div>
+    {% endif %}
+  </div>
+
+  <!-- Card: Support Tickets (full width) -->
+  <div class="sa-card">
+    <div class="sa-card-hd">
+      <span class="sa-card-title">
+        Support Tickets
+        {% if support_tickets %}
+        <span class="sa-badge" style="margin-left:6px">{{ support_tickets|length }}</span>
+        {% endif %}
+      </span>
+      <a href="{% url 'superadmin:support_tickets' %}"
+         style="font-size:12px;color:#3d5a99;text-decoration:none;font-weight:600">
+        View all tickets →
+      </a>
+    </div>
+    {% if support_tickets %}
+    <!-- Desktop table -->
+    <div class="tickets-desktop-table table-responsive">
+      <table class="sa-table">
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ticket in support_tickets %}
+          <tr>
+            <td style="font-weight:500;max-width:300px">
+              {% if not ticket.is_read_by_admin %}
+              <span style="width:7px;height:7px;border-radius:50%;background:#3d5a99;display:inline-block;margin-right:6px"></span>
+              {% endif %}
+              {{ ticket.subject }}
+            </td>
+            <td><span class="pill pill-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></td>
+            <td><span class="pill pill-{{ ticket.status }}">{{ ticket.get_status_display }}</span></td>
+            <td style="font-size:12px;color:#8a96a8">{{ ticket.created_at|date:"d M Y" }}</td>
+            <td>
+              <a href="{% url 'superadmin:support_ticket_detail' pk=ticket.pk %}"
+                 style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:600;background:#e8eef8;color:#3d5a99;text-decoration:none">
+                View
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <!-- Mobile cards -->
+    <div class="tickets-mobile-cards" style="padding:0 16px">
+      {% for ticket in support_tickets %}
+      <div style="padding:14px 0; border-bottom:1px solid #f0f2f5">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px">
+          <div style="font-size:13px; font-weight:500; color:#1a2744; min-width:0">
+            {% if not ticket.is_read_by_admin %}
+            <span style="width:7px;height:7px;border-radius:50%;background:#3d5a99;display:inline-block;margin-right:6px"></span>
+            {% endif %}
+            {{ ticket.subject|truncatechars:60 }}
+          </div>
+          <a href="{% url 'superadmin:support_ticket_detail' pk=ticket.pk %}"
+             style="padding:3px 9px;border-radius:7px;font-size:11px;font-weight:600;background:#e8eef8;color:#3d5a99;text-decoration:none;white-space:nowrap">
+            View
+          </a>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center">
+          <span class="pill pill-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span>
+          <span class="pill pill-{{ ticket.status }}">{{ ticket.get_status_display }}</span>
+          <span style="font-size:11px;color:#8a96a8; margin-left:auto">{{ ticket.created_at|date:"d M Y" }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="padding:32px;text-align:center;color:#8a96a8;font-size:13px">No support tickets from this tenant.</div>
+    {% endif %}
+  </div>
+
+  <!-- Card: Suspension Details (only if suspended) -->
+  {% if not org.is_active and org.suspension_reason %}
+  <div class="sa-card" style="border-color:#fecaca">
+    <div class="sa-card-hd" style="background:#fff5f5">
+      <span class="sa-card-title" style="color:#dc2626">Suspension Details</span>
+    </div>
+    <div style="padding:18px 20px">
+      <div style="margin-bottom:10px">
+        <span style="font-size:11px;font-weight:700;color:#8a96a8;text-transform:uppercase;letter-spacing:0.06em">Reason</span>
+        <div style="font-size:13px;color:#1a2744;margin-top:4px">{{ org.suspension_reason }}</div>
+      </div>
+      <div style="margin-top:14px">
+        <form method="POST" action="{% url 'superadmin:tenant_action' org.pk %}" style="display:inline">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="activate">
+          <button type="submit" class="sa-action-btn activate">Reactivate Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
