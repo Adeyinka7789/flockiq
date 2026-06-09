@@ -314,6 +314,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "billing.send_subscription_expiry_reminders",
         "schedule": crontab(hour=8, minute=0),
     },
+    # Daily 08:30: remind trial org owners 7/3/1 days before their trial ends.
+    "send-trial-expiry-reminders": {
+        "task": "billing.send_trial_expiry_reminders",
+        "schedule": crontab(hour=8, minute=30),
+    },
 }
 
 # --- JWT ---

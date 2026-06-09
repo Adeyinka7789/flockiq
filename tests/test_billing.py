@@ -617,3 +617,180 @@ def test_expiry_reminder_skips_non_reminder_day():
         assert not NotificationLog.objects.filter(
             org=org, event_type="billing_expiry_reminder"
         ).exists()
+
+
+# ---------------------------------------------------------------------------
+# Trial expiry reminder Celery task
+# ---------------------------------------------------------------------------
+
+def test_trial_reminder_7_days_sends_email_and_notification():
+    from datetime import timedelta
+    from django.core import mail
+    from django.utils import timezone
+    from apps.infrastructure.billing.tasks import send_trial_expiry_reminders
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    org = make_org(
+        subdomain="trial7",
+        owner_email="trial7@test.com",
+        plan_tier="trial",
+        trial_ends_at=timezone.now() + timedelta(days=7, hours=2),
+    )
+    owner = make_user(org, email="owner@trial7.com")
+
+    mail.outbox = []
+    send_trial_expiry_reminders()
+
+    assert any(owner.email in m.to for m in mail.outbox)
+    with set_tenant_context(org):
+        assert NotificationLog.objects.filter(
+            org=org, recipient=owner, event_type="trial_expiry_reminder"
+        ).exists()
+
+
+def test_trial_reminder_3_days_notification_is_warning():
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.infrastructure.billing.tasks import send_trial_expiry_reminders
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    org = make_org(
+        subdomain="trial3",
+        owner_email="trial3@test.com",
+        plan_tier="trial",
+        trial_ends_at=timezone.now() + timedelta(days=3, hours=2),
+    )
+    make_user(org, email="owner@trial3.com")
+
+    send_trial_expiry_reminders()
+
+    with set_tenant_context(org):
+        note = NotificationLog.objects.get(
+            org=org, event_type="trial_expiry_reminder"
+        )
+        assert note.severity == "warning"
+
+
+def test_trial_reminder_1_day_urgency_is_today():
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.infrastructure.billing.tasks import send_trial_expiry_reminders
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    org = make_org(
+        subdomain="trial1",
+        owner_email="trial1@test.com",
+        plan_tier="trial",
+        trial_ends_at=timezone.now() + timedelta(days=1, hours=2),
+    )
+    make_user(org, email="owner@trial1.com")
+
+    send_trial_expiry_reminders()
+
+    with set_tenant_context(org):
+        note = NotificationLog.objects.get(
+            org=org, event_type="trial_expiry_reminder"
+        )
+        assert "today" in note.title
+
+
+def test_trial_reminder_skips_non_reminder_day():
+    from datetime import timedelta
+    from django.core import mail
+    from django.utils import timezone
+    from apps.infrastructure.billing.tasks import send_trial_expiry_reminders
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    org = make_org(
+        subdomain="trial10",
+        owner_email="trial10@test.com",
+        plan_tier="trial",
+        trial_ends_at=timezone.now() + timedelta(days=10, hours=2),
+    )
+    make_user(org, email="owner@trial10.com")
+
+    mail.outbox = []
+    send_trial_expiry_reminders()
+
+    assert not any("trial10@test.com" in m.to or "owner@trial10.com" in m.to
+                   for m in mail.outbox)
+    with set_tenant_context(org):
+        assert not NotificationLog.objects.filter(
+            org=org, event_type="trial_expiry_reminder"
+        ).exists()
+
+
+def test_trial_reminder_ignores_paid_orgs():
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.infrastructure.billing.tasks import send_trial_expiry_reminders
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    # Paid org sitting exactly on a reminder day — must still be ignored
+    # because the task filters plan_tier='trial'.
+    org = make_org(
+        subdomain="paidnot",
+        owner_email="paidnot@test.com",
+        plan_tier="monthly",
+        trial_ends_at=timezone.now() + timedelta(days=7, hours=2),
+    )
+    make_user(org, email="owner@paidnot.com")
+
+    send_trial_expiry_reminders()
+
+    with set_tenant_context(org):
+        assert not NotificationLog.objects.filter(
+            org=org, event_type="trial_expiry_reminder"
+        ).exists()
+
+
+def test_trial_reminder_skips_expired_trial():
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.infrastructure.billing.tasks import send_trial_expiry_reminders
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    # Trial ending within the day → days_left == 0, not in {7, 3, 1}.
+    org = make_org(
+        subdomain="trial0",
+        owner_email="trial0@test.com",
+        plan_tier="trial",
+        trial_ends_at=timezone.now() + timedelta(hours=2),
+    )
+    make_user(org, email="owner@trial0.com")
+
+    send_trial_expiry_reminders()
+
+    with set_tenant_context(org):
+        assert not NotificationLog.objects.filter(
+            org=org, event_type="trial_expiry_reminder"
+        ).exists()
+
+
+def test_trial_reminder_no_owner_does_not_error():
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.infrastructure.billing.tasks import send_trial_expiry_reminders
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    # Org on a reminder day but with no owner user — must skip gracefully.
+    org = make_org(
+        subdomain="trialnoowner",
+        owner_email="trialnoowner@test.com",
+        plan_tier="trial",
+        trial_ends_at=timezone.now() + timedelta(days=7, hours=2),
+    )
+
+    send_trial_expiry_reminders()  # should not raise
+
+    with set_tenant_context(org):
+        assert not NotificationLog.objects.filter(
+            org=org, event_type="trial_expiry_reminder"
+        ).exists()

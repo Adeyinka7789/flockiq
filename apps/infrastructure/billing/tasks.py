@@ -70,6 +70,76 @@ def _send_expiry_reminder(org, days_left: int) -> None:
     )
 
 
+@shared_task(name="billing.send_trial_expiry_reminders")
+def send_trial_expiry_reminders():
+    """
+    Celery Beat — 08:30 daily.
+    Email + in-app reminder to trial org owners at 7, 3, and 1 days before
+    trial_ends_at. Separate from the paid-plan reminder task, which skips trials.
+    """
+    from apps.infrastructure.core.rls import no_tenant_context, set_tenant_context
+    from apps.infrastructure.tenants.models import Organization
+
+    now = timezone.now()
+    reminder_days = {7, 3, 1}
+
+    with no_tenant_context():
+        org_ids = list(
+            Organization.objects.filter(
+                is_active=True,
+                plan_tier="trial",
+                trial_ends_at__isnull=False,
+            ).values_list("id", flat=True)
+        )
+
+    sent = 0
+    for org_id in org_ids:
+        try:
+            with set_tenant_context(str(org_id)):
+                org = Organization.objects.get(id=org_id)
+                days_left = (org.trial_ends_at - now).days
+                if days_left in reminder_days:
+                    _send_trial_expiry_reminder(org, days_left)
+                    sent += 1
+        except Exception as exc:
+            logger.error("billing.trial_reminder_error", org_id=str(org_id), error=str(exc))
+
+    logger.info("billing.trial_reminders_sent", count=sent, scanned=len(org_ids))
+
+
+def _send_trial_expiry_reminder(org, days_left: int) -> None:
+    """Send one trial expiry email + in-app notification. Runs inside set_tenant_context(org)."""
+    from apps.infrastructure.core.email_service import EmailService
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    owner = org.users.filter(role="owner").first()
+    if not owner:
+        return
+
+    urgency = "today" if days_left <= 1 else f"in {days_left} days"
+
+    EmailService.send_trial_ending(
+        owner_email=owner.email,
+        owner_name=owner.get_full_name() or owner.email,
+        org_name=org.name,
+        days_left=days_left,
+    )
+
+    NotificationLog.objects.create(
+        org=org,
+        recipient=owner,
+        event_type="trial_expiry_reminder",
+        title=f"Your trial expires {urgency}",
+        body=(
+            f"Your free trial for {org.name} expires {urgency}. "
+            f"Upgrade now to keep access to all features."
+        ),
+        severity="warning" if days_left <= 3 else "info",
+        channel="in_app",
+        action_url="/billing/",
+    )
+
+
 @shared_task(name="billing.activate_cycle_subscription")
 def activate_cycle_subscription(org_id: str, batch_id: str):
     """Called from flocks signal when a new broiler batch is placed."""
