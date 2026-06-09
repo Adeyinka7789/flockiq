@@ -22,7 +22,7 @@ ENABLE_SILK = True
 if "silk" not in INSTALLED_APPS:  # noqa: F405
     INSTALLED_APPS += ["silk"]  # noqa: F405
     MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]  # noqa: F405
-    SILKY_PYTHON_PROFILER = True
+    SILKY_PYTHON_PROFILER = False
     # MUST stay False — see base.py: EXPLAIN ANALYZE executes DML in PostgreSQL,
     # so query profiling would re-run every INSERT/UPDATE/DELETE and double our
     # mortality/feed-stock decrement signals.

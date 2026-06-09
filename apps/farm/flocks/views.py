@@ -196,6 +196,9 @@ class BatchCreateView(LoginRequiredMixin, View):
                         placement_date=cd["placement_date"],
                         initial_count=cd["initial_count"],
                         breed_name=cd.get("breed_name", ""),
+                        hatchery=cd.get("hatchery"),
+                        doc_price_per_chick=cd.get("doc_price_per_chick"),
+                        doc_supplier_name=cd.get("doc_supplier_name", ""),
                     )
             except (HouseOccupiedError, HouseCapacityExceededError, ValueError) as exc:
                 form.add_error(None, str(exc))
@@ -261,7 +264,7 @@ class BatchDetailView(TenantRequiredMixin, View):
 
         with set_tenant_context(org):
             try:
-                batch = Batch.objects.select_related("farm", "house").get(id=pk)
+                batch = Batch.objects.select_related("farm", "house", "hatchery").get(id=pk)
             except Batch.DoesNotExist:
                 raise Http404("Batch not found.")
 
@@ -380,6 +383,11 @@ class BatchDetailView(TenantRequiredMixin, View):
             except Exception:
                 pass
 
+        has_hatchery_review = False
+        if batch.hatchery_id:
+            from apps.finance.market.models import HatcheryReview
+            has_hatchery_review = HatcheryReview.objects.filter(batch=batch).exists()
+
         context = {
             "batch": batch,
             "mortality_form": MortalityLogForm(),
@@ -392,6 +400,7 @@ class BatchDetailView(TenantRequiredMixin, View):
             "sale_timing": sale_timing,
             "anomaly_result": anomaly_result,
             "theft_result": theft_result,
+            "has_hatchery_review": has_hatchery_review,
             "symptom_choices": [
                 ("respiratory", "Respiratory distress / coughing"),
                 ("sudden_death", "Sudden unexplained death"),

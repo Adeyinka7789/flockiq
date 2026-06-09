@@ -235,12 +235,23 @@ class HatcheryDetailView(LoginRequiredMixin, View):
             avg_price=Avg("price_per_doc"),
             total=Count("id"),
         )
+        price_trend = HatcheryService.get_doc_price_trend(pk)
+        import json as _json
+        price_trend_json = _json.dumps([
+            {
+                "month": entry["month"].strftime("%b %Y"),
+                "avg_price": float(entry["avg_price"]),
+                "count": entry["count"],
+            }
+            for entry in price_trend
+        ])
         review_form = HatcheryReviewForm(initial={"hatchery_id": pk})
         return render(request, "market/hatchery_detail.html", {
             "hatchery": hatchery,
             "reviews": reviews,
             "stats": stats,
             "review_form": review_form,
+            "price_trend_json": price_trend_json,
         })
 
 
@@ -252,9 +263,32 @@ class SubmitHatcheryReviewView(LoginRequiredMixin, View):
             hatchery = Hatchery.objects.get(pk=pk)
         except Hatchery.DoesNotExist:
             raise Http404("Hatchery not found.")
-        form = HatcheryReviewForm(initial={"hatchery_id": pk})
+
         org = get_org_or_404(request)
-        # Provide user's recent closed batches so they can link the review
+        initial = {"hatchery_id": pk}
+        batch_context = None
+
+        batch_id = request.GET.get("batch_id")
+        if batch_id:
+            with set_tenant_context(org):
+                from apps.farm.flocks.models import Batch
+                batch_context = Batch.objects.filter(id=batch_id).select_related("hatchery").first()
+            if batch_context:
+                initial.update({
+                    "batch_id": str(batch_context.pk),
+                    "price_per_doc": batch_context.doc_price_per_chick,
+                    "batch_size": batch_context.initial_count,
+                    "purchase_date": batch_context.placement_date,
+                    "survival_rate_pct": (
+                        round(batch_context.current_count / batch_context.initial_count * 100, 1)
+                        if batch_context.initial_count else None
+                    ),
+                })
+                if batch_context.hatchery_id:
+                    initial["hatchery_id"] = batch_context.hatchery_id
+
+        form = HatcheryReviewForm(initial=initial)
+
         with set_tenant_context(org):
             from apps.farm.flocks.models import Batch
             import datetime
@@ -269,6 +303,7 @@ class SubmitHatcheryReviewView(LoginRequiredMixin, View):
             "hatchery": hatchery,
             "form": form,
             "eligible_batches": eligible_batches,
+            "batch_context": batch_context,
         })
 
     def post(self, request, pk):

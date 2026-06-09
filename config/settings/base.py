@@ -150,7 +150,7 @@ ENABLE_SILK = config("ENABLE_SILK", default=False, cast=bool)
 if ENABLE_SILK:
     INSTALLED_APPS += ["silk"]
     MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]
-    SILKY_PYTHON_PROFILER = True
+    SILKY_PYTHON_PROFILER = False
     # MUST stay False: Silk profiles queries by re-running them under
     # `EXPLAIN ANALYZE`, and in PostgreSQL EXPLAIN ANALYZE *executes* DML
     # (INSERT/UPDATE/DELETE). With it on, every write fires twice — e.g. the

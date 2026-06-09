@@ -28,6 +28,9 @@
     {% endif %}
 
     <input type="hidden" name="hatchery_id" value="{{ hatchery.pk }}">
+    {% if batch_context %}
+    <input type="hidden" name="batch_id" value="{{ batch_context.pk }}">
+    {% endif %}
 
     {% with field_style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;box-sizing:border-box;background:white;outline:none" label_style="display:block;font-size:10px;font-weight:700;color:#4a5568;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em" %}
 
@@ -75,6 +78,7 @@
         <label style="{{ label_style }}">Survival Rate (%)</label>
         <input type="number" name="survival_rate_pct"
                min="0" max="100" step="0.1" placeholder="e.g. 92.5" required
+               value="{% if form.survival_rate_pct.value %}{{ form.survival_rate_pct.value }}{% endif %}"
                style="{{ field_style }}"
                onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'">
         {% if form.survival_rate_pct.errors %}<p style="color:#dc2626;font-size:11px;margin-top:3px">{{ form.survival_rate_pct.errors.0 }}</p>{% endif %}
@@ -86,6 +90,7 @@
         <label style="{{ label_style }}">Batch Size (DOCs)</label>
         <input type="number" name="batch_size"
                min="1" placeholder="e.g. 500" required
+               value="{% if form.batch_size.value %}{{ form.batch_size.value }}{% endif %}"
                style="{{ field_style }}"
                onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'">
         {% if form.batch_size.errors %}<p style="color:#dc2626;font-size:11px;margin-top:3px">{{ form.batch_size.errors.0 }}</p>{% endif %}
@@ -94,6 +99,7 @@
         <label style="{{ label_style }}">Price per DOC (₦)</label>
         <input type="number" name="price_per_doc"
                min="0" step="10" placeholder="e.g. 350" required
+               value="{% if form.price_per_doc.value %}{{ form.price_per_doc.value }}{% endif %}"
                style="{{ field_style }}"
                onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'">
         {% if form.price_per_doc.errors %}<p style="color:#dc2626;font-size:11px;margin-top:3px">{{ form.price_per_doc.errors.0 }}</p>{% endif %}
@@ -101,6 +107,7 @@
       <div>
         <label style="{{ label_style }}">Purchase Date</label>
         <input type="date" name="purchase_date" required
+               value="{% if form.purchase_date.value %}{{ form.purchase_date.value|date:'Y-m-d' }}{% endif %}"
                style="{{ field_style }}"
                onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'">
         {% if form.purchase_date.errors %}<p style="color:#dc2626;font-size:11px;margin-top:3px">{{ form.purchase_date.errors.0 }}</p>{% endif %}

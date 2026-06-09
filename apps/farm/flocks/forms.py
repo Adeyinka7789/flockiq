@@ -4,6 +4,11 @@ from django import forms
 
 from apps.farm.flocks.models import Batch, MortalityLog, WeightRecord
 
+_INPUT_CLASS = (
+    "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm "
+    "focus:outline-none focus:ring-2 focus:ring-[#3d5a99]"
+)
+
 
 class BatchCreateForm(forms.Form):
     farm_id = forms.UUIDField(widget=forms.HiddenInput(), required=False)
@@ -29,6 +34,36 @@ class BatchCreateForm(forms.Form):
         label="Breed (optional)",
         required=False,
     )
+
+    # ── DOC sourcing (optional) ───────────────────────────────────────────────
+    hatchery = forms.ModelChoiceField(
+        queryset=None,  # set in __init__
+        required=False,
+        empty_label="Select hatchery (optional)",
+        widget=forms.Select(attrs={"class": _INPUT_CLASS}),
+    )
+    doc_price_per_chick = forms.DecimalField(
+        required=False,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            "placeholder": "e.g. 1600",
+            "class": _INPUT_CLASS,
+        }),
+    )
+    doc_supplier_name = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            "placeholder": "Hatchery name if not listed above",
+            "class": _INPUT_CLASS,
+        }),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from apps.finance.market.models import Hatchery
+        self.fields["hatchery"].queryset = (
+            Hatchery.objects.filter(is_verified=True).order_by("state", "name")
+        )
 
     def clean_placement_date(self):
         value = self.cleaned_data.get("placement_date")

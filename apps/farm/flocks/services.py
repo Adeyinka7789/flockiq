@@ -31,6 +31,9 @@ class BatchService(BaseService):
         initial_count: int,
         breed_name: str = "",
         notes: str = "",
+        hatchery=None,
+        doc_price_per_chick=None,
+        doc_supplier_name: str = "",
     ):
         assert_tenant_context()
         from apps.farm.farms.models import Farm, House
@@ -74,6 +77,9 @@ class BatchService(BaseService):
                 initial_count=initial_count,
                 current_count=initial_count,
                 notes=notes,
+                hatchery=hatchery,
+                doc_price_per_chick=doc_price_per_chick,
+                doc_supplier_name=doc_supplier_name,
             )
 
         self.logger.info(

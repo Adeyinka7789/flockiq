@@ -48,6 +48,28 @@ class Batch(TenantAwareModel):
     closed_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
 
+    # ── DOC sourcing ──────────────────────────────────────────────────────────
+    hatchery = models.ForeignKey(
+        "market.Hatchery",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="batches",
+        help_text="Hatchery where DOCs were purchased",
+    )
+    doc_price_per_chick = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Price paid per day-old chick in Naira",
+    )
+    doc_supplier_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Hatchery name if not in directory",
+    )
+
     class Meta:
         db_table = "flocks_batch"
         unique_together = [("org", "farm", "id")]

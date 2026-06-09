@@ -173,6 +173,50 @@
     </div>
     {% endif %}
 
+    <!-- DOC Source card -->
+    {% if batch.hatchery or batch.doc_supplier_name %}
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
+                padding:16px 20px;margin-top:16px;display:flex;
+                align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:#8a96a8;
+                    text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">
+          DOC Source
+        </div>
+        <div style="font-size:14px;font-weight:700;color:#1a2744">
+          {% if batch.hatchery %}{{ batch.hatchery.name }}{% else %}{{ batch.doc_supplier_name }}{% endif %}
+        </div>
+        {% if batch.doc_price_per_chick %}
+        <div style="font-size:12px;color:#4a5568;margin-top:2px">
+          {{ batch.initial_count|default:"—" }} chicks at ₦{{ batch.doc_price_per_chick }}/DOC
+        </div>
+        {% endif %}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        {% if batch.hatchery %}
+        <a href="{% url 'market:hatchery_detail' batch.hatchery.pk %}"
+           style="font-size:12px;font-weight:600;color:#3d5a99;text-decoration:none;
+                  padding:7px 14px;border:1.5px solid #3d5a99;border-radius:9px;
+                  transition:all 0.15s"
+           onmouseover="this.style.background='#e8eef8'"
+           onmouseout="this.style.background='transparent'">
+          View hatchery profile →
+        </a>
+        {% endif %}
+        {% if batch.status == 'closed' and batch.hatchery and not has_hatchery_review %}
+        <button hx-get="{% url 'market:submit_hatchery_review' batch.hatchery.pk %}?batch_id={{ batch.pk }}"
+                hx-target="#modal-body"
+                hx-swap="innerHTML"
+                hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))"
+                style="font-size:12px;font-weight:700;color:white;background:#3d5a99;
+                       border:none;border-radius:9px;padding:7px 14px;cursor:pointer">
+          Rate this hatchery
+        </button>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
     <!-- Quick actions -->
     <div class="flex flex-wrap gap-3 mt-6">
       <button hx-get="{% url 'flocks:mortality' batch.pk %}"

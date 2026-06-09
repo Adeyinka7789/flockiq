@@ -263,6 +263,26 @@ class HatcheryService:
         )
 
     @staticmethod
+    def get_doc_price_trend(hatchery_id: int) -> list:
+        """Monthly average DOC price from farmer reviews for the last 12 months."""
+        from django.db.models.functions import TruncMonth
+        from .models import HatcheryReview
+
+        cutoff = datetime.date.today().replace(day=1)
+        cutoff = cutoff.replace(year=cutoff.year - 1)
+
+        return list(
+            HatcheryReview.objects.filter(
+                hatchery_id=hatchery_id,
+                purchase_date__gte=cutoff,
+            )
+            .annotate(month=TruncMonth("purchase_date"))
+            .values("month")
+            .annotate(avg_price=Avg("price_per_doc"), count=Count("id"))
+            .order_by("month")
+        )
+
+    @staticmethod
     def suggest_hatchery(user, org, name, state, lga="", address="", phone="", website="", bird_types=None):
         from .models import Hatchery
 
