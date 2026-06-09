@@ -109,7 +109,7 @@ def test_valid_post_creates_ticket(client):
     su = make_superuser()
     client.force_login(user)
 
-    with patch("apps.infrastructure.notifications.views.send_mail") as mock_mail:
+    with patch("apps.infrastructure.core.email_service.EmailService.send_support_ticket"):
         resp = client.post("/support/ticket/submit/", {
             "subject": "Batch weight missing",
             "message": "The weight field does not save.",
@@ -133,18 +133,19 @@ def test_valid_post_sends_email(client):
     make_superuser()
     client.force_login(user)
 
-    with patch("apps.infrastructure.notifications.views.send_mail") as mock_mail:
+    with patch(
+        "apps.infrastructure.core.email_service.EmailService.send_support_ticket"
+    ) as mock_send_email:
         client.post("/support/ticket/submit/", {
             "subject": "Feed calculation wrong",
             "message": "Numbers are off.",
             "priority": "medium",
         })
 
-    mock_mail.assert_called_once()
-    args, kwargs = mock_mail.call_args
-    subject_arg = kwargs.get("subject") or (args[0] if args else "")
-    assert "Feed calculation wrong" in subject_arg
-    assert "MEDIUM" in subject_arg
+    mock_send_email.assert_called_once()
+    _, kwargs = mock_send_email.call_args
+    assert kwargs.get("subject") == "Feed calculation wrong"
+    assert kwargs.get("priority") == "medium"
 
 
 def test_valid_post_notifies_superusers(client):
@@ -153,7 +154,7 @@ def test_valid_post_notifies_superusers(client):
     su = make_superuser()
     client.force_login(user)
 
-    with patch("apps.infrastructure.notifications.views.send_mail"):
+    with patch("apps.infrastructure.core.email_service.EmailService.send_support_ticket"):
         client.post("/support/ticket/submit/", {
             "subject": "Cannot view reports",
             "message": "Page errors out.",
@@ -174,7 +175,7 @@ def test_org_auto_captured_from_request_not_form(client):
     other_org = make_org()
     client.force_login(user)
 
-    with patch("apps.infrastructure.notifications.views.send_mail"):
+    with patch("apps.infrastructure.core.email_service.EmailService.send_support_ticket"):
         client.post("/support/ticket/submit/", {
             "subject": "Tenant spoof test",
             "message": "Attempting to spoof org",

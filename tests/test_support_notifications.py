@@ -81,7 +81,7 @@ def test_superuser_gets_admin_notification_on_ticket_submit(client):
     su = make_superuser()
     client.force_login(user)
 
-    with patch("apps.infrastructure.notifications.views.send_mail"):
+    with patch("apps.infrastructure.core.email_service.EmailService.send_support_ticket"):
         resp = client.post("/support/ticket/submit/", {
             "subject": "Feeder broken",
             "message": "The automatic feeder stopped working.",
