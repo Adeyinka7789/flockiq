@@ -80,10 +80,15 @@ class FeedTableView(LoginRequiredMixin, View):
     """GET /production/feed/<batch_pk>/table/ → Returns feed table partial."""
 
     def get(self, request, batch_pk):
-        from .models import FeedLog
+        from urllib.parse import urlencode
+
+        from .models import FEED_TYPE_CHOICES, FeedLog
 
         org = get_org_or_404(request)
         page = int(request.GET.get("page", 1))
+        date_from = request.GET.get("date_from", "").strip()
+        date_to = request.GET.get("date_to", "").strip()
+        feed_type = request.GET.get("feed_type", "").strip()
 
         with set_tenant_context(org):
             from django.core.paginator import Paginator
@@ -93,12 +98,38 @@ class FeedTableView(LoginRequiredMixin, View):
                 .select_related("recorded_by")
                 .order_by("-record_date")
             )
+            if date_from:
+                qs = qs.filter(record_date__gte=date_from)
+            if date_to:
+                qs = qs.filter(record_date__lte=date_to)
+            if feed_type:
+                qs = qs.filter(feed_type=feed_type)
             page_obj = Paginator(qs, 20).get_page(page)
+
+        # Preserve active filters across pagination links.
+        filter_params = {
+            k: v
+            for k, v in (
+                ("date_from", date_from),
+                ("date_to", date_to),
+                ("feed_type", feed_type),
+            )
+            if v
+        }
+        filter_querystring = urlencode(filter_params)
 
         return render(
             request,
             "production/feed/_feed_table.html",
-            {"page_obj": page_obj, "batch_pk": batch_pk},
+            {
+                "page_obj": page_obj,
+                "batch_pk": batch_pk,
+                "date_from": date_from,
+                "date_to": date_to,
+                "active_feed_type": feed_type,
+                "feed_type_choices": FEED_TYPE_CHOICES,
+                "filter_querystring": filter_querystring,
+            },
         )
 
 

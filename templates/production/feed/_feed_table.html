@@ -1,4 +1,37 @@
 <div id="feed-table" class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+
+  <!-- Feed filter strip -->
+  <form id="feed-filter-form"
+        class="flex items-center gap-2 flex-wrap px-4 py-3 border-b border-gray-100 bg-gray-50">
+    <input type="date" name="date_from" value="{{ date_from }}"
+           hx-get="{% url 'feed:table' batch_pk %}"
+           hx-include="#feed-filter-form"
+           hx-target="#feed-table" hx-swap="outerHTML"
+           hx-trigger="change"
+           class="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700">
+    <span class="text-xs text-gray-400">to</span>
+    <input type="date" name="date_to" value="{{ date_to }}"
+           hx-get="{% url 'feed:table' batch_pk %}"
+           hx-include="#feed-filter-form"
+           hx-target="#feed-table" hx-swap="outerHTML"
+           hx-trigger="change"
+           class="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700">
+    <select name="feed_type"
+            hx-get="{% url 'feed:table' batch_pk %}"
+            hx-include="#feed-filter-form"
+            hx-target="#feed-table" hx-swap="outerHTML"
+            hx-trigger="change"
+            class="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white cursor-pointer">
+      <option value="">All Feed Types</option>
+      {% for val, label in feed_type_choices %}
+      <option value="{{ val }}" {% if active_feed_type == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <span class="ml-auto text-xs text-gray-500 font-semibold">
+      {{ page_obj.paginator.count }} record{{ page_obj.paginator.count|pluralize }}
+    </span>
+  </form>
+
   {% if page_obj.object_list %}
   <div class="overflow-x-auto">
     <table class="min-w-full divide-y divide-gray-100 text-sm">
@@ -32,7 +65,9 @@
             {% if log.total_cost %}₦{{ log.total_cost }}{% else %}—{% endif %}
           </td>
           <td class="px-4 py-3 text-gray-500 text-xs">
-            {{ log.recorded_by.get_full_name|default:log.recorded_by.username|default:"—" }}
+            {% if log.recorded_by %}
+              {{ log.recorded_by.get_full_name|default:log.recorded_by.username }}
+            {% else %}—{% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -48,12 +83,12 @@
     </p>
     <div class="flex gap-2">
       {% if page_obj.has_previous %}
-      <button hx-get="{% url 'feed:table' batch_pk %}?page={{ page_obj.previous_page_number }}"
+      <button hx-get="{% url 'feed:table' batch_pk %}?page={{ page_obj.previous_page_number }}{% if filter_querystring %}&{{ filter_querystring }}{% endif %}"
               hx-target="#feed-table" hx-swap="outerHTML"
               class="px-3 py-1 text-xs rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600">&larr; Prev</button>
       {% endif %}
       {% if page_obj.has_next %}
-      <button hx-get="{% url 'feed:table' batch_pk %}?page={{ page_obj.next_page_number }}"
+      <button hx-get="{% url 'feed:table' batch_pk %}?page={{ page_obj.next_page_number }}{% if filter_querystring %}&{{ filter_querystring }}{% endif %}"
               hx-target="#feed-table" hx-swap="outerHTML"
               class="px-3 py-1 text-xs rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-600">Next &rarr;</button>
       {% endif %}
@@ -63,8 +98,13 @@
 
   {% else %}
   <div class="flex flex-col items-center justify-center py-12 text-center">
+    {% if date_from or date_to or active_feed_type %}
+    <p class="text-sm text-gray-400">No feed logs match these filters.</p>
+    <p class="text-xs text-gray-400 mt-1">Try widening the date range or clearing the feed type.</p>
+    {% else %}
     <p class="text-sm text-gray-400">No feed logs yet.</p>
     <p class="text-xs text-gray-400 mt-1">Use the form above to record today's feed.</p>
+    {% endif %}
   </div>
   {% endif %}
 </div>

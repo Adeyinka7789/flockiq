@@ -58,6 +58,9 @@ django-cors-headers==4.4.*
 # HTTP (Paystack, Termii, OpenWeatherMap)
 requests==2.33.0
 
+# DNS (custom domain TXT-record verification)
+dnspython>=2.6.0
+
 # ML
 prophet==1.1.*
 scikit-learn==1.5.*

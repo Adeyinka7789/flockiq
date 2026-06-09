@@ -741,6 +741,7 @@
                    hx-trigger="keyup changed delay:300ms"
                    hx-target="#search-dropdown"
                    hx-swap="innerHTML"
+                   hx-history="false"
                    id="global-search-input"
                    name="q"
                    x-on:focus="document.getElementById('search-dropdown').classList.add('open')"
@@ -765,7 +766,8 @@
               <span id="bell-count"
                     hx-get="{% url 'notifications:bell' %}"
                     hx-trigger="load, every 120s, refreshBell from:body"
-                    hx-swap="innerHTML">
+                    hx-swap="innerHTML"
+                    hx-history="false">
               </span>
             </button>
             <div x-show="open"
@@ -778,7 +780,8 @@
               <div id="notification-dropdown"
                    hx-get="{% url 'notifications:dropdown' %}"
                    hx-trigger="bellOpen from:body"
-                   hx-swap="innerHTML">
+                   hx-swap="innerHTML"
+                   hx-history="false">
                 <div class="p-4 text-sm text-earth-500">Loading…</div>
               </div>
             </div>
@@ -953,6 +956,7 @@
                  hx-get="{% url 'notifications:support_form' %}"
                  hx-target="#support-modal-body"
                  hx-swap="innerHTML"
+                 hx-history="false"
                  @click="$dispatch('open-support-modal')">
               <svg class="w-5 h-5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1079,6 +1083,25 @@
         }
         window.dispatchEvent(new CustomEvent('open-modal'));
       }
+    });
+
+    // HTMX history: enable a small back/forward cache so the browser
+    // back button restores hx-push-url list/filter views without a full
+    // server round-trip. refreshOnHistoryMiss falls back to a normal GET
+    // when a snapshot is missing instead of showing a stale fragment.
+    // htmx loads deferred, so configure it once the DOM is ready.
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.htmx) {
+        htmx.config.historyCacheSize = 10;
+        htmx.config.refreshOnHistoryMiss = true;
+      }
+    });
+
+    // When the user navigates back/forward into a restored snapshot, close
+    // any open modal so a stale modal doesn't sit over the restored page.
+    document.addEventListener('htmx:historyRestore', function() {
+      window.dispatchEvent(new CustomEvent('close-modal'));
+      window.dispatchEvent(new CustomEvent('close-support-modal'));
     });
 
     function closeModal() {

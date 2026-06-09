@@ -1,0 +1,36 @@
+{# STATE 2 — domain added, pending DNS verification. #}
+<div class="bg-amber-50 border border-amber-200 rounded-xl p-5">
+  <h4 class="font-semibold text-amber-800 mb-2">Verify your domain</h4>
+  <p class="text-sm text-amber-700 mb-3">
+    Add this TXT record to your DNS provider:
+  </p>
+  <div class="bg-white rounded-lg p-3 font-mono text-sm border border-amber-200 mb-3">
+    <div class="text-gray-500 text-xs mb-1">Type: TXT</div>
+    <div class="text-gray-500 text-xs mb-1">
+      Name: _flockiq-verify.{{ org.custom_domain }}
+    </div>
+    <div class="text-gray-800 break-all">
+      flockiq-verify={{ org.custom_domain_verification_token }}
+    </div>
+  </div>
+
+  {% if error %}
+  <p class="text-sm text-red-600 mb-3">{{ error }}</p>
+  {% endif %}
+
+  <div class="flex items-center gap-3">
+    <button hx-post="{% url 'tenants:verify_custom_domain' %}"
+            hx-target="#domain-status"
+            hx-swap="innerHTML"
+            class="px-4 py-2 bg-amber-600 text-white text-sm font-medium rounded-lg">
+      Check verification
+    </button>
+    <button hx-post="{% url 'tenants:remove_custom_domain' %}"
+            hx-confirm="Remove this custom domain?"
+            hx-target="#domain-status"
+            hx-swap="innerHTML"
+            class="text-sm text-red-600 hover:underline">
+      Cancel
+    </button>
+  </div>
+</div>

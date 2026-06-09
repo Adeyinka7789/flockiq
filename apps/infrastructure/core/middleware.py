@@ -198,6 +198,38 @@ class TenantMiddleware:
                     return self.get_response(request)
             return self.get_response(request)
 
+        # Custom domain resolution.
+        # A tenant may point their own domain (e.g. app.obasanjofarm.com) at
+        # FlockIQ. Such hosts never end in ".flockiq.com", so we resolve the org
+        # from the verified custom_domain mapping BEFORE subdomain parsing.
+        # Unknown / unverified hosts fall through to the existing subdomain
+        # logic, so the root marketing domain (flockiq.com) is unaffected.
+        if not host.endswith(".flockiq.com"):
+            from apps.infrastructure.tenants.models import Organization  # noqa: PLC0415
+
+            try:
+                # Organization has RLS disabled — safe to query without a context.
+                # Only verified + active custom domains resolve here.
+                org = Organization.objects.get(
+                    custom_domain=host,
+                    custom_domain_verified=True,
+                    is_active=True,
+                )
+            except Organization.DoesNotExist:
+                org = None
+
+            if org is not None:
+                request.org = org
+                # Custom-domain requests are treated exactly like subdomain
+                # requests: re-verify the org is still active (handles a
+                # suspension that happened after this short-lived query) and set
+                # the RLS context for the request lifetime.
+                kicked = self._kick_if_suspended(request, org)
+                if kicked is not None:
+                    return kicked
+                with set_tenant_context(org):
+                    return self.get_response(request)
+
         parts = host.split(".")
         if len(parts) < 3:
             # Root domain (e.g. flockiq.com) — no tenant

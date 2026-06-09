@@ -1,0 +1,18 @@
+{# STATE 1 — no custom domain set: the add form. Lives inside #domain-status so
+   that removing a domain can restore it via HTMX swap. #}
+<form hx-post="{% url 'tenants:custom_domain_settings' %}"
+      hx-target="#domain-status"
+      hx-swap="innerHTML">
+  {% csrf_token %}
+  {% if error %}
+  <p class="text-sm text-red-600 mb-3">{{ error }}</p>
+  {% endif %}
+  <input type="text" name="custom_domain"
+         value="{{ value|default:'' }}"
+         placeholder="app.yourfarm.com"
+         class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3">
+  <button type="submit"
+          class="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg">
+    Add Custom Domain
+  </button>
+</form>

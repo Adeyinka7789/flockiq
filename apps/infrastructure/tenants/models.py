@@ -22,6 +22,26 @@ class Organization(models.Model):
     name = models.CharField(max_length=200)
     subdomain = models.SlugField(max_length=63, unique=True)
 
+    # Custom domain — a tenant may point their own domain (e.g.
+    # app.obasanjofarm.com) at FlockIQ. Verified via a DNS TXT record before
+    # TenantMiddleware will resolve requests for it. See domain_views.py.
+    custom_domain = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        unique=True,
+        db_index=True,
+        help_text="e.g. app.obasanjofarm.com",
+    )
+    custom_domain_verified = models.BooleanField(default=False)
+    custom_domain_verification_token = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="TXT record value for DNS verification",
+    )
+    custom_domain_verified_at = models.DateTimeField(null=True, blank=True)
+
     # Branding
     logo = models.ImageField(upload_to="org_logos/", null=True, blank=True)
     primary_colour = models.CharField(max_length=7, default="#16a34a")

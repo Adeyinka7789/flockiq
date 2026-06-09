@@ -435,6 +435,23 @@
         </div>
       </div>
 
+      <!-- Recent Feed Logs -->
+      {% if active_batches %}
+      {% with batch=active_batches.0 %}
+      <div class="fd-section">
+        <div class="fd-section-hd">
+          <span class="fd-section-title">Recent Feed Logs</span>
+          <a href="{% url 'flocks:detail' batch.pk %}" class="fd-section-link">View batch →</a>
+        </div>
+        <div hx-get="{% url 'feed:table' batch.pk %}"
+             hx-trigger="load, feedLogged from:body"
+             hx-swap="innerHTML">
+          {% include "partials/_skeleton_table.html" %}
+        </div>
+      </div>
+      {% endwith %}
+      {% endif %}
+
     </div>
 
     <!-- RIGHT SIDEBAR -->

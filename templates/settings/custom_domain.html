@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Custom Domain | FlockIQ{% endblock %}
+{% block breadcrumb %}Custom Domain{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
+
+  <div class="mb-6">
+    <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Custom Domain</h1>
+    <p class="text-sm text-gray-500 mt-1">
+      Serve your FlockIQ dashboard from a domain you own.
+    </p>
+  </div>
+
+  {% if forbidden %}
+  <div class="bg-amber-50 border border-amber-200 rounded-xl p-5 text-sm text-amber-800">
+    Only the account owner can manage the custom domain.
+  </div>
+  {% else %}
+  <div class="bg-white rounded-xl border border-gray-200 p-6">
+    <h3 class="font-semibold text-gray-900 mb-2">Custom Domain</h3>
+    <p class="text-sm text-gray-500 mb-4">
+      Point your own domain to your FlockIQ dashboard.
+    </p>
+
+    <div id="domain-status">
+      {% if org.custom_domain and org.custom_domain_verified %}
+        {% include "settings/_domain_verified.html" %}
+      {% elif org.custom_domain %}
+        {% include "settings/_domain_pending.html" %}
+      {% else %}
+        {% include "settings/_domain_empty.html" %}
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

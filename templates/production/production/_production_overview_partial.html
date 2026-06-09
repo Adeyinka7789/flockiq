@@ -121,17 +121,47 @@
           <div class="prod-table-title">Daily Records</div>
           <div class="prod-table-sub">Detailed collection breakdown for current period</div>
         </div>
-        {% if active_batch %}
-        <a href="{% url 'production:export_csv' active_batch.pk %}"
-           class="prod-csv-btn">
-          <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
-               stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-          </svg>
-          Export CSV
-        </a>
-        {% endif %}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          {% if active_batch %}
+          <a href="{% url 'production:export_csv' active_batch.pk %}"
+             class="prod-csv-btn">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Export CSV
+          </a>
+          {% endif %}
+
+          {% if plan_features.pdf_export %}
+          <a href="{% url 'production:export_pdf' %}" target="_blank" class="prod-csv-btn">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Export PDF
+          </a>
+          {% else %}
+          <a href="{% url 'billing:billing_page' %}" class="prod-csv-btn"
+             style="opacity:0.55" title="Upgrade to export PDF">🔒 Export PDF</a>
+          {% endif %}
+
+          {% if plan_features.excel_export %}
+          <a href="{% url 'production:export_excel' %}" class="prod-csv-btn">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Export Excel
+          </a>
+          {% else %}
+          <a href="{% url 'billing:billing_page' %}" class="prod-csv-btn"
+             style="opacity:0.55" title="Upgrade to export Excel">🔒 Export Excel</a>
+          {% endif %}
+        </div>
       </div>
 
       {% if daily_records %}

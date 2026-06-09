@@ -177,6 +177,27 @@
   .fl-add-text { font-size: 14px; font-weight: 700; color: #4a5568; }
   .fl-add-sub { font-size: 12px; color: #8a96a8; margin-top: 4px; }
 
+  .fl-toolbar {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .fl-search {
+    flex: 1; min-width: 220px; display: flex; align-items: center;
+    gap: 8px; background: white; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 0 14px;
+  }
+  .fl-search:focus-within { border-color: #3d5a99; }
+  .fl-search input {
+    flex: 1; border: none; outline: none; background: transparent;
+    padding: 11px 0; font-size: 13px; color: #1a2744;
+  }
+  .fl-select {
+    border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 11px 14px; font-size: 13px; color: #1a2744;
+    background: white; cursor: pointer; font-weight: 600;
+  }
+  .fl-select:focus { outline: none; border-color: #3d5a99; }
+
   @media(max-width:768px){
     .fl-grid { grid-template-columns: 1fr; }
     .fl-stats { grid-template-columns: 1fr 1fr; }
@@ -226,105 +247,39 @@
     </div>
   </div>
 
+  <!-- Search + filter -->
+  <div class="fl-toolbar" id="fl-filters">
+    <div class="fl-search">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+           stroke="#8a96a8" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input type="search" name="q"
+             placeholder="Search farms by name or location..."
+             value="{{ search_query|default:'' }}"
+             hx-get="{% url 'farms:list' %}"
+             hx-trigger="keyup changed delay:300ms, search"
+             hx-target="#fl-content"
+             hx-include="#fl-filters"
+             hx-push-url="true">
+    </div>
+    <select class="fl-select" name="farm_type"
+            hx-get="{% url 'farms:list' %}"
+            hx-target="#fl-content"
+            hx-include="#fl-filters"
+            hx-push-url="true">
+      <option value="">All Types</option>
+      {% for val, label in farm_type_choices %}
+      <option value="{{ val }}" {% if active_farm_type == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
   <!-- Farm grid -->
-  <div class="fl-grid">
-    {% for item in farm_list %}
-    {% with farm=item.farm %}
-    <div class="fl-card {% if forloop.last and forloop.revcounter == 1 %}featured{% endif %}">
-
-      <span class="fl-status {{ item.status }}">{{ item.status_label }}</span>
-
-      <div class="fl-farm-icon">
-        {% if farm.farm_type == 'layer' %}🥚
-        {% elif farm.farm_type == 'broiler' %}🍗
-        {% else %}🏡{% endif %}
-      </div>
-
-      <div class="fl-farm-name">{{ farm.name }}</div>
-      <div class="fl-farm-location">
-        <svg width="12" height="12" fill="none" viewBox="0 0 24 24"
-             stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round"
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-          <path stroke-linecap="round" stroke-linejoin="round"
-                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
-        </svg>
-        {{ farm.location|default:"Location not set" }}
-      </div>
-
-      <div class="fl-metrics">
-        <div class="fl-metric">
-          <div class="fl-metric-lbl">Infrastructure</div>
-          <div class="fl-metric-val">
-            {{ item.house_count }} House{{ item.house_count|pluralize }}
-          </div>
-        </div>
-        <div class="fl-metric">
-          <div class="fl-metric-lbl">Live Inventory</div>
-          <div class="fl-metric-val">{{ item.live_birds|floatformat:0 }} Birds</div>
-        </div>
-        <div class="fl-metric">
-          <div class="fl-metric-lbl">Active Batches</div>
-          <div class="fl-metric-val">
-            {{ item.active_batches }} Cycle{{ item.active_batches|pluralize }}
-          </div>
-        </div>
-        <div class="fl-metric">
-          <div class="fl-metric-lbl">7-Day Mortality</div>
-          <div class="fl-sparkline">
-            {% for val in item.weekly_mort %}
-            <div class="fl-spark-bar {% if val > 0 %}has-data{% endif %}"
-                 style="height:{% widthratio val item.max_weekly_mort 28 %}px"
-                 title="Day {{ forloop.counter }}: {{ val }} deaths">
-            </div>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-
-      <div class="fl-actions">
-        <a href="{% url 'farms:detail' farm.pk %}"
-           class="fl-btn-edit">Edit</a>
-        <a href="{% url 'farms:detail' farm.pk %}"
-           class="fl-btn-view">View Detail →</a>
-      </div>
-
-    </div>
-    {% endwith %}
-    {% endfor %}
-
-    <!-- Add farm card -->
-    {% if request.user.role in 'owner,manager' %}
-    <div class="fl-add-card"
-         hx-get="{% url 'farms:create' %}"
-         hx-target="#modal-body"
-         hx-swap="innerHTML"
-         hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))">
-      <div class="fl-add-icon">+</div>
-      <div class="fl-add-text">Add New Farm</div>
-      <div class="fl-add-sub">Register a new farm site</div>
-    </div>
-    {% endif %}
+  <div id="fl-content">
+    {% include "farms/_farm_grid.html" %}
   </div>
-
-  {% if not farm_list %}
-  <div style="text-align:center;padding:80px 20px">
-    <div style="font-size:48px;margin-bottom:16px">🏡</div>
-    <h2 style="font-size:18px;font-weight:700;color:#1a2744;margin-bottom:8px">
-      No farms yet
-    </h2>
-    <p style="font-size:14px;color:#8a96a8;margin-bottom:24px">
-      Add your first farm to start tracking production.
-    </p>
-    <button class="fl-add-btn"
-            hx-get="{% url 'farms:create' %}"
-            hx-target="#modal-body"
-            hx-swap="innerHTML"
-            hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))">
-      + Add Your First Farm
-    </button>
-  </div>
-  {% endif %}
 
 </div>
 {% endblock %}

@@ -45,8 +45,21 @@ class FarmListView(TenantRequiredMixin, View):
         org = get_org_or_404(request)
         is_htmx = request.headers.get("HX-Request") == "true"
 
+        search_query = request.GET.get("q", "").strip()
+        active_farm_type = request.GET.get("farm_type", "").strip()
+
         with set_tenant_context(org):
-            farms = Farm.objects.filter(is_active=True).annotate(
+            farms = Farm.objects.filter(is_active=True)
+
+            if search_query:
+                farms = farms.filter(
+                    Q(name__icontains=search_query)
+                    | Q(location__icontains=search_query)
+                )
+            if active_farm_type:
+                farms = farms.filter(farm_type=active_farm_type)
+
+            farms = farms.annotate(
                 live_birds=Sum(
                     "batches__current_count",
                     filter=Q(batches__status="active"),
@@ -111,10 +124,13 @@ class FarmListView(TenantRequiredMixin, View):
             "total_farms": len(farm_list),
             "org": org,
             "form": FarmCreateForm(),
+            "search_query": search_query,
+            "active_farm_type": active_farm_type,
+            "farm_type_choices": Farm.FarmType.choices,
         }
 
         if is_htmx:
-            return render(request, "farms/_farm_list_partial.html", context)
+            return render(request, "farms/_farm_grid.html", context)
         return render(request, "farms/farm_list.html", context)
 
 
