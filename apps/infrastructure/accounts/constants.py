@@ -82,6 +82,11 @@ COUNTRY_COORDINATES = {
 
 DEFAULT_TIMEZONE = "UTC"
 
+# Distinct IANA timezones offered in the profile timezone selector. Derived from
+# the countries FlockIQ serves (plus UTC) so the dropdown stays short and
+# relevant rather than dumping all ~600 zoneinfo entries on the user.
+COMMON_TIMEZONES = sorted(set(COUNTRY_TIMEZONE_MAP.values()) | {DEFAULT_TIMEZONE})
+
 
 def timezone_for_country(country: str) -> str:
     """Return the IANA timezone for a country name, falling back to UTC."""

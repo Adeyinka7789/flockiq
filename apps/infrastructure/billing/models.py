@@ -107,6 +107,8 @@ class PaystackWebhookLog(models.Model):
     """Audit trail for all Paystack webhook calls. RLS DISABLED — cross-tenant."""
 
     event_type = models.CharField(max_length=100)
+    # Paystack transaction/event id used to deduplicate retried webhook deliveries.
+    event_id = models.CharField(max_length=100, blank=True, db_index=True)
     payload = models.JSONField()
     signature_valid = models.BooleanField()
     processed = models.BooleanField(default=False)

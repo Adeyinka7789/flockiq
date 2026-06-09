@@ -132,6 +132,9 @@ MIDDLEWARE = [
     "apps.infrastructure.core.middleware.ImpersonationMiddleware",
     "apps.infrastructure.core.middleware.HtmxSessionExpiredMiddleware",
     "apps.infrastructure.core.middleware.TenantMiddleware",
+    # After Tenant/Impersonation so request.user (and any impersonated user) is
+    # resolved before we pick the timezone to activate for this request.
+    "apps.infrastructure.core.timezone_middleware.TimezoneMiddleware",
     "apps.infrastructure.tenants.middleware.TrialEnforcementMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -351,6 +354,20 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
+    # --- Throttling ---
+    # django-axes already guards the *web* login form against brute force. These
+    # throttles cover the JSON API: a blanket per-user / per-anon ceiling plus
+    # tight scopes for the auth endpoints (applied per-view via throttle_classes).
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "30/hour",      # unauthenticated API calls
+        "user": "1000/hour",    # authenticated tenant API calls
+        "login": "10/hour",     # API login attempts (scope=login)
+        "signup": "5/hour",     # API signup attempts (scope=signup)
+    },
 }
 
 SPECTACULAR_SETTINGS = {

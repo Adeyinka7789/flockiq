@@ -37,10 +37,14 @@ class PaystackWebhookView(View):
             data = {}
 
         event_type = data.get("event", "unknown")
+        # Paystack has no event-level id; the transaction/subscription id under
+        # `data` is the stable identifier across retried deliveries.
+        event_id = str((data.get("data") or {}).get("id", ""))
 
         # Always log — even invalid signatures need an audit trail
         log_entry = PaystackWebhookLog.objects.create(
             event_type=event_type,
+            event_id=event_id,
             payload=data,
             signature_valid=sig_valid,
         )
@@ -48,6 +52,19 @@ class PaystackWebhookView(View):
         if not sig_valid:
             logger.warning("webhook.invalid_signature", event_type=event_type)
             return HttpResponseBadRequest("Invalid signature")
+
+        # Idempotency: if a *prior* delivery with this event_id was already
+        # processed, acknowledge with 200 and skip re-dispatch. activate_plan /
+        # record_payment are also idempotent on reference as a second guard.
+        if event_id and PaystackWebhookLog.objects.filter(
+            event_id=event_id, processed=True
+        ).exclude(pk=log_entry.pk).exists():
+            logger.info(
+                "webhook.duplicate", event_id=event_id, event_type=event_type
+            )
+            log_entry.error = "duplicate: already processed"
+            log_entry.save(update_fields=["error"])
+            return HttpResponse(status=200)
 
         error = ""
         try:

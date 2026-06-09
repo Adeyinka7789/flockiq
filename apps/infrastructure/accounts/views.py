@@ -21,9 +21,10 @@ from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshV
 
 from apps.infrastructure.core.email_service import EmailService
 
-from .constants import COUNTRY_CHOICES, timezone_for_country
+from .constants import COMMON_TIMEZONES, COUNTRY_CHOICES, timezone_for_country
 from .models import CustomUser
 from .permissions import IsManagerOrAbove
+from .throttles import LoginRateThrottle
 from .serializers import (
     ChangePasswordSerializer,
     CustomTokenObtainPairSerializer,
@@ -48,6 +49,7 @@ def _token_response(user):
 @method_decorator(axes_dispatch, name="dispatch")
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data, context={"request": request})
@@ -434,6 +436,7 @@ class EditProfileView(LoginRequiredMixin, View):
     def get(self, request):
         return render(request, "accounts/_edit_profile_form.html", {
             "country_choices": COUNTRY_CHOICES,
+            "timezones": COMMON_TIMEZONES,
         })
 
     def post(self, request):
@@ -444,7 +447,12 @@ class EditProfileView(LoginRequiredMixin, View):
         user.bio = request.POST.get("bio", "").strip()
         user.country = request.POST.get("country", "").strip()
         user.state_region = request.POST.get("state_region", "").strip()
-        user.timezone = timezone_for_country(user.country)
+        # Honour an explicit timezone choice; otherwise derive it from the country.
+        selected_tz = request.POST.get("timezone", "").strip()
+        user.timezone = (
+            selected_tz if selected_tz in COMMON_TIMEZONES
+            else timezone_for_country(user.country)
+        )
         user.save(update_fields=[
             "first_name", "last_name", "phone", "bio",
             "country", "state_region", "timezone",
@@ -452,6 +460,7 @@ class EditProfileView(LoginRequiredMixin, View):
         logger.info("profile_updated", user_id=str(user.id))
         response = render(request, "accounts/_edit_profile_form.html", {
             "country_choices": COUNTRY_CHOICES,
+            "timezones": COMMON_TIMEZONES,
         })
         response["HX-Trigger"] = json.dumps({
             "showToast": {"message": "Profile updated.", "type": "success"},

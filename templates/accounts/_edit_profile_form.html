@@ -72,6 +72,23 @@
       </div>
     </div>
     <div>
+      <label style="display:block;font-size:11px;font-weight:600;
+                    color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+        Timezone
+      </label>
+      <select name="timezone"
+              style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                     border-radius:10px;font-size:13px;box-sizing:border-box;background:#fff">
+        <option value="">Auto (from country)</option>
+        {% for tz in timezones %}
+        <option value="{{ tz }}" {% if request.user.timezone == tz %}selected{% endif %}>{{ tz }}</option>
+        {% endfor %}
+      </select>
+      <p style="font-size:11px;color:#8a96a8;margin:6px 0 0">
+        Controls how dates and times are displayed across the app.
+      </p>
+    </div>
+    <div>
       <label style="display:block;font-size:11px;font-weight:700;
                     color:#4a5568;margin-bottom:6px;text-transform:uppercase">
         Bio (optional)
