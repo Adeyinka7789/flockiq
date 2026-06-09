@@ -263,66 +263,98 @@
         View All Tenants →
       </a>
     </div>
-    <table class="sa-table">
-      <thead>
-        <tr>
-          <th>Tenant Name</th>
-          <th>Owner</th>
-          <th>Plan</th>
-          <th>Joined</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for org in recent_orgs %}
-        <tr>
-          <td>
-            <div style="display:flex;align-items:center;gap:10px">
-              <div class="sa-org-avatar"
-                   style="background:{% cycle '#3d5a99' '#16a34a' '#d97706' '#dc2626' '#8b5cf6' %}">
-                {{ org.name|first|upper }}{{ org.name|slice:"1:2"|upper }}
+    <!-- Desktop: table (hidden on mobile) -->
+    <div class="hidden md:block overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-100">
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Tenant Name</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Owner</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Plan</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Joined</th>
+            <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for org in recent_orgs %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
+                     style="background:{% cycle '#3d5a99' '#16a34a' '#d97706' '#dc2626' '#8b5cf6' %}">
+                  {{ org.name|slice:":2"|upper }}
+                </div>
+                <div>
+                  <p class="font-medium text-gray-900 text-sm">{{ org.name }}</p>
+                  <p class="text-xs text-gray-400">{{ org.plan_tier|title }} Plan</p>
+                </div>
               </div>
-              <div>
-                <div class="sa-org-name">{{ org.name }}</div>
-                <div class="sa-org-sub">{{ org.plan_tier|title }} Plan</div>
-              </div>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-600">{{ org.owner_email|truncatechars:28 }}</td>
+            <td class="px-4 py-3">
+              <span class="sa-plan-pill {{ org.plan_tier }}">{{ org.plan_tier|upper }}</span>
+            </td>
+            <td class="px-4 py-3 text-sm text-gray-500">{{ org.created_at|date:"M d, Y" }}</td>
+            <td class="px-4 py-3">
+              <span class="flex items-center gap-1.5 text-sm">
+                <span class="w-1.5 h-1.5 rounded-full {% if org.is_active %}bg-green-400{% else %}bg-red-400{% endif %}"></span>
+                <span class="{% if org.is_active %}text-green-700{% else %}text-red-600{% endif %}">
+                  {% if org.is_active %}Active{% else %}Suspended{% endif %}
+                </span>
+              </span>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <a href="{% url 'superadmin:tenants' %}?q={{ org.owner_email }}"
+                 class="text-sm text-blue-600 hover:underline font-medium">
+                Manage →
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-8 text-gray-400 text-sm">No tenants yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile: card layout (hidden on desktop) -->
+    <div class="md:hidden divide-y divide-gray-100">
+      {% for org in recent_orgs %}
+      <div class="px-4 py-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
+                 style="background:{% cycle '#3d5a99' '#16a34a' '#d97706' '#dc2626' '#8b5cf6' %}">
+              {{ org.name|slice:":2"|upper }}
             </div>
-          </td>
-          <td style="font-size:12px;color:#4a5568">{{ org.owner_email|truncatechars:28 }}</td>
-          <td>
-            <span class="sa-plan-pill {{ org.plan_tier }}">{{ org.plan_tier|title }}</span>
-          </td>
-          <td style="font-size:12px;color:#8a96a8">{{ org.created_at|date:"M d, Y" }}</td>
-          <td>
-            {% if org.is_active %}
-            <span class="sa-status-active">
-              <span style="width:6px;height:6px;border-radius:50%;background:#16a34a;display:inline-block"></span>
-              Active
+            <div class="min-w-0">
+              <p class="font-semibold text-gray-900 text-sm truncate">{{ org.name }}</p>
+              <p class="text-xs text-gray-400 truncate">{{ org.owner_email|default:'—' }}</p>
+            </div>
+          </div>
+          <a href="{% url 'superadmin:tenants' %}?q={{ org.owner_email }}"
+             class="text-xs text-blue-600 hover:underline font-medium shrink-0">
+            Manage →
+          </a>
+        </div>
+        <div class="flex items-center gap-3 mt-2 ml-12">
+          <span class="sa-plan-pill {{ org.plan_tier }}">{{ org.plan_tier|upper }}</span>
+          <span class="flex items-center gap-1 text-xs">
+            <span class="w-1.5 h-1.5 rounded-full {% if org.is_active %}bg-green-400{% else %}bg-red-400{% endif %}"></span>
+            <span class="{% if org.is_active %}text-green-600{% else %}text-red-600{% endif %}">
+              {% if org.is_active %}Active{% else %}Suspended{% endif %}
             </span>
-            {% else %}
-            <span class="sa-status-inactive">
-              <span style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block"></span>
-              Suspended
-            </span>
-            {% endif %}
-          </td>
-          <td>
-            <a href="{% url 'superadmin:tenants' %}?q={{ org.owner_email }}"
-               style="font-size:11px;color:#3d5a99;font-weight:600;text-decoration:none">
-              Manage →
-            </a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="6" style="text-align:center;padding:32px;color:#8a96a8;font-size:13px">
-            No tenants yet.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+          </span>
+          <span class="text-xs text-gray-400">{{ org.created_at|date:"M d, Y" }}</span>
+        </div>
+      </div>
+      {% empty %}
+      <div class="px-4 py-8 text-center text-gray-400 text-sm">No tenants yet.</div>
+      {% endfor %}
+    </div>
   </div>
 </div>
 
