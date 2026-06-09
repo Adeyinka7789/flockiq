@@ -5,11 +5,15 @@ import structlog
 from axes.decorators import axes_dispatch
 from django.conf import settings as django_settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+
+from apps.infrastructure.core.helpers import get_org_or_404
 from django.utils.decorators import method_decorator
 from django.views import View
 from rest_framework import status
@@ -667,3 +671,101 @@ def _member_row_response(request, member, toast=None, toast_type="success"):
             "showToast": {"message": toast, "type": toast_type},
         })
     return response
+
+
+# ── NDPR compliance — data export & account deletion ───────────────────────────
+
+@login_required
+def export_data(request):
+    """GET — download a JSON copy of all data belonging to the user + their org.
+
+    Limited to one export per user per 24 hours to prevent abuse.
+    """
+    from .services import build_data_export
+
+    org = get_org_or_404(request)
+
+    cache_key = f"data_export_{request.user.id}"
+    if cache.get(cache_key):
+        return HttpResponse(
+            "You can only export your data once per 24 hours.",
+            status=429,
+        )
+
+    data = build_data_export(request.user, org)
+    cache.set(cache_key, True, timeout=86400)
+
+    response = HttpResponse(
+        json.dumps(data, indent=2, default=str, ensure_ascii=False),
+        content_type="application/json",
+    )
+    filename = (
+        f"flockiq_data_export_{org.subdomain}_"
+        f"{timezone.now().strftime('%Y%m%d')}.json"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    logger.info("data_exported", user_id=str(request.user.id), org_id=str(org.id))
+    return response
+
+
+def _notify_superadmins_org_deleted(user, org):
+    """Create an in-app AdminNotification for every superadmin on org deletion."""
+    from apps.infrastructure.notifications.models import AdminNotification
+
+    for admin in CustomUser.objects.filter(is_superuser=True):
+        AdminNotification.objects.create(
+            recipient=admin,
+            title=f"Organisation deleted — {org.name}",
+            body=(
+                f"{user.email} has deleted their account "
+                f"and organisation {org.name}."
+            ),
+        )
+
+
+@login_required
+def delete_account(request):
+    """GET shows a confirmation page; POST validates and erases the account.
+
+    Owners delete the entire organisation (all farms, batches, production data
+    and team members). Non-owners delete only their own user account.
+    """
+    from .services import delete_organisation
+
+    is_owner = request.user.role == "owner"
+
+    if request.method == "GET":
+        return render(request, "accounts/delete_account.html", {"is_owner": is_owner})
+
+    # POST — validate confirmation text + password before doing anything.
+    password = request.POST.get("password", "")
+    confirmation = request.POST.get("confirmation", "").strip()
+
+    def _error(message):
+        return render(request, "accounts/delete_account.html", {
+            "is_owner": is_owner,
+            "error": message,
+        })
+
+    if confirmation != "DELETE":
+        return _error('Please type DELETE (in capitals) to confirm.')
+    if not request.user.check_password(password):
+        return _error("Incorrect password. Please try again.")
+
+    user = request.user
+
+    if is_owner:
+        org = get_org_or_404(request)
+        # Notify staff and farewell the owner while records still exist.
+        _notify_superadmins_org_deleted(user, org)
+        EmailService.send_account_deleted(user, org)
+        logger.info("account_deleted", user_id=str(user.id), org_id=str(org.id), owner=True)
+        logout(request)
+        delete_organisation(org)  # clears all org data + team members + org
+    else:
+        EmailService.send_account_deleted(user, None)
+        logger.info("account_deleted", user_id=str(user.id), owner=False)
+        logout(request)
+        user.delete()
+
+    return redirect("/?deleted=1")

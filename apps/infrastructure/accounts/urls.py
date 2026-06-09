@@ -21,6 +21,8 @@ from .views import (
     VerifyEmailSentView,
     VerifyEmailView,
     WebChangePasswordView,
+    delete_account,
+    export_data,
 )
 
 app_name = "accounts"
@@ -36,6 +38,9 @@ urlpatterns = [
     path("profile/", ProfilePageView.as_view(), name="profile"),
     path("profile/edit/", EditProfileView.as_view(), name="edit_profile"),
     path("profile/change-password/", WebChangePasswordView.as_view(), name="change_password"),
+    # NDPR compliance
+    path("export-data/", export_data, name="export_data"),
+    path("delete-account/", delete_account, name="delete_account"),
     path("forgot-password/", ForgotPasswordView.as_view(), name="forgot_password"),
     path("reset-password/", ResetPasswordView.as_view(), name="reset_password"),
     path("accounts/verify/<uuid:token>/", VerifyEmailView.as_view(), name="verify_email"),

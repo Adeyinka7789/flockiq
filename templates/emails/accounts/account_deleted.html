@@ -1,0 +1,34 @@
+{% extends "emails/base_email.html" %}
+{% block subject %}Your FlockIQ account has been deleted{% endblock %}
+{% block content %}
+  <h1>We're sorry to see you go &#128075;</h1>
+  <p>Hi {{ user_name|default:"there" }},</p>
+  <p>This email confirms that your FlockIQ account has been deleted as you
+     requested.</p>
+
+  {% if is_owner %}
+  <p>Because you were the owner of <strong>{{ org_name }}</strong>, the
+     following have been permanently removed:</p>
+  <table class="details">
+    <tr><td class="detail-label">Your organisation</td>
+        <td class="detail-value">{{ org_name }}</td></tr>
+    <tr><td class="detail-label">All farms &amp; houses</td>
+        <td class="detail-value">Deleted</td></tr>
+    <tr><td class="detail-label">All batches &amp; production records</td>
+        <td class="detail-value">Deleted</td></tr>
+    <tr><td class="detail-label">Team member accounts</td>
+        <td class="detail-value">Deleted</td></tr>
+  </table>
+  {% else %}
+  <p>Your personal account and the data tied to it have been permanently
+     removed.</p>
+  {% endif %}
+
+  <p class="note">Your data has been permanently removed from our systems.</p>
+
+  <p class="note note-warn">If this was a mistake, contact us at
+     <a href="mailto:{{ support_email }}">{{ support_email }}</a> within
+     <strong>30 days</strong> and we may be able to help recover your account.</p>
+
+  <p>Thank you for trusting FlockIQ with your farm.</p>
+{% endblock %}

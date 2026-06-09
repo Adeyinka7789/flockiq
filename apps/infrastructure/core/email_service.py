@@ -104,6 +104,20 @@ class EmailService:
         )
 
     @staticmethod
+    def send_account_deleted(user, org=None) -> bool:
+        """Farewell email sent after a user deletes their account (NDPR erasure)."""
+        return EmailService.send(
+            template_name="accounts/account_deleted.html",
+            subject="Your FlockIQ account has been deleted",
+            recipient_email=user.email,
+            context={
+                "user_name": user.get_full_name() or user.email,
+                "org_name": org.name if org else "",
+                "is_owner": org is not None,
+            },
+        )
+
+    @staticmethod
     def send_team_invite(
         recipient_email: str,
         first_name: str,
