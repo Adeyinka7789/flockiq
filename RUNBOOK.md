@@ -112,3 +112,10 @@ re-applied in BOTH `base.py` (dev/other envs) and `production.py`.
 Requires native Pango libraries on the server:
   sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libpangocairo-1.0-0
 Run this during VPS setup before starting the application.
+
+## User Manual PDF
+- Cached for 24 hours in Redis (sessions cache, DB 2)
+- First request of the day takes 3-5 seconds to generate
+- To force regeneration: `python manage.py regenerate_user_manual`
+- WeasyPrint requires libpango on Linux:
+  `sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libpangocairo-1.0-0`

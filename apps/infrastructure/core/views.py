@@ -1,16 +1,26 @@
 import json
 from datetime import date, datetime, timedelta
 
+import structlog
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import redirect_to_login
+from django.core.cache import cache
 from django.db.models import Sum
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
+from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
 from apps.infrastructure.core.rls import set_tenant_context
+
+logger = structlog.get_logger(__name__)
+
+MANUAL_CACHE_KEY = "flockiq_user_manual_pdf_v1"
+MANUAL_CACHE_TIMEOUT = 60 * 60 * 24  # 24 hours
 
 
 def custom_404(request, exception=None):
@@ -310,37 +320,52 @@ class DashboardView(TemplateView):
 
 @login_required
 def user_manual_pdf(request):
-    """Render the FlockIQ User Manual as a downloadable PDF via WeasyPrint."""
-    from django.conf import settings
-    from django.template.loader import render_to_string
-    from django.utils import timezone
+    """
+    Serve the FlockIQ User Manual as PDF.
+    Generated on first request, cached for 24 hours.
+    Superadmins are excluded — they use the admin panel.
+    """
+    if request.user.is_superuser:
+        raise Http404
 
-    try:
-        from weasyprint import HTML
-    except (ImportError, OSError) as exc:
-        return HttpResponse(
-            f"PDF generation unavailable: {exc}\n\n"
-            "Linux: sudo apt-get install libpango-1.0-0 libpangoft2-1.0-0 libpangocairo-1.0-0\n"
-            "Windows: install GTK3 runtime from https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer",
-            status=503,
-            content_type="text/plain",
-        )
+    pdf_bytes = cache.get(MANUAL_CACHE_KEY)
 
-    context = {
-        "version": "1.0",
-        "generated_date": timezone.now().strftime("%B %d, %Y"),
-        "support_email": getattr(settings, "SUPPORT_EMAIL", "support@flockiq.com"),
-        "site_url": getattr(settings, "SITE_URL", "https://app.flockiq.com"),
-    }
+    if pdf_bytes is None:
+        try:
+            from weasyprint import HTML
+        except (ImportError, OSError) as exc:
+            logger.error("user_manual.weasyprint_unavailable", error=str(exc))
+            return HttpResponse(
+                "User manual is temporarily unavailable. Please try again later.",
+                status=503,
+                content_type="text/plain",
+            )
 
-    html_string = render_to_string("docs/user_manual.html", context, request=request)
-    pdf = HTML(
-        string=html_string,
-        base_url=request.build_absolute_uri("/"),
-    ).write_pdf()
+        try:
+            context = {
+                "version": "1.0",
+                "generated_date": timezone.now().strftime("%B %d, %Y"),
+                "support_email": getattr(settings, "SUPPORT_EMAIL", "support@flockiq.com"),
+                "site_url": getattr(settings, "SITE_URL", "https://app.flockiq.com"),
+            }
+            html_string = render_to_string("docs/user_manual.html", context, request=request)
+            pdf_bytes = HTML(
+                string=html_string,
+                base_url=request.build_absolute_uri("/"),
+            ).write_pdf()
+            cache.set(MANUAL_CACHE_KEY, pdf_bytes, timeout=MANUAL_CACHE_TIMEOUT)
+            logger.info("user_manual.generated_and_cached")
+        except Exception as exc:
+            logger.error("user_manual.generation_failed", error=str(exc))
+            return HttpResponse(
+                "User manual is temporarily unavailable. Please try again later.",
+                status=503,
+                content_type="text/plain",
+            )
+    else:
+        logger.info("user_manual.served_from_cache")
 
-    response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = (
-        'attachment; filename="FlockIQ_User_Manual_v1.0.pdf"'
-    )
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="FlockIQ_User_Manual_v1.0.pdf"'
+    response["Cache-Control"] = "private, max-age=3600"
     return response
