@@ -1,0 +1,12 @@
+{% extends "emails/base_email.html" %}
+{% block subject %}Your FlockIQ upgrade request has been received{% endblock %}
+{% block content %}
+  <h1>We've received your upgrade request</h1>
+  <p>Hi {{ owner_name|default:"there" }},</p>
+  <p>Thank you for your request to upgrade <strong>{{ org_name }}</strong> to
+     the <strong>{{ plan_name }}</strong> plan.</p>
+  <p>Our team will activate your account within <strong>24 hours</strong>.
+     You'll receive a confirmation email as soon as your plan is active.</p>
+  <p class="note">Have a question in the meantime? Just reply to this email or
+     reach us on WhatsApp &mdash; we're happy to help.</p>
+{% endblock %}

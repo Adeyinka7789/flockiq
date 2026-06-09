@@ -9,7 +9,7 @@ from .models import AlertRule, DEFAULT_ALERT_RULES
 logger = structlog.get_logger(__name__)
 
 
-@receiver(post_save, sender=Organization)
+@receiver(post_save, sender=Organization, dispatch_uid="notifications.seed_alert_rules")
 def seed_alert_rules(sender, instance, created, **kwargs):
     if not created:
         return

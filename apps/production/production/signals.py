@@ -8,7 +8,7 @@ from django.dispatch import receiver
 logger = structlog.get_logger(__name__)
 
 
-@receiver(post_save, sender="production.EggProductionLog")
+@receiver(post_save, sender="production.EggProductionLog", dispatch_uid="production.on_egg_log_saved")
 def on_egg_log_saved(sender, instance, created, **kwargs):
     if not created:
         return

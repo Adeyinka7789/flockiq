@@ -1,0 +1,23 @@
+{% extends "emails/base_email.html" %}
+{% block subject %}You've been invited to {{ org_name }} on FlockIQ{% endblock %}
+{% block content %}
+  <h1>You've been invited &#127881;</h1>
+  <p>Hi {{ first_name|default:"there" }},</p>
+  <p>You've been added to <strong>{{ org_name }}</strong> on FlockIQ. Use the
+     credentials below to log in for the first time.</p>
+  <table class="details">
+    <tr>
+      <td class="detail-label">Login email</td>
+      <td class="detail-value">{{ login_email }}</td>
+    </tr>
+    <tr>
+      <td class="detail-label">Temporary password</td>
+      <td class="detail-value credential">{{ temp_password }}</td>
+    </tr>
+  </table>
+  <p style="text-align:center">
+    <a href="{{ login_url }}" class="btn">Log in to FlockIQ</a>
+  </p>
+  <p class="note note-warn">For your security, please change your password
+     right after your first login.</p>
+{% endblock %}

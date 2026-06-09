@@ -6,6 +6,13 @@ from django.dispatch import receiver
 
 logger = structlog.get_logger(__name__)
 
+# Internal aliased imports: signals.py is only imported from AppConfig.ready(),
+# so the app registry is fully populated — importing these concrete model
+# classes (including the cross-app flocks.Batch) is circular-import-safe.
+# Using the class (not a string sender) makes dispatch_uid dedup reliable.
+from apps.farm.flocks.models import Batch as _Batch
+from .models import MedicationRecord as _MedicationRecord
+
 LAYER_VACCINATION_SCHEDULE = [
     ("Marek's Disease", 1, "injection"),
     ("Newcastle + IB", 7, "oral"),
@@ -23,7 +30,7 @@ BROILER_VACCINATION_SCHEDULE = [
 ]
 
 
-@receiver(post_save, sender="flocks.Batch")
+@receiver(post_save, sender=_Batch, dispatch_uid="health.on_batch_created_generate_vaccinations")
 def on_batch_created_generate_vaccinations(sender, instance, created, **kwargs):
     if not created:
         return
@@ -69,7 +76,7 @@ def _generate_vaccination_schedule(batch):
         logger.exception("health.vaccination_schedule_failed", batch_id=str(batch.id))
 
 
-@receiver(post_save, sender="health.MedicationRecord")
+@receiver(post_save, sender=_MedicationRecord, dispatch_uid="health.on_medication_saved_check_withdrawal")
 def on_medication_saved_check_withdrawal(sender, instance, created, **kwargs):
     if not instance.withdrawal_active:
         return

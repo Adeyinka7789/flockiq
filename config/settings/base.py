@@ -148,7 +148,12 @@ if ENABLE_SILK:
     INSTALLED_APPS += ["silk"]
     MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]
     SILKY_PYTHON_PROFILER = True
-    SILKY_ANALYZE_QUERIES = True
+    # MUST stay False: Silk profiles queries by re-running them under
+    # `EXPLAIN ANALYZE`, and in PostgreSQL EXPLAIN ANALYZE *executes* DML
+    # (INSERT/UPDATE/DELETE). With it on, every write fires twice — e.g. the
+    # mortality/feed-stock decrement signals run their F() UPDATE a second time,
+    # doubling the decrement. Leave disabled to keep writes idempotent.
+    SILKY_ANALYZE_QUERIES = False
     SILKY_MAX_RECORDED_REQUESTS = 1000
     SILKY_MAX_RECORDED_REQUESTS_CHECK_PERCENT = 10
     SILKY_AUTHENTICATION = True  # require login for /silk/
@@ -170,6 +175,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "apps.infrastructure.billing.context_processors.plan_features",
                 "apps.infrastructure.billing.context_processors.support_contact",
+                "apps.infrastructure.billing.context_processors.trial_status",
             ],
         },
     },
@@ -302,6 +308,11 @@ CELERY_BEAT_SCHEDULE = {
     "recompute-farm-baselines": {
         "task": "analytics.recompute_all_farm_baselines",
         "schedule": crontab(hour=1, minute=0),  # 01:00 daily
+    },
+    # Daily 08:00: remind org owners 7/3/1 days before their plan expires.
+    "send-subscription-expiry-reminders": {
+        "task": "billing.send_subscription_expiry_reminders",
+        "schedule": crontab(hour=8, minute=0),
     },
 }
 

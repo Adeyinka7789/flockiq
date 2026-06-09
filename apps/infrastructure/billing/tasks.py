@@ -5,6 +5,71 @@ from django.utils import timezone
 logger = structlog.get_logger(__name__)
 
 
+@shared_task(name="billing.send_subscription_expiry_reminders")
+def send_subscription_expiry_reminders():
+    """
+    Celery Beat — 08:00 daily.
+    Email + in-app reminder to org owners at 7, 3, and 1 days before their paid
+    plan expires. Trial orgs are excluded (they get the separate trial banner).
+    """
+    from apps.infrastructure.core.rls import no_tenant_context, set_tenant_context
+    from apps.infrastructure.tenants.models import Organization
+
+    now = timezone.now()
+    reminder_days = {7, 3, 1}
+
+    with no_tenant_context():
+        org_ids = list(
+            Organization.objects.filter(
+                is_active=True,
+                plan_tier__in=["monthly", "yearly", "cycle"],
+                plan_expires_at__isnull=False,
+            ).values_list("id", flat=True)
+        )
+
+    sent = 0
+    for org_id in org_ids:
+        try:
+            with set_tenant_context(str(org_id)):
+                org = Organization.objects.get(id=org_id)
+                days_left = (org.plan_expires_at - now).days
+                if days_left in reminder_days:
+                    _send_expiry_reminder(org, days_left)
+                    sent += 1
+        except Exception as exc:
+            logger.error("billing.expiry_reminder_error", org_id=str(org_id), error=str(exc))
+
+    logger.info("billing.expiry_reminders_sent", count=sent, scanned=len(org_ids))
+
+
+def _send_expiry_reminder(org, days_left: int) -> None:
+    """Send one expiry reminder. Must run inside set_tenant_context(org)."""
+    from apps.infrastructure.core.email_service import EmailService
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    owner = org.users.filter(role="owner").first()
+    if not owner:
+        return
+
+    urgency = "today" if days_left <= 1 else f"in {days_left} days"
+
+    EmailService.send_expiry_reminder(owner, org, days_left)
+
+    NotificationLog.objects.create(
+        org=org,
+        recipient=owner,
+        event_type="billing_expiry_reminder",
+        title=f"Plan expires {urgency}",
+        body=(
+            f"Your {org.plan_tier.title()} plan expires {urgency}. "
+            f"Renew now to avoid interruption."
+        ),
+        severity="warning",
+        channel="in_app",
+        action_url="/billing/",
+    )
+
+
 @shared_task(name="billing.activate_cycle_subscription")
 def activate_cycle_subscription(org_id: str, batch_id: str):
     """Called from flocks signal when a new broiler batch is placed."""

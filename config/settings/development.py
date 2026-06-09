@@ -23,7 +23,10 @@ if "silk" not in INSTALLED_APPS:  # noqa: F405
     INSTALLED_APPS += ["silk"]  # noqa: F405
     MIDDLEWARE += ["silk.middleware.SilkyMiddleware"]  # noqa: F405
     SILKY_PYTHON_PROFILER = True
-    SILKY_ANALYZE_QUERIES = True
+    # MUST stay False — see base.py: EXPLAIN ANALYZE executes DML in PostgreSQL,
+    # so query profiling would re-run every INSERT/UPDATE/DELETE and double our
+    # mortality/feed-stock decrement signals.
+    SILKY_ANALYZE_QUERIES = False
     SILKY_MAX_RECORDED_REQUESTS = 1000
     SILKY_MAX_RECORDED_REQUESTS_CHECK_PERCENT = 10
     SILKY_AUTHENTICATION = True

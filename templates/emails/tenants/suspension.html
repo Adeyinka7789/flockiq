@@ -1,0 +1,12 @@
+{% extends "emails/base_email.html" %}
+{% block subject %}Your FlockIQ account has been suspended{% endblock %}
+{% block content %}
+  <h1>Your account has been suspended</h1>
+  <p>Dear {{ owner_name }},</p>
+  <p>Your FlockIQ account (<strong>{{ org_name }}</strong>) has been suspended.</p>
+  <p class="detail-label" style="margin-bottom:4px">Reason</p>
+  <p class="note note-danger">{{ reason|default:"Please contact support for details." }}</p>
+  <p>If you believe this is an error or would like to resolve this, please
+     contact us at
+     <a href="mailto:{{ support_email }}" style="color:#1a4731">{{ support_email }}</a>.</p>
+{% endblock %}

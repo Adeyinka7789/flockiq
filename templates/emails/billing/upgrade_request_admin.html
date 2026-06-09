@@ -1,0 +1,36 @@
+{% extends "emails/base_email.html" %}
+{% block subject %}[FlockIQ] Upgrade Request &mdash; {{ org_name }}{% endblock %}
+{% block content %}
+  <h1>New upgrade request</h1>
+  <p>A tenant has requested a manual plan upgrade.</p>
+  <table class="details">
+    <tr>
+      <td class="detail-label">Organisation</td>
+      <td class="detail-value">{{ org_name }}</td>
+    </tr>
+    <tr>
+      <td class="detail-label">Subdomain</td>
+      <td class="detail-value">{{ subdomain }}.flockiq.com</td>
+    </tr>
+    <tr>
+      <td class="detail-label">Owner email</td>
+      <td class="detail-value">{{ owner_email }}</td>
+    </tr>
+    <tr>
+      <td class="detail-label">Requested plan</td>
+      <td class="detail-value">{{ plan_name }}</td>
+    </tr>
+    <tr>
+      <td class="detail-label">Plan price</td>
+      <td class="detail-value">&#8358;{{ plan_price }}</td>
+    </tr>
+  </table>
+  <p class="note">To upgrade this tenant in Django Admin:</p>
+  <p class="muted">
+    1. Open <strong>/admin/tenants/organization/</strong><br>
+    2. Find <strong>{{ org_name }}</strong><br>
+    3. Set <strong>plan_tier = {{ plan_tier }}</strong><br>
+    4. Set <strong>subscription_status = active</strong><br>
+    5. Save
+  </p>
+{% endblock %}

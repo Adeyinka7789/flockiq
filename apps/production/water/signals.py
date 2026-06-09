@@ -6,8 +6,13 @@ from django.dispatch import receiver
 
 logger = structlog.get_logger(__name__)
 
+# Internal aliased import: signals.py is only imported from AppConfig.ready(),
+# so the app registry is fully populated and this is circular-import-safe.
+# Using the class (not a string sender) makes dispatch_uid dedup reliable.
+from .models import WaterLog as _WaterLog
 
-@receiver(post_save, sender="water.WaterLog")
+
+@receiver(post_save, sender=_WaterLog, dispatch_uid="water.on_water_log_saved")
 def on_water_log_saved(sender, instance, created, **kwargs):
     if not created:
         return

@@ -312,6 +312,13 @@
     </div>
   </div>
 
+  <!-- HTMX swap target for billing actions (upgrade / renew / schedule).
+       Most responses return HX-Redirect (Paystack) or HX-Trigger (toast)
+       headers with an empty body, so this stays empty in the happy path. -->
+  <div id="billing-status"></div>
+  <span id="htmx-spinner" class="htmx-indicator"
+        style="display:none;font-size:12px;color:#8a96a8">Processing…</span>
+
   <!-- Top grid: current plan + resource usage -->
   <div class="bill-top-grid">
 
@@ -333,6 +340,14 @@
         </span>
       </div>
 
+      {% if org.upgrade_pending %}
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;
+                  padding:10px 14px;margin-bottom:16px;font-size:12px;color:#1e40af">
+        🕑 Scheduled to switch to <strong>{{ org.upgrade_pending|title }}</strong>
+        at your next renewal.
+      </div>
+      {% endif %}
+
       {% if plan and plan.features %}
       <div class="bill-features">
         {% for feat in plan.features|slice:":5" %}
@@ -349,28 +364,52 @@
 
       <div class="bill-plan-footer">
         <div class="bill-renewal">
-          {% if next_renewal %}
-          Next renewal date<br>
-          <strong>{{ next_renewal|date:"F j, Y" }}</strong>
-          {% elif is_trial %}
+          {% if is_trial %}
           Trial ends<br>
           <strong>{{ org.trial_ends_at|date:"F j, Y"|default:"—" }}</strong>
+          {% elif org.plan_expires_at %}
+            {% if plan_expired %}
+            <strong style="color:#dc2626">Expired</strong>
+            on {{ org.plan_expires_at|date:"F j, Y" }}
+            {% else %}
+            Expires<br>
+            <strong>{{ org.plan_expires_at|date:"F j, Y" }}</strong>
+            <span style="color:#8a96a8">({{ org.plan_expires_at|timeuntil }} left)</span>
+            {% endif %}
+          {% elif next_renewal %}
+          Next renewal date<br>
+          <strong>{{ next_renewal|date:"F j, Y" }}</strong>
           {% else %}
           <strong>No active subscription</strong>
           {% endif %}
         </div>
-        <a href="#available-plans"
-           onclick="document.querySelector('.bill-plans-grid')?.scrollIntoView({behavior:'smooth'});return false;"
-           class="bill-manage-btn">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
-               stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-            <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
-          Manage Billing
-        </a>
+        <div style="display:flex;gap:8px;align-items:center">
+          {% if org.plan_tier != 'trial' %}
+          <button type="button"
+                  hx-post="{% url 'billing:upgrade_request' %}"
+                  hx-vals='{"plan_tier": "{{ org.plan_tier }}", "timing": "immediate"}'
+                  hx-target="#billing-status"
+                  hx-swap="innerHTML"
+                  hx-disabled-elt="this"
+                  hx-indicator="#htmx-spinner"
+                  class="bill-manage-btn"
+                  style="background:#16a34a;color:white;border-color:#16a34a;cursor:pointer">
+            Renew Plan
+          </button>
+          {% endif %}
+          <a href="#available-plans"
+             onclick="document.querySelector('.bill-plans-grid')?.scrollIntoView({behavior:'smooth'});return false;"
+             class="bill-manage-btn">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            Manage Billing
+          </a>
+        </div>
       </div>
     </div>
 
@@ -669,17 +708,19 @@
       <div style="font-size:12px;color:#8a96a8;margin-bottom:12px">
         Instant activation. Secure card payment via Paystack.
       </div>
-      <form method="POST" action="{% url 'billing:upgrade_request' %}">
-        {% csrf_token %}
-        <input type="hidden" name="plan_tier" id="upgrade-plan-input">
-        <button type="submit"
-                style="width:100%;padding:11px;background:#3d5a99;color:white;
-                       border:none;border-radius:10px;font-size:13px;font-weight:700;
-                       cursor:pointer"
-        hx-disabled-elt="this">
-          Pay ₦<span id="upgrade-amount-display">0</span> via Paystack →
-        </button>
-      </form>
+      <input type="hidden" id="upgrade-plan-input">
+      <button type="button"
+              hx-post="{% url 'billing:upgrade_request' %}"
+              hx-vals="js:{plan_tier: document.getElementById('upgrade-plan-input').value, timing: 'immediate'}"
+              hx-target="#billing-status"
+              hx-swap="innerHTML"
+              hx-disabled-elt="this"
+              hx-indicator="#htmx-spinner"
+              style="width:100%;padding:11px;background:#3d5a99;color:white;
+                     border:none;border-radius:10px;font-size:13px;font-weight:700;
+                     cursor:pointer">
+        Pay ₦<span id="upgrade-amount-display">0</span> via Paystack →
+      </button>
     </div>
 
     <div style="border:1.5px solid #e2e8f0;border-radius:12px;padding:16px">
@@ -696,6 +737,31 @@
         View Bank Details ↓
       </button>
     </div>
+
+    {% if org.plan_tier != 'trial' %}
+    <div style="border:1.5px solid #e2e8f0;border-radius:12px;padding:16px;margin-top:12px">
+      <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:4px">
+        🕑 Switch at Next Renewal
+      </div>
+      <div style="font-size:12px;color:#8a96a8;margin-bottom:12px">
+        Keep your current plan until it expires, then move to this plan
+        automatically. No charge today.
+      </div>
+      <button type="button"
+              hx-post="{% url 'billing:upgrade_request' %}"
+              hx-vals="js:{plan_tier: document.getElementById('upgrade-plan-input').value, timing: 'on_renewal'}"
+              hx-target="#billing-status"
+              hx-swap="innerHTML"
+              hx-disabled-elt="this"
+              hx-indicator="#htmx-spinner"
+              hx-on::after-request="closeUpgradeModal()"
+              style="width:100%;padding:11px;background:white;color:#1a2744;
+                     border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;
+                     font-weight:600;cursor:pointer">
+        Schedule at Next Renewal
+      </button>
+    </div>
+    {% endif %}
   </div>
 </div>
 

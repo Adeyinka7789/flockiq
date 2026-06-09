@@ -7,7 +7,6 @@ from datetime import date, datetime, timedelta
 import structlog
 from django.conf import settings
 from django.core.cache import cache
-from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.http import HttpResponse
@@ -17,6 +16,7 @@ from django.utils import timezone
 from django.views import View
 
 from apps.infrastructure.billing.models import PaymentRecord
+from apps.infrastructure.core.email_service import EmailService
 from apps.infrastructure.core.mixins import SuperAdminMixin
 from apps.infrastructure.tenants.models import Organization
 
@@ -62,19 +62,11 @@ def send_suspension_email(org):
     if not recipient:
         return
     name = (owner.get_full_name() if owner else '') or recipient
-    send_mail(
-        subject='Your FlockIQ account has been suspended',
-        message=(
-            f'Dear {name},\n\n'
-            f'Your FlockIQ account ({org.name}) has been suspended.\n\n'
-            f'Reason: {org.suspension_reason or "Please contact support for details."}\n\n'
-            f'If you believe this is an error or would like to resolve this, '
-            f'please contact us at {settings.SUPPORT_EMAIL}.\n\n'
-            f'The FlockIQ Team'
-        ),
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[recipient],
-        fail_silently=True,
+    EmailService.send_suspension(
+        recipient_email=recipient,
+        owner_name=name,
+        org_name=org.name,
+        reason=org.suspension_reason,
     )
 
 
@@ -86,18 +78,11 @@ def send_reactivation_email(org):
         return
     name = (owner.get_full_name() if owner else '') or recipient
     login_url = settings.SITE_URL.rstrip('/') + '/login/'
-    send_mail(
-        subject='Your FlockIQ account has been reactivated',
-        message=(
-            f'Dear {name},\n\n'
-            f'Good news — your FlockIQ account ({org.name}) is active again.\n\n'
-            f'You can log in again at {login_url}.\n\n'
-            f'If you have any questions, contact us at {settings.SUPPORT_EMAIL}.\n\n'
-            f'The FlockIQ Team'
-        ),
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[recipient],
-        fail_silently=True,
+    EmailService.send_reactivation(
+        recipient_email=recipient,
+        owner_name=name,
+        org_name=org.name,
+        login_url=login_url,
     )
 
 
@@ -262,8 +247,15 @@ class SuperAdminTenantActionView(SuperAdminMixin, View):
         elif action == 'change_plan':
             new_plan = request.POST.get('plan_tier')
             if new_plan in ['trial', 'cycle', 'monthly', 'yearly']:
-                org.plan_tier = new_plan
-                org.save()
+                from apps.infrastructure.billing.services import BillingService
+                from apps.infrastructure.core.rls import set_tenant_context
+                # Route through activate_plan so admin upgrades also set the
+                # expiry window and fire the owner email + in-app notification.
+                with set_tenant_context(org):
+                    BillingService(org).activate_plan(
+                        plan_tier=new_plan,
+                        activated_by='admin',
+                    )
                 msg = f'{org.name} plan changed to {new_plan}.'
             else:
                 msg = 'Invalid plan.'
@@ -971,8 +963,8 @@ class SupportTicketDetailView(SuperAdminMixin, View):
 
 class SupportTicketReplyView(SuperAdminMixin, View):
     def post(self, request, pk):
-        from django.core.mail import send_mail
         from django.conf import settings as django_settings
+        from apps.infrastructure.core.email_service import EmailService
         from apps.infrastructure.notifications.models import (
             SupportTicket, SupportTicketReply, NotificationLog,
         )
@@ -1002,21 +994,15 @@ class SupportTicketReplyView(SuperAdminMixin, View):
             ticket.save(update_fields=['status', 'updated_at'])
 
         if ticket.submitted_by:
-            try:
-                send_mail(
-                    subject=f"[FlockIQ] Re: {ticket.subject}",
-                    message=(
-                        f"{message}\n\n"
-                        f"---\nLog in to view your full ticket history: "
-                        f"{django_settings.SITE_URL if hasattr(django_settings, 'SITE_URL') else 'https://app.flockiq.com'}"
-                        f"/support/my-tickets/{ticket.pk}/"
-                    ),
-                    from_email=django_settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[ticket.submitted_by.email],
-                    fail_silently=True,
-                )
-            except Exception:
-                pass
+            base_url = getattr(django_settings, 'SITE_URL', 'https://app.flockiq.com')
+            ticket_url = f"{base_url.rstrip('/')}/support/my-tickets/{ticket.pk}/"
+            EmailService.send_support_reply(
+                recipient_email=ticket.submitted_by.email,
+                owner_name=ticket.submitted_by.get_full_name() or ticket.submitted_by.email,
+                subject=ticket.subject,
+                reply_message=message,
+                ticket_url=ticket_url,
+            )
 
             # Write to NotificationLog (tenant-scoped) so the user's bell lights up.
             # AdminNotification is for superadmin-only; tenant users' bells read NotificationLog.

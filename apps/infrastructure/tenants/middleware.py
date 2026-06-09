@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from django.shortcuts import redirect
 
 
@@ -6,17 +7,37 @@ class TrialEnforcementMiddleware:
     Blocks access when trial has expired and no active subscription.
     Redirects to the billing page with ?expired=1.
     Exempt paths: login, logout, signup, billing, static, admin, API auth,
-    onboarding, password reset.
+    onboarding, password reset, and the global notification widgets (bell /
+    dropdown) which are read-only and poll on every page — including billing.
     """
 
     EXEMPT_PATHS = [
         '/login/', '/logout/', '/signup/', '/billing/',
         '/api/v1/auth/', '/admin/', '/static/', '/media/',
         '/onboarding/', '/forgot-password/', '/reset-password/',
+        '/notifications/',
     ]
 
     def __init__(self, get_response):
         self.get_response = get_response
+
+    @staticmethod
+    def _expired_redirect(request):
+        """Bounce an expired/suspended org to the billing page.
+
+        For HTMX requests we must NOT return a plain 302: htmx transparently
+        follows the redirect and swaps the resulting full billing-page HTML into
+        whatever fragment target made the request (e.g. the notification bell).
+        That injected markup re-fires its own ``hx-trigger="load"`` elements,
+        producing an infinite redirect→swap loop and a stuck loading spinner.
+        Instead, hand htmx an ``HX-Redirect`` header so it performs a real
+        top-level browser navigation (handled in base.html).
+        """
+        if request.headers.get('HX-Request'):
+            response = HttpResponse(status=204)
+            response['HX-Redirect'] = '/billing/?expired=1'
+            return response
+        return redirect('/billing/?expired=1')
 
     def __call__(self, request):
         if not request.user.is_authenticated:
@@ -46,9 +67,9 @@ class TrialEnforcementMiddleware:
             if org.trial_ends_at is None or org.trial_ends_at > timezone.now():
                 return self.get_response(request)
             else:
-                return redirect('/billing/?expired=1')
+                return self._expired_redirect(request)
 
         if org.subscription_status in ['suspended', 'cancelled']:
-            return redirect('/billing/?expired=1')
+            return self._expired_redirect(request)
 
         return self.get_response(request)

@@ -49,6 +49,35 @@ class Organization(models.Model):
         default="trial",
     )
     trial_ends_at = models.DateTimeField(null=True, blank=True)
+    plan_expires_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When the current paid plan lapses. Set on activation/renewal.")
+    plan_renewal_preference = models.CharField(
+        max_length=20,
+        choices=[
+            ("auto", "Auto-renew"),
+            ("manual", "Manual renewal"),
+        ],
+        default="manual",
+    )
+    upgrade_pending = models.CharField(
+        max_length=20,
+        choices=[
+            ("", "No pending upgrade"),
+            ("monthly", "Monthly"),
+            ("yearly", "Yearly"),
+            ("cycle", "Cycle"),
+        ],
+        blank=True, default="",
+        help_text="Plan the org has scheduled to switch to at next renewal.")
+    upgrade_timing = models.CharField(
+        max_length=20,
+        choices=[
+            ("immediate", "Immediate"),
+            ("on_renewal", "At next renewal"),
+        ],
+        blank=True, default="",
+    )
     max_users = models.PositiveIntegerField(default=5)
     storage_quota_gb = models.PositiveIntegerField(default=5)
     grace_period_ends_at = models.DateTimeField(

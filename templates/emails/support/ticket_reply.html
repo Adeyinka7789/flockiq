@@ -1,0 +1,14 @@
+{% extends "emails/base_email.html" %}
+{% block subject %}Re: {{ subject }} &mdash; FlockIQ Support{% endblock %}
+{% block content %}
+  <h1>Reply from FlockIQ Support</h1>
+  <p>Hi {{ owner_name|default:"there" }},</p>
+  <p>Our support team has replied to your ticket
+     &ldquo;<strong>{{ subject }}</strong>&rdquo;:</p>
+  <p class="note" style="white-space:pre-line">{{ reply_message }}</p>
+  <p style="text-align:center">
+    <a href="{{ ticket_url }}" class="btn">View ticket history</a>
+  </p>
+  <p class="muted">You can reply directly within your ticket to continue the
+     conversation.</p>
+{% endblock %}

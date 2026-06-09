@@ -16,6 +16,14 @@ logger = structlog.get_logger(__name__)
 PAYSTACK_BASE = "https://api.paystack.co"
 TIMEOUT = 10
 
+# Days a plan stays valid after activation/renewal, per tier.
+PLAN_DURATIONS = {
+    "trial": 14,
+    "monthly": 30,
+    "cycle": 42,
+    "yearly": 365,
+}
+
 
 # ---------------------------------------------------------------------------
 # Paystack API client — no org binding required
@@ -169,6 +177,145 @@ class BillingService(BaseService):
             plan_tier=self.org.plan_tier,
             is_active=True,
         ).first()
+
+    def _get_plan_price_kobo(self, plan_tier: str) -> int:
+        plan = BillingPlan.objects.filter(plan_tier=plan_tier, is_active=True).first()
+        return plan.amount_kobo if plan else 0
+
+    @transaction.atomic
+    def activate_plan(
+        self,
+        plan_tier: str,
+        payment_reference: str = "",
+        activated_by: str = "paystack",
+        **payment_kwargs,
+    ) -> bool:
+        """
+        Activate or renew a plan. Extends expiry from now by the plan tier's
+        duration (see PLAN_DURATIONS).
+        Called by: Paystack webhook (charge.success), Paystack callback,
+        and admin manual upgrade.
+
+        Idempotent on payment_reference: if a PaymentRecord already exists for the
+        reference (e.g. the callback already processed the payment before the
+        webhook arrived), this is a no-op and returns False. Admin activations
+        (no reference) always proceed.
+
+        Returns True when the activation was applied, False when skipped as a
+        duplicate.
+        """
+        import datetime
+        from django.core.cache import cache
+
+        org = self.org
+        now = timezone.now()
+
+        plan = BillingPlan.objects.filter(plan_tier=plan_tier, is_active=True).first()
+
+        # Idempotency guard + payment record for paid activations.
+        if payment_reference:
+            _, created = PaymentRecord.objects.get_or_create(
+                org=org,
+                reference=payment_reference,
+                defaults={
+                    "amount_kobo": payment_kwargs.get("amount_kobo")
+                    or self._get_plan_price_kobo(plan_tier),
+                    "status": "success",
+                    "paid_at": payment_kwargs.get("paid_at") or now,
+                    "plan": plan,
+                    "channel": payment_kwargs.get("channel", ""),
+                    "authorization_code": payment_kwargs.get("authorization_code", ""),
+                    "paystack_transaction_id": payment_kwargs.get("paystack_transaction_id", ""),
+                },
+            )
+            if not created:
+                self.logger.info(
+                    "billing.activate_plan_duplicate", reference=payment_reference
+                )
+                return False
+
+        previous_plan = org.plan_tier
+
+        org.plan_tier = plan_tier
+        days = PLAN_DURATIONS.get(plan_tier, 30)
+        org.plan_expires_at = now + datetime.timedelta(days=days)
+        org.subscription_status = "active"
+        org.is_active = True
+        # Activation always clears any deferred upgrade — it's now in effect.
+        org.upgrade_pending = ""
+        org.upgrade_timing = ""
+        org.save(update_fields=[
+            "plan_tier", "plan_expires_at", "subscription_status",
+            "is_active", "upgrade_pending", "upgrade_timing", "updated_at",
+        ])
+
+        # Invalidate the org-active cache read by core.middleware.
+        cache.delete(f"org_active:{org.id}")
+
+        self._notify_plan_activated(plan_tier, previous_plan, activated_by)
+        self.logger.info(
+            "billing.plan_activated",
+            org=str(org.id),
+            plan_tier=plan_tier,
+            previous_plan=previous_plan,
+            activated_by=activated_by,
+        )
+        return True
+
+    def _notify_plan_activated(self, new_plan, previous_plan, activated_by):
+        """Email + in-app notification to the owner, plus an admin alert.
+
+        Uses NotificationLog (tenant-scoped owner inbox) and AdminNotification
+        (global superadmin inbox) directly — NotificationService.send() is not
+        used here because it requires a configured AlertRule + message template,
+        which billing events do not have.
+        """
+        from django.contrib.auth import get_user_model
+
+        from apps.infrastructure.core.email_service import EmailService
+        from apps.infrastructure.notifications.models import (
+            AdminNotification,
+            NotificationLog,
+        )
+
+        org = self.org
+        action = "upgraded" if new_plan != previous_plan else "renewed"
+        expires = org.plan_expires_at
+        owner = org.users.filter(role="owner").first()
+
+        if owner:
+            EmailService.send_plan_activated(
+                owner=owner,
+                org=org,
+                plan_name=new_plan,
+                expires_at=expires,
+                action=action,
+                activated_by=activated_by,
+            )
+
+            NotificationLog.objects.create(
+                org=org,
+                recipient=owner,
+                event_type="billing_plan_activated",
+                title=f"Plan {action} — {new_plan.title()}",
+                body=(
+                    f"Your {new_plan.title()} plan is active until "
+                    f"{expires.strftime('%B %d, %Y') if expires else '—'}."
+                ),
+                severity="info",
+                channel="in_app",
+                action_url="/billing/",
+            )
+
+        # Superadmin in-app alert (not tenant-scoped).
+        User = get_user_model()
+        source = "Activated by admin." if activated_by == "admin" else "Paid via Paystack."
+        for admin in User.objects.filter(is_superuser=True):
+            AdminNotification.objects.create(
+                recipient=admin,
+                title=f"Plan {action} — {org.name}",
+                body=f"{org.name} has {action} to the {new_plan.title()} plan. {source}",
+            )
 
     @transaction.atomic
     def activate_cycle_subscription(self, batch_id) -> CycleSubscription:
@@ -345,46 +492,20 @@ class BillingService(BaseService):
         }
 
     def _send_upgrade_request_email(self, plan_tier: str, plan, user_email: str) -> None:
-        from django.core.mail import send_mail
+        from apps.infrastructure.core.email_service import EmailService
 
-        admin_subject = f"[FlockIQ] Upgrade Request — {self.org.name}"
-        admin_body = (
-            f"New upgrade request from FlockIQ:\n\n"
-            f"Organisation: {self.org.name}\n"
-            f"Subdomain: {self.org.subdomain}.flockiq.com\n"
-            f"Owner Email: {user_email}\n"
-            f"Requested Plan: {plan_tier.title()}\n"
-            f"Plan Price: ₦{plan.amount_kobo // 100:,}\n\n"
-            f"To upgrade this tenant:\n"
-            f"1. Go to Django Admin: /admin/tenants/organization/\n"
-            f"2. Find {self.org.name}\n"
-            f"3. Set plan_tier = {plan_tier}\n"
-            f"4. Set subscription_status = active\n"
-            f"5. Save\n\n"
-            f"FlockIQ Admin System"
-        )
-        send_mail(
-            subject=admin_subject,
-            message=admin_body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[settings.ADMIN_EMAIL],
-            fail_silently=True,
+        EmailService.send_upgrade_request_admin(
+            org=self.org,
+            plan_tier=plan_tier,
+            plan=plan,
+            owner_email=user_email,
         )
 
-        tenant_body = (
-            f"Hi {self.org.owner_name or 'there'},\n\n"
-            f"We have received your request to upgrade to the {plan_tier.title()} plan.\n\n"
-            f"Our team will activate your account within 24 hours.\n"
-            f"You will receive a confirmation email when your plan is active.\n\n"
-            f"If you have any questions, reply to this email or contact us on WhatsApp.\n\n"
-            f"— The FlockIQ Team"
-        )
-        send_mail(
-            subject="Your FlockIQ upgrade request has been received",
-            message=tenant_body,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user_email],
-            fail_silently=True,
+        EmailService.send_upgrade_request_received(
+            owner_email=user_email,
+            owner_name=self.org.owner_name or "there",
+            org_name=self.org.name,
+            plan_tier=plan_tier,
         )
         self.logger.info("billing.upgrade_email_sent", org=str(self.org.id), plan_tier=plan_tier)
 
@@ -408,6 +529,47 @@ class BillingService(BaseService):
                 )
 
     @transaction.atomic
+    def schedule_upgrade(self, plan_tier: str, timing: str = "on_renewal") -> dict:
+        """
+        Record a deferred plan change to be applied at the next renewal.
+        Does NOT charge or change the active plan — activate_plan() clears the
+        pending flag and applies it when the next payment/renewal lands.
+        """
+        from apps.infrastructure.notifications.models import NotificationLog
+
+        org = self.org
+        org.upgrade_pending = plan_tier
+        org.upgrade_timing = timing
+        org.save(update_fields=["upgrade_pending", "upgrade_timing", "updated_at"])
+
+        owner = org.users.filter(role="owner").first()
+        if owner:
+            NotificationLog.objects.create(
+                org=org,
+                recipient=owner,
+                event_type="billing_upgrade_scheduled",
+                title=f"Upgrade scheduled — {plan_tier.title()}",
+                body=(
+                    f"Your switch to the {plan_tier.title()} plan will take effect "
+                    f"at your next renewal."
+                ),
+                severity="info",
+                channel="in_app",
+                action_url="/billing/",
+            )
+
+        self.logger.info(
+            "billing.upgrade_scheduled", org=str(org.id), plan_tier=plan_tier, timing=timing
+        )
+        return {
+            "method": "scheduled",
+            "message": (
+                f"Your upgrade to the {plan_tier.title()} plan will take effect "
+                f"at your next renewal."
+            ),
+        }
+
+    @transaction.atomic
     def verify_and_activate(self, reference: str) -> bool:
         result = PaystackService().verify_transaction(reference)
         if not result.get("status"):
@@ -422,20 +584,13 @@ class BillingService(BaseService):
         if not plan_tier:
             return False
 
-        self.org.plan_tier = plan_tier
-        self.org.subscription_status = "active"
-        self.org.save(update_fields=["plan_tier", "subscription_status"])
-
-        PaymentRecord.objects.get_or_create(
-            org=self.org,
-            reference=reference,
-            defaults={
-                "amount_kobo": data.get("amount", 0),
-                "status": "success",
-                "channel": data.get("channel", ""),
-                "paystack_transaction_id": str(data.get("id", "")),
-                "paid_at": timezone.now(),
-            },
+        self.activate_plan(
+            plan_tier=plan_tier,
+            payment_reference=reference,
+            activated_by="paystack",
+            amount_kobo=data.get("amount", 0),
+            channel=data.get("channel", ""),
+            paystack_transaction_id=str(data.get("id", "")),
+            paid_at=timezone.now(),
         )
-        self.logger.info("billing.plan_activated", org=str(self.org.id), plan_tier=plan_tier)
         return True

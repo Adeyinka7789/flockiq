@@ -3,10 +3,16 @@ from django.db.models import F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+# Internal aliased imports: signals.py is only imported from AppConfig.ready(),
+# by which point the app registry is fully populated — so importing the concrete
+# model classes here is circular-import-safe. Using the class (not a string
+# sender) makes dispatch_uid deduplication reliable across import orders.
+from apps.farm.flocks.models import Batch as _Batch, MortalityLog as _MortalityLog
+
 logger = structlog.get_logger(__name__)
 
 
-@receiver(post_save, sender="flocks.MortalityLog")
+@receiver(post_save, sender=_MortalityLog, dispatch_uid="flocks.on_mortality_log_saved")
 def on_mortality_log_saved(sender, instance, created, **kwargs):
     if not created:
         return
@@ -60,7 +66,7 @@ def on_mortality_log_saved(sender, instance, created, **kwargs):
         logger.warning("flocks.anomaly_task_enqueue_failed", batch_id=str(instance.batch_id))
 
 
-@receiver(post_save, sender="flocks.Batch")
+@receiver(post_save, sender=_Batch, dispatch_uid="flocks.on_batch_saved")
 def on_batch_saved(sender, instance, created, **kwargs):
     if created:
         logger.info(

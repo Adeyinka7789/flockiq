@@ -1,0 +1,27 @@
+{% extends "emails/base_email.html" %}
+{% block subject %}[FlockIQ Support] {{ priority }} &mdash; {{ subject }}{% endblock %}
+{% block content %}
+  <h1>New support ticket</h1>
+  <table class="details">
+    <tr>
+      <td class="detail-label">Organisation</td>
+      <td class="detail-value">{{ org_name }}</td>
+    </tr>
+    <tr>
+      <td class="detail-label">Submitted by</td>
+      <td class="detail-value">{{ user_email }}</td>
+    </tr>
+    <tr>
+      <td class="detail-label">Priority</td>
+      <td class="detail-value">{{ priority }}</td>
+    </tr>
+    <tr>
+      <td class="detail-label">Submitted</td>
+      <td class="detail-value">{{ submitted_at }}</td>
+    </tr>
+  </table>
+  <p class="detail-label" style="margin-bottom:4px">Subject</p>
+  <p style="margin-top:0"><strong>{{ subject }}</strong></p>
+  <p class="detail-label" style="margin-bottom:4px">Message</p>
+  <p class="note" style="white-space:pre-line">{{ message }}</p>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "emails/base_email.html" %}
+{% block subject %}Your FlockIQ account has been reactivated{% endblock %}
+{% block content %}
+  <h1>Your account is active again &#9989;</h1>
+  <p>Dear {{ owner_name }},</p>
+  <p>Good news &mdash; your FlockIQ account (<strong>{{ org_name }}</strong>)
+     is active again. You can pick up right where you left off.</p>
+  <p style="text-align:center">
+    <a href="{{ login_url }}" class="btn">Log in to FlockIQ</a>
+  </p>
+  <p class="muted">If you have any questions, contact us at
+     <a href="mailto:{{ support_email }}" style="color:#1a4731">{{ support_email }}</a>.</p>
+{% endblock %}

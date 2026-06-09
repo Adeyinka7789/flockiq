@@ -5,7 +5,7 @@ from django.dispatch import receiver
 logger = structlog.get_logger(__name__)
 
 
-@receiver(post_save, sender="tenants.Organization")
+@receiver(post_save, sender="tenants.Organization", dispatch_uid="tenants.on_organization_created")
 def on_organization_created(sender, instance, created, **kwargs):
     if not created:
         return
@@ -19,7 +19,7 @@ def on_organization_created(sender, instance, created, **kwargs):
     # registered via NotificationsConfig.ready()
 
 
-@receiver(post_save, sender="tenants.Organization")
+@receiver(post_save, sender="tenants.Organization", dispatch_uid="tenants.on_plan_activated")
 def on_plan_activated(sender, instance, created, **kwargs):
     if created:
         return

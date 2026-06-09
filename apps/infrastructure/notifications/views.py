@@ -4,7 +4,6 @@ import uuid
 import structlog
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -12,6 +11,7 @@ from django.views import View
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 
+from apps.infrastructure.core.email_service import EmailService
 from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 from .services import NotificationService
@@ -332,18 +332,14 @@ class SubmitSupportTicketView(LoginRequiredMixin, View):
             )
 
         try:
-            send_mail(
-                subject=f"[FlockIQ Support] {priority.upper()} — {subject} | {org.name}",
-                message=(
-                    f"Organisation: {org.name}\n"
-                    f"Submitted by: {request.user.email}\n"
-                    f"Priority: {priority}\n"
-                    f"Submitted: {ticket.created_at.strftime('%Y-%m-%d %H:%M UTC')}\n\n"
-                    f"{message}"
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[settings.ADMIN_EMAIL],
-                fail_silently=True,
+            EmailService.send_support_ticket(
+                admin_email=settings.ADMIN_EMAIL,
+                org_name=org.name,
+                user_email=request.user.email,
+                priority=priority,
+                subject=subject,
+                message=message,
+                submitted_at=ticket.created_at.strftime('%Y-%m-%d %H:%M UTC'),
             )
         except Exception:
             logger.exception("support_ticket.email_send_failed", ticket_id=ticket.pk)

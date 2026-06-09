@@ -87,6 +87,7 @@ class PaystackWebhookView(View):
         transaction_id = str(data.get("id", ""))
         authorization_code = (data.get("authorization") or {}).get("authorization_code", "")
         paid_at = timezone.now()
+        plan_tier = (data.get("metadata") or {}).get("plan_tier")
 
         org = Organization.objects.filter(owner_email=customer_email).first()
         if org is None:
@@ -95,19 +96,34 @@ class PaystackWebhookView(View):
 
         with set_tenant_context(org):
             svc = BillingService(org)
-            svc.record_payment(
-                reference=reference,
-                amount_kobo=amount_kobo,
-                status="success",
-                channel=channel,
-                paystack_transaction_id=transaction_id,
-                authorization_code=authorization_code,
-                paid_at=paid_at,
-            )
-            # Update org subscription status if it was trial
-            if org.subscription_status in ("trial",):
-                org.subscription_status = "active"
-                org.save(update_fields=["subscription_status"])
+            if plan_tier:
+                # Plan upgrade/renewal — activate (records payment, sets expiry,
+                # notifies). Idempotent on reference, so a prior callback that
+                # already activated this payment is a safe no-op.
+                svc.activate_plan(
+                    plan_tier=plan_tier,
+                    payment_reference=reference,
+                    activated_by="paystack",
+                    amount_kobo=amount_kobo,
+                    channel=channel,
+                    authorization_code=authorization_code,
+                    paystack_transaction_id=transaction_id,
+                    paid_at=paid_at,
+                )
+            else:
+                # Non-plan charge (e.g. cycle subscription) — just record it.
+                svc.record_payment(
+                    reference=reference,
+                    amount_kobo=amount_kobo,
+                    status="success",
+                    channel=channel,
+                    paystack_transaction_id=transaction_id,
+                    authorization_code=authorization_code,
+                    paid_at=paid_at,
+                )
+                if org.subscription_status in ("trial",):
+                    org.subscription_status = "active"
+                    org.save(update_fields=["subscription_status"])
         logger.info("webhook.charge_success_processed", reference=reference)
 
     def _handle_subscription_created(self, data: dict):
@@ -211,9 +227,14 @@ class BillingPageView(LoginRequiredMixin, View):
 
         platform_config = PlatformConfig.get()
 
+        plan_expired = bool(
+            org.plan_expires_at and org.plan_expires_at < timezone.now()
+        )
+
         return render(request, "billing/billing_page.html", {
             **summary,
             "expired": request.GET.get("expired"),
+            "plan_expired": plan_expired,
             "all_plans": all_plans,
             "current_features": current_features,
             "farm_count": farm_count,
@@ -236,22 +257,27 @@ class UpgradeRequestView(LoginRequiredMixin, View):
             return HttpResponse(status=403)
 
         plan_tier = request.POST.get("plan_tier")
+        timing = request.POST.get("timing", "immediate")
         if plan_tier not in ["monthly", "cycle", "yearly"]:
             return HttpResponse("Invalid plan", status=400)
 
         from apps.infrastructure.core.rls import set_tenant_context
         with set_tenant_context(request.user.org):
             service = BillingService(request.user.org)
-            result = service.request_upgrade(
-                plan_tier=plan_tier,
-                user_email=request.user.email,
-            )
+            if timing == "on_renewal":
+                # Defer the change — record it instead of charging now.
+                result = service.schedule_upgrade(plan_tier=plan_tier, timing=timing)
+            else:
+                result = service.request_upgrade(
+                    plan_tier=plan_tier,
+                    user_email=request.user.email,
+                )
 
         if result["method"] == "paystack":
             response = HttpResponse()
             response["HX-Redirect"] = result["authorization_url"]
             return response
-        elif result["method"] == "email":
+        elif result["method"] in ("email", "scheduled"):
             response = HttpResponse()
             response["HX-Trigger"] = json.dumps({
                 "showToast": {"message": result["message"], "type": "success"},

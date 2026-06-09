@@ -6,6 +6,45 @@ def support_contact(request):
     }
 
 
+def trial_status(request):
+    """
+    Exposes trial countdown / expiry state to all templates so the
+    global trial banner (templates/base.html) can render.
+
+    Returns:
+        trial_days_remaining: int  — whole days left (0 once expired)
+        trial_expired:        bool — True when a trial org's window has passed
+        on_trial:             bool — True while a trial org is still within its window
+    """
+    empty = {
+        "trial_days_remaining": 0,
+        "trial_expired": False,
+        "on_trial": False,
+    }
+
+    user = getattr(request, "user", None)
+    if not user or not user.is_authenticated:
+        return empty
+
+    # Platform super-admins have no tenant org and never see trial UI.
+    if user.is_superuser or getattr(user, "role", "") == "super_admin":
+        return empty
+
+    org = getattr(user, "org", None)
+    if not org or org.plan_tier != "trial" or not org.trial_ends_at:
+        return empty
+
+    from django.utils import timezone
+
+    delta = org.trial_ends_at - timezone.now()
+    expired = delta.total_seconds() <= 0
+    return {
+        "trial_days_remaining": max(0, delta.days),
+        "trial_expired": expired,
+        "on_trial": not expired,
+    }
+
+
 def plan_features(request):
     """
     Makes plan_features available in all templates.

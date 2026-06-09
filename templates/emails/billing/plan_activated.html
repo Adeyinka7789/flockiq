@@ -1,0 +1,28 @@
+{% extends "emails/base_email.html" %}
+{% block subject %}Your FlockIQ plan has been {{ action }}{% endblock %}
+{% block content %}
+  <h1>Your plan has been {{ action }} &#9989;</h1>
+  <p>Hi {{ owner_name }},</p>
+  <p>Your FlockIQ subscription for <strong>{{ org_name }}</strong> has been
+     {{ action }}. Here are the details:</p>
+  <table class="details">
+    <tr>
+      <td class="detail-label">Plan</td>
+      <td class="detail-value">{{ plan_name }}</td>
+    </tr>
+    <tr>
+      <td class="detail-label">Valid until</td>
+      <td class="detail-value">{{ expires_at|date:"F d, Y"|default:"&mdash;" }}</td>
+    </tr>
+    {% if activated_by == "admin" %}
+    <tr>
+      <td class="detail-label">Activated by</td>
+      <td class="detail-value">FlockIQ Admin</td>
+    </tr>
+    {% endif %}
+  </table>
+  <p style="text-align:center">
+    <a href="{{ site_url }}" class="btn">Go to my dashboard</a>
+  </p>
+  <p class="muted">Thank you for being part of FlockIQ.</p>
+{% endblock %}

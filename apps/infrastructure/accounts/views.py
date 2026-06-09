@@ -7,7 +7,6 @@ from django.conf import settings as django_settings
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
-from django.core.mail import send_mail
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -19,6 +18,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
+
+from apps.infrastructure.core.email_service import EmailService
 
 from .constants import COUNTRY_CHOICES, timezone_for_country
 from .models import CustomUser
@@ -270,20 +271,7 @@ class SignupView(View):
         verification_url = request.build_absolute_uri(
             f"/accounts/verify/{user.email_verification_token}/"
         )
-        send_mail(
-            subject="Verify your FlockIQ account",
-            message=(
-                f"Hi {user.first_name or user.email},\n\n"
-                f"Click the link below to verify your email address.\n"
-                f"This link expires in 24 hours.\n\n"
-                f"{verification_url}\n\n"
-                f"If you did not sign up for FlockIQ, you can safely ignore this email.\n\n"
-                f"— The FlockIQ Team"
-            ),
-            from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@flockiq.com"),
-            recipient_list=[email],
-            fail_silently=True,
-        )
+        EmailService.send_verification(user, verification_url)
         if django_settings.DEBUG:
             logger.info("signup.verification_url", url=verification_url)
         logger.info("org_signup", org_id=str(org.id), user_id=str(user.id))
@@ -332,18 +320,7 @@ class ResendVerificationView(View):
             verification_url = request.build_absolute_uri(
                 f"/accounts/verify/{user.email_verification_token}/"
             )
-            send_mail(
-                subject="Verify your FlockIQ account",
-                message=(
-                    f"Hi {user.first_name or user.email},\n\n"
-                    f"Here is your new verification link:\n\n"
-                    f"{verification_url}\n\n"
-                    f"— The FlockIQ Team"
-                ),
-                from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@flockiq.com"),
-                recipient_list=[email],
-                fail_silently=True,
-            )
+            EmailService.send_verification(user, verification_url)
             if django_settings.DEBUG:
                 logger.info("resend_verification.url", url=verification_url)
             logger.info("verification_resent", email=email)
@@ -374,21 +351,8 @@ class ForgotPasswordView(View):
         if user is not None:
             token = secrets.token_urlsafe(32)
             cache.set(f"pwd_reset:{token}", email, timeout=3600)
-            reset_url = f"/reset-password/?token={token}"
-            send_mail(
-                subject="Reset your FlockIQ password",
-                message=(
-                    f"Hi {user.first_name or user.email},\n\n"
-                    f"Click the link below to reset your password.\n"
-                    f"This link expires in 1 hour.\n\n"
-                    f"http://localhost:8000{reset_url}\n\n"
-                    f"If you did not request this, ignore this email.\n\n"
-                    f"— The FlockIQ Team"
-                ),
-                from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@flockiq.com"),
-                recipient_list=[email],
-                fail_silently=True,
-            )
+            reset_url = request.build_absolute_uri(f"/reset-password/?token={token}")
+            EmailService.send_password_reset(user, reset_url)
             logger.info("password_reset_requested", email=email)
 
         return render(request, "accounts/forgot_password.html", {"success": True})
@@ -610,19 +574,13 @@ class InviteUserView(LoginRequiredMixin, View):
             is_active=True,
         )
 
-        send_mail(
-            subject=f"You've been invited to {request.user.org.name} on FlockIQ",
-            message=(
-                f"Hi {first_name},\n\n"
-                f"You've been added to {request.user.org.name} on FlockIQ.\n\n"
-                f"Login:              {email}\n"
-                f"Temporary password: {temp_password}\n\n"
-                f"Please change your password after first login.\n\n"
-                f"— The FlockIQ Team"
-            ),
-            from_email=getattr(django_settings, "DEFAULT_FROM_EMAIL", "noreply@flockiq.com"),
-            recipient_list=[email],
-            fail_silently=True,
+        login_url = request.build_absolute_uri("/login/")
+        EmailService.send_team_invite(
+            recipient_email=email,
+            first_name=first_name,
+            org_name=request.user.org.name,
+            temp_password=temp_password,
+            login_url=login_url,
         )
 
         logger.info("team_member_invited", invited_by=str(request.user.id), new_user=str(user.id))

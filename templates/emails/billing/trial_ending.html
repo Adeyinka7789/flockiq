@@ -1,0 +1,14 @@
+{% extends "emails/base_email.html" %}
+{% block subject %}Your FlockIQ trial ends in {{ days_left }} days{% endblock %}
+{% block content %}
+  <h1>Your free trial is ending soon</h1>
+  <p>Hi {{ owner_name }},</p>
+  <p>Your FlockIQ free trial for <strong>{{ org_name }}</strong> ends in
+     <strong>{{ days_left }} days</strong>. Upgrade now to keep your data,
+     AI forecasts, and daily insights without interruption.</p>
+  <p style="text-align:center">
+    <a href="{{ site_url }}/billing/" class="btn">Choose a plan</a>
+  </p>
+  <p class="muted">All the records you've added during your trial stay safe
+     and carry over the moment you upgrade.</p>
+{% endblock %}

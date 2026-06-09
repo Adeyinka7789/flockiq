@@ -167,6 +167,10 @@ def test_charge_success_creates_payment_record():
         assert rec.amount_kobo == 500000
         assert rec.authorization_code == "AUTH_abc"
 
+    # A successful charge promotes a trial org to an active subscription.
+    org.refresh_from_db()
+    assert org.subscription_status == "active"
+
 
 # ---------------------------------------------------------------------------
 # 5. CycleSubscription created via BillingService.activate_cycle_subscription
@@ -289,3 +293,327 @@ def test_billing_summary_returns_correct_plan():
     assert summary["plan"] is not None
     assert summary["plan"].plan_tier == "monthly"
     assert summary["org"].subdomain == "summarytest"
+
+
+# ---------------------------------------------------------------------------
+# 10. trial_status context processor — drives the global trial banner
+# ---------------------------------------------------------------------------
+
+def _request_for(user):
+    from django.test import RequestFactory
+
+    request = RequestFactory().get("/")
+    request.user = user
+    return request
+
+
+def test_trial_status_expired_trial():
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.infrastructure.billing.context_processors import trial_status
+
+    org = make_org(
+        subdomain="trialexpired",
+        plan_tier="trial",
+        trial_ends_at=timezone.now() - timedelta(days=1),
+    )
+    user = make_user(org)
+
+    ctx = trial_status(_request_for(user))
+    assert ctx["trial_expired"] is True
+    assert ctx["on_trial"] is False
+    assert ctx["trial_days_remaining"] == 0
+
+
+def test_trial_status_active_trial_counts_down():
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.infrastructure.billing.context_processors import trial_status
+
+    org = make_org(
+        subdomain="trialactive",
+        plan_tier="trial",
+        trial_ends_at=timezone.now() + timedelta(days=3, hours=1),
+    )
+    user = make_user(org)
+
+    ctx = trial_status(_request_for(user))
+    assert ctx["trial_expired"] is False
+    assert ctx["on_trial"] is True
+    assert ctx["trial_days_remaining"] == 3
+
+
+def test_trial_status_super_admin_sees_nothing():
+    from apps.infrastructure.billing.context_processors import trial_status
+
+    org = make_org(subdomain="trialsuper", plan_tier="trial")
+    user = make_user(org, role="super_admin", email="super@trialsuper.com")
+
+    ctx = trial_status(_request_for(user))
+    assert ctx["trial_expired"] is False
+    assert ctx["on_trial"] is False
+
+
+def test_trial_status_paid_org_sees_nothing():
+    from apps.infrastructure.billing.context_processors import trial_status
+
+    org = make_org(subdomain="trialpaid", plan_tier="monthly")
+    user = make_user(org)
+
+    ctx = trial_status(_request_for(user))
+    assert ctx["trial_expired"] is False
+    assert ctx["on_trial"] is False
+
+
+def test_trial_status_anonymous_user_sees_nothing():
+    from django.contrib.auth.models import AnonymousUser
+    from apps.infrastructure.billing.context_processors import trial_status
+
+    ctx = trial_status(_request_for(AnonymousUser()))
+    assert ctx["trial_expired"] is False
+    assert ctx["on_trial"] is False
+
+
+# ---------------------------------------------------------------------------
+# Subscription lifecycle — activate_plan()
+# ---------------------------------------------------------------------------
+
+def test_activate_plan_sets_expiry_30_days_from_now():
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.infrastructure.billing.services import BillingService
+    from apps.infrastructure.core.rls import set_tenant_context
+
+    org = make_org(subdomain="actexpiry", plan_tier="trial")
+    make_user(org)  # owner
+    make_plan(plan_tier="monthly")
+
+    with set_tenant_context(org):
+        applied = BillingService(org).activate_plan(plan_tier="monthly")
+
+    assert applied is True
+    org.refresh_from_db()
+    assert org.plan_tier == "monthly"
+    assert org.subscription_status == "active"
+    assert org.plan_expires_at is not None
+    delta = org.plan_expires_at - timezone.now()
+    assert timedelta(days=29, hours=23) < delta <= timedelta(days=30)
+
+
+def test_activate_plan_emails_owner():
+    from django.core import mail
+    from apps.infrastructure.billing.services import BillingService
+    from apps.infrastructure.core.rls import set_tenant_context
+
+    org = make_org(subdomain="actemail", plan_tier="trial")
+    owner = make_user(org)
+    make_plan(plan_tier="monthly")
+
+    mail.outbox = []
+    with set_tenant_context(org):
+        BillingService(org).activate_plan(plan_tier="monthly")
+
+    assert any(owner.email in m.to for m in mail.outbox)
+
+
+def test_activate_plan_creates_owner_in_app_notification():
+    from apps.infrastructure.billing.services import BillingService
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    org = make_org(subdomain="actnotif", plan_tier="trial")
+    owner = make_user(org)
+    make_plan(plan_tier="monthly")
+
+    with set_tenant_context(org):
+        BillingService(org).activate_plan(plan_tier="monthly")
+        assert NotificationLog.objects.filter(
+            org=org, recipient=owner, event_type="billing_plan_activated"
+        ).exists()
+
+
+def test_activate_plan_notifies_superadmin():
+    from apps.infrastructure.accounts.models import CustomUser
+    from apps.infrastructure.billing.services import BillingService
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import AdminNotification
+
+    su = CustomUser.objects.create_superuser(email="su_act@flock.com", password="x")
+    org = make_org(subdomain="actsuper", plan_tier="trial")
+    make_user(org)
+    make_plan(plan_tier="monthly")
+
+    before = AdminNotification.objects.filter(recipient=su).count()
+    with set_tenant_context(org):
+        BillingService(org).activate_plan(plan_tier="monthly")
+
+    assert AdminNotification.objects.filter(recipient=su).count() == before + 1
+
+
+def test_activate_plan_is_idempotent_on_payment_reference():
+    from apps.infrastructure.billing.models import PaymentRecord
+    from apps.infrastructure.billing.services import BillingService
+    from apps.infrastructure.core.rls import set_tenant_context
+
+    org = make_org(subdomain="actidem", plan_tier="trial")
+    make_user(org)
+    make_plan(plan_tier="monthly")
+
+    with set_tenant_context(org):
+        first = BillingService(org).activate_plan(
+            plan_tier="monthly", payment_reference="REF_IDEM_1"
+        )
+        second = BillingService(org).activate_plan(
+            plan_tier="monthly", payment_reference="REF_IDEM_1"
+        )
+        count = PaymentRecord.objects.filter(reference="REF_IDEM_1").count()
+
+    assert first is True
+    assert second is False  # duplicate reference → no-op
+    assert count == 1
+
+
+# ---------------------------------------------------------------------------
+# Admin manual upgrade routes through activate_plan()
+# ---------------------------------------------------------------------------
+
+def test_admin_change_plan_uses_activate_plan():
+    from apps.infrastructure.accounts.models import CustomUser
+    from apps.infrastructure.tenants.models import Organization
+
+    su = CustomUser.objects.create_superuser(email="su_admin@flock.com", password="x")
+    org = make_org(subdomain="adminup", plan_tier="trial")
+    make_user(org)
+    make_plan(plan_tier="yearly", billing_interval="annually", amount_kobo=5000000)
+
+    client = Client()
+    client.force_login(su)
+    url = reverse("superadmin:tenant_action", kwargs={"pk": org.id})
+    resp = client.post(url, {"action": "change_plan", "plan_tier": "yearly"})
+
+    assert resp.status_code in (200, 204)
+    org = Organization.objects.get(pk=org.pk)
+    assert org.plan_tier == "yearly"
+    # A direct field set would leave this None — its presence proves activate_plan ran.
+    assert org.plan_expires_at is not None
+
+
+# ---------------------------------------------------------------------------
+# Paystack webhook routes a plan charge through activate_plan()
+# ---------------------------------------------------------------------------
+
+def test_webhook_charge_success_with_plan_metadata_activates_plan():
+    from django.test.utils import override_settings
+    from apps.infrastructure.billing.models import PaymentRecord
+    from apps.infrastructure.core.rls import set_tenant_context
+
+    org = make_org(subdomain="whact", owner_email="whact@test.com", plan_tier="trial")
+    make_user(org, email="owner@whact.com")
+    make_plan(plan_tier="monthly")
+
+    payload_data = {
+        "event": "charge.success",
+        "data": {
+            "reference": "REF_wh_act",
+            "amount": 500000,
+            "channel": "card",
+            "id": 12345,
+            "customer": {"email": "whact@test.com"},
+            "authorization": {"authorization_code": "AUTH_x"},
+            "metadata": {"plan_tier": "monthly"},
+        },
+    }
+    payload = json.dumps(payload_data).encode()
+    sig = _webhook_signature(payload, "test_secret")
+
+    with override_settings(PAYSTACK_WEBHOOK_SECRET="test_secret"):
+        resp = Client().post(
+            "/billing/webhook/paystack/",
+            data=payload,
+            content_type="application/json",
+            HTTP_X_PAYSTACK_SIGNATURE=sig,
+        )
+
+    assert resp.status_code == 200
+    org.refresh_from_db()
+    assert org.plan_tier == "monthly"
+    assert org.plan_expires_at is not None
+    with set_tenant_context(org):
+        assert PaymentRecord.objects.filter(reference="REF_wh_act").exists()
+
+
+# ---------------------------------------------------------------------------
+# Expiry reminder Celery task
+# ---------------------------------------------------------------------------
+
+def test_expiry_reminder_fires_at_7_3_1_days():
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.infrastructure.billing.tasks import send_subscription_expiry_reminders
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+    from apps.infrastructure.tenants.models import Organization
+
+    for days in (7, 3, 1):
+        org = make_org(
+            subdomain=f"exp{days}",
+            owner_email=f"exp{days}@test.com",
+            plan_tier="monthly",
+            plan_expires_at=timezone.now() + timedelta(days=days, hours=2),
+        )
+        make_user(org, email=f"owner@exp{days}.com")
+
+    send_subscription_expiry_reminders()
+
+    for days in (7, 3, 1):
+        org = Organization.objects.get(subdomain=f"exp{days}")
+        with set_tenant_context(org):
+            assert NotificationLog.objects.filter(
+                org=org, event_type="billing_expiry_reminder"
+            ).exists(), f"expected reminder for {days}-day org"
+
+
+def test_expiry_reminder_does_not_fire_for_trial_orgs():
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.infrastructure.billing.tasks import send_subscription_expiry_reminders
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    org = make_org(
+        subdomain="exptrial",
+        owner_email="exptrial@test.com",
+        plan_tier="trial",
+        plan_expires_at=timezone.now() + timedelta(days=3, hours=2),
+    )
+    make_user(org, email="owner@exptrial.com")
+
+    send_subscription_expiry_reminders()
+
+    with set_tenant_context(org):
+        assert not NotificationLog.objects.filter(
+            org=org, event_type="billing_expiry_reminder"
+        ).exists()
+
+
+def test_expiry_reminder_skips_non_reminder_day():
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.infrastructure.billing.tasks import send_subscription_expiry_reminders
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    org = make_org(
+        subdomain="exp5",
+        owner_email="exp5@test.com",
+        plan_tier="monthly",
+        plan_expires_at=timezone.now() + timedelta(days=5, hours=2),
+    )
+    make_user(org, email="owner@exp5.com")
+
+    send_subscription_expiry_reminders()
+
+    with set_tenant_context(org):
+        assert not NotificationLog.objects.filter(
+            org=org, event_type="billing_expiry_reminder"
+        ).exists()
