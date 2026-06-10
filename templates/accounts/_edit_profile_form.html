@@ -1,57 +1,61 @@
-<div style="padding:24px">
+<div style="padding:16px 20px">
   <div style="display:flex;align-items:center;justify-content:space-between;
-              margin-bottom:20px">
+              margin-bottom:14px">
     <h3 style="font-size:15px;font-weight:700;color:#1a2744">Edit Profile</h3>
     <button @click="$dispatch('close-modal')"
             style="color:#8a96a8;background:none;border:none;
                    cursor:pointer;font-size:18px">✕</button>
   </div>
+  
   <form hx-post="{% url 'accounts:edit_profile' %}"
         hx-target="#modal-body"
-        style="display:flex;flex-direction:column;gap:14px"
-      hx-indicator="#htmx-spinner">
+        style="display:flex;flex-direction:column;gap:10px"
+        hx-indicator="#htmx-spinner">
     {% csrf_token %}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div>
         <label style="display:block;font-size:11px;font-weight:600;
-                      color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+                      color:#4a5568;margin-bottom:3px;text-transform:uppercase">
           First Name
         </label>
         <input type="text" name="first_name"
                value="{{ request.user.first_name }}"
-               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+               style="width:100%;padding:7px 12px;border:1.5px solid #e2e8f0;
                       border-radius:10px;font-size:13px;box-sizing:border-box">
       </div>
       <div>
         <label style="display:block;font-size:11px;font-weight:600;
-                      color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+                      color:#4a5568;margin-bottom:3px;text-transform:uppercase">
           Last Name
         </label>
         <input type="text" name="last_name"
                value="{{ request.user.last_name }}"
-               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+               style="width:100%;padding:7px 12px;border:1.5px solid #e2e8f0;
                       border-radius:10px;font-size:13px;box-sizing:border-box">
       </div>
     </div>
+    
     <div>
       <label style="display:block;font-size:11px;font-weight:600;
-                    color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+                    color:#4a5568;margin-bottom:3px;text-transform:uppercase">
         Phone Number
       </label>
       <input type="text" name="phone"
              value="{{ request.user.phone }}"
              placeholder="+234 800 000 0000"
-             style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+             style="width:100%;padding:7px 12px;border:1.5px solid #e2e8f0;
                     border-radius:10px;font-size:13px;box-sizing:border-box">
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <div>
         <label style="display:block;font-size:11px;font-weight:600;
-                      color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+                      color:#4a5568;margin-bottom:3px;text-transform:uppercase">
           Country
         </label>
         <select name="country"
-                style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                style="width:100%;padding:7px 12px;border:1.5px solid #e2e8f0;
                        border-radius:10px;font-size:13px;box-sizing:border-box;background:#fff">
           <option value="">Select country…</option>
           {% for value, label in country_choices %}
@@ -61,49 +65,52 @@
       </div>
       <div>
         <label style="display:block;font-size:11px;font-weight:600;
-                      color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+                      color:#4a5568;margin-bottom:3px;text-transform:uppercase">
           State / Region
         </label>
         <input type="text" name="state_region"
                value="{{ request.user.state_region }}"
                placeholder="e.g. Lagos, Ogun, Abuja"
-               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+               style="width:100%;padding:7px 12px;border:1.5px solid #e2e8f0;
                       border-radius:10px;font-size:13px;box-sizing:border-box">
       </div>
     </div>
+    
     <div>
       <label style="display:block;font-size:11px;font-weight:600;
-                    color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+                    color:#4a5568;margin-bottom:3px;text-transform:uppercase">
         Timezone
       </label>
       <select name="timezone"
-              style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+              style="width:100%;padding:7px 12px;border:1.5px solid #e2e8f0;
                      border-radius:10px;font-size:13px;box-sizing:border-box;background:#fff">
         <option value="">Auto (from country)</option>
         {% for tz in timezones %}
         <option value="{{ tz }}" {% if request.user.timezone == tz %}selected{% endif %}>{{ tz }}</option>
         {% endfor %}
       </select>
-      <p style="font-size:11px;color:#8a96a8;margin:6px 0 0">
+      <p style="font-size:11px;color:#8a96a8;margin:4px 0 0">
         Controls how dates and times are displayed across the app.
       </p>
     </div>
+    
     <div>
       <label style="display:block;font-size:11px;font-weight:700;
-                    color:#4a5568;margin-bottom:6px;text-transform:uppercase">
+                    color:#4a5568;margin-bottom:3px;text-transform:uppercase">
         Bio (optional)
       </label>
-      <textarea name="bio" rows="3"
-                style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+      <textarea name="bio" rows="2"
+                style="width:100%;padding:7px 12px;border:1.5px solid #e2e8f0;
                        border-radius:10px;font-size:13px;resize:vertical;
                        box-sizing:border-box"
                 placeholder="Tell your team a bit about yourself...">{{ request.user.bio }}</textarea>
     </div>
+    
     <button type="submit"
-            style="width:100%;padding:12px;background:#3d5a99;color:#fff;
+            style="width:100%;padding:10px;background:#3d5a99;color:#fff;
                    border:none;border-radius:10px;font-size:13px;
-                   font-weight:600;cursor:pointer;margin-top:4px"
-        hx-disabled-elt="this">
+                   font-weight:600;cursor:pointer;margin-top:2px"
+            hx-disabled-elt="this">
       Save Changes
     </button>
   </form>

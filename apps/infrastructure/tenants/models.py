@@ -65,6 +65,7 @@ class Organization(models.Model):
             ("cancelled", "Cancelled"),
             ("trial", "Trial"),
             ("past_due", "Past Due"),
+            ("lapsed", "Lapsed"),
         ],
         default="trial",
     )
@@ -150,16 +151,18 @@ class Organization(models.Model):
         never "lapsed" — their expiry is handled by the trial banner instead.
         Lapsed orgs keep read access but lose write access (see
         billing.features.can_write_data).
+
+        Purely date-based: subscription_status is NOT consulted, so lapse
+        takes effect the moment plan_expires_at passes — no Celery task or
+        status flip required. billing.mark_lapsed_orgs updates the status
+        field daily for reporting only.
         """
         from django.utils import timezone
         if self.plan_tier == "trial":
             return False
         if not self.plan_expires_at:
             return False
-        return (
-            self.plan_expires_at < timezone.now()
-            and self.subscription_status != "active"
-        )
+        return self.plan_expires_at < timezone.now()
 
     @property
     def sms_alerts_enabled(self):

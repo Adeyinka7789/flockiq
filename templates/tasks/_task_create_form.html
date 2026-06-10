@@ -1,10 +1,10 @@
-<div style="padding:24px">
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-    <div style="width:40px;height:40px;border-radius:12px;background:#e8eef8;
+<div style="padding:14px 18px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <div style="width:36px;height:36px;border-radius:10px;background:#e8eef8;
                 display:flex;align-items:center;justify-content:center;
-                flex-shrink:0;font-size:20px">📋</div>
+                flex-shrink:0;font-size:18px">📋</div>
     <div>
-      <h3 style="font-size:15px;font-weight:800;color:#1a2744;margin-bottom:2px">
+      <h3 style="font-size:14px;font-weight:800;color:#1a2744;margin-bottom:1px">
         Create Task
       </h3>
       <p style="font-size:11px;color:#8a96a8">Add a new task to your workflow</p>
@@ -12,8 +12,8 @@
   </div>
 
   {% if error %}
-  <div style="background:#fee2e2;color:#991b1b;padding:10px 14px;
-              border-radius:9px;font-size:12px;margin-bottom:14px">
+  <div style="background:#fee2e2;color:#991b1b;padding:8px 12px;
+              border-radius:8px;font-size:11px;margin-bottom:10px">
     {{ error }}
   </div>
   {% endif %}
@@ -21,31 +21,31 @@
   <form hx-post="{% url 'tasks:create' %}"
         hx-target="#modal-body"
         hx-swap="innerHTML"
-      hx-indicator="#htmx-spinner">
+        hx-indicator="#htmx-spinner">
     {% csrf_token %}
 
-    <div style="margin-bottom:10px">
+    <div style="margin-bottom:6px">
       <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                    margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+                    margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">
         Task Title *
       </label>
       <input type="text" name="title" required
              placeholder="e.g. Vaccination — House A"
-             style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
-                    border-radius:9px;font-size:13px;box-sizing:border-box;outline:none"
+             style="width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;
+                    border-radius:8px;font-size:13px;box-sizing:border-box;outline:none"
              onfocus="this.style.borderColor='#3d5a99'"
              onblur="this.style.borderColor='#e2e8f0'">
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
       <div>
         <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+                      margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">
           Category
         </label>
         <select name="category"
-                style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
-                       border-radius:9px;font-size:13px;box-sizing:border-box;
+                style="width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;
+                       border-radius:8px;font-size:13px;box-sizing:border-box;
                        background:white;outline:none"
                 onfocus="this.style.borderColor='#3d5a99'"
                 onblur="this.style.borderColor='#e2e8f0'">
@@ -61,12 +61,12 @@
       </div>
       <div>
         <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+                      margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">
           Priority
         </label>
         <select name="priority"
-                style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
-                       border-radius:9px;font-size:13px;box-sizing:border-box;
+                style="width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;
+                       border-radius:8px;font-size:13px;box-sizing:border-box;
                        background:white;outline:none"
                 onfocus="this.style.borderColor='#3d5a99'"
                 onblur="this.style.borderColor='#e2e8f0'">
@@ -77,41 +77,41 @@
       </div>
     </div>
 
-    <div style="margin-bottom:10px">
+    <div style="margin-bottom:6px">
       <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                    margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+                    margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">
         Description (optional)
       </label>
       <textarea name="description" rows="2"
                 placeholder="What needs to be done?"
-                style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
-                       border-radius:9px;font-size:13px;resize:vertical;
+                style="width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;
+                       border-radius:8px;font-size:13px;resize:vertical;
                        box-sizing:border-box;outline:none"
                 onfocus="this.style.borderColor='#3d5a99'"
                 onblur="this.style.borderColor='#e2e8f0'"></textarea>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
       <div>
         <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+                      margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">
           Due Date
         </label>
         <input type="date" name="due_date"
                value="{{ today|date:'Y-m-d' }}"
-               style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
-                      border-radius:9px;font-size:13px;box-sizing:border-box;outline:none"
+               style="width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;
+                      border-radius:8px;font-size:13px;box-sizing:border-box;outline:none"
                onfocus="this.style.borderColor='#3d5a99'"
                onblur="this.style.borderColor='#e2e8f0'">
       </div>
       <div>
         <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+                      margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">
           Assign To
         </label>
         <select name="assigned_to"
-                style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
-                       border-radius:9px;font-size:13px;box-sizing:border-box;
+                style="width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;
+                       border-radius:8px;font-size:13px;box-sizing:border-box;
                        background:white;outline:none"
                 onfocus="this.style.borderColor='#3d5a99'"
                 onblur="this.style.borderColor='#e2e8f0'">
@@ -125,15 +125,15 @@
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
       <div>
         <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+                      margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">
           Farm (optional)
         </label>
         <select name="farm"
-                style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
-                       border-radius:9px;font-size:13px;box-sizing:border-box;
+                style="width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;
+                       border-radius:8px;font-size:13px;box-sizing:border-box;
                        background:white;outline:none">
           <option value="">No specific farm</option>
           {% for farm in farms %}
@@ -143,12 +143,12 @@
       </div>
       <div>
         <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
-                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+                      margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">
           Batch (optional)
         </label>
         <select name="batch"
-                style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;
-                       border-radius:9px;font-size:13px;box-sizing:border-box;
+                style="width:100%;padding:6px 10px;border:1.5px solid #e2e8f0;
+                       border-radius:8px;font-size:13px;box-sizing:border-box;
                        background:white;outline:none">
           <option value="">No specific batch</option>
           {% for batch in batches %}
@@ -162,18 +162,18 @@
 
     <div style="display:flex;gap:10px">
       <button type="button" onclick="closeModal()"
-              style="flex:1;padding:11px;background:#f4f7fe;color:#4a5568;
-                     border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;
+              style="flex:1;padding:9px;background:#f4f7fe;color:#4a5568;
+                     border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;
                      font-weight:600;cursor:pointer">
         Cancel
       </button>
       <button type="submit"
-              style="flex:2;padding:11px;background:#3d5a99;color:white;border:none;
-                     border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;
+              style="flex:2;padding:9px;background:#3d5a99;color:white;border:none;
+                     border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;
                      transition:background 0.15s"
               onmouseover="this.style.background='#2d4578'"
               onmouseout="this.style.background='#3d5a99'"
-        hx-disabled-elt="this">
+              hx-disabled-elt="this">
         Create Task
       </button>
     </div>

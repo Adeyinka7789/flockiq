@@ -579,10 +579,42 @@ class BillingService(BaseService):
         if data.get("status") != "success":
             return False
 
-        metadata = data.get("metadata", {})
+        metadata = data.get("metadata") or {}
+
+        # The reference is user-supplied (callback GET param). Refuse to
+        # activate a plan from a transaction that was initialised for a
+        # different org — otherwise any owner who learns another org's
+        # reference could activate a plan from someone else's payment.
+        metadata_org_id = metadata.get("org_id") or metadata.get("org")
+        if metadata_org_id and str(metadata_org_id) != str(self.org.id):
+            self.logger.error(
+                "billing.verify_org_mismatch",
+                expected=str(self.org.id),
+                got=str(metadata_org_id),
+                reference=reference,
+            )
+            return False
+
         plan_tier = metadata.get("plan_tier")
         if not plan_tier:
             return False
+
+        # Refuse activation when the amount actually paid is below the plan
+        # price (belt-and-braces — the amount is fixed server-side at init,
+        # but never trust the gateway response alone).
+        plan = BillingPlan.objects.filter(
+            plan_tier=plan_tier, is_active=True
+        ).first()
+        if plan:
+            paid_kobo = data.get("amount", 0)
+            if paid_kobo < plan.amount_kobo:
+                self.logger.error(
+                    "billing.verify_amount_insufficient",
+                    expected=plan.amount_kobo,
+                    got=paid_kobo,
+                    reference=reference,
+                )
+                return False
 
         self.activate_plan(
             plan_tier=plan_tier,

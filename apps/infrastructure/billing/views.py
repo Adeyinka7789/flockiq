@@ -1,9 +1,10 @@
 import json
 
 import structlog
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -22,11 +23,21 @@ logger = structlog.get_logger(__name__)
 class PaystackWebhookView(View):
     """
     Receives Paystack webhook events.
-    Always returns 200 to prevent retry storms (except 400 for invalid signatures).
     All events are logged to PaystackWebhookLog before processing.
+
+    Response codes:
+        200 — processed, duplicate delivery, or unhandled event type
+        400 — invalid signature (do not retry)
+        500 — genuine processing failure (Paystack retries for up to 72h)
+        503 — PAYSTACK_WEBHOOK_SECRET not configured (fail closed: an empty
+              HMAC key would make signatures trivially forgeable)
     """
 
     def post(self, request):
+        if not settings.PAYSTACK_WEBHOOK_SECRET:
+            logger.error("billing.webhook_secret_missing")
+            return JsonResponse({"error": "Webhook not configured"}, status=503)
+
         payload = request.body
         signature = request.headers.get("X-Paystack-Signature", "")
         sig_valid = PaystackService.verify_webhook_signature(payload, signature)
@@ -66,19 +77,26 @@ class PaystackWebhookView(View):
             log_entry.save(update_fields=["error"])
             return HttpResponse(status=200)
 
-        error = ""
         try:
             self._dispatch(event_type, data.get("data", {}))
-            log_entry.processed = True
         except Exception as exc:
-            error = str(exc)
-            logger.error("webhook.processing_error", event_type=event_type, error=error)
+            log_entry.error = str(exc)
+            log_entry.save(update_fields=["error"])
+            logger.error(
+                "billing.webhook_processing_failed",
+                event_type=event_type,
+                error=str(exc),
+            )
+            # 500 — Paystack retries for up to 72 hours, so a transient DB or
+            # service failure cannot silently drop a billing event. Duplicates,
+            # unknown event types and invalid signatures still return 200/400
+            # above (those must NOT be retried).
+            return JsonResponse({"error": "Processing failed"}, status=500)
 
-        log_entry.error = error
+        log_entry.processed = True
+        log_entry.error = ""
         log_entry.save(update_fields=["processed", "error"])
-
-        # Always 200 — Paystack must not retry
-        return HttpResponse(status=200)
+        return JsonResponse({"status": "ok"}, status=200)
 
     def _dispatch(self, event_type: str, data: dict):
         handlers = {
@@ -93,54 +111,137 @@ class PaystackWebhookView(View):
         else:
             logger.debug("webhook.unhandled_event", event_type=event_type)
 
-    def _handle_charge_success(self, data: dict):
+    @staticmethod
+    def _resolve_org(data: dict):
+        """
+        Resolve the paying org. metadata.org_id is authoritative — it is set
+        server-side by BillingService.request_upgrade() at transaction init.
+        Customer email is only a fallback for charges without metadata (e.g.
+        Paystack subscription renewals). Organization and CustomUser have RLS
+        disabled, so both are safe to query without a tenant context.
+        """
+        from django.core.exceptions import ValidationError
         from apps.infrastructure.tenants.models import Organization
-        from apps.infrastructure.core.rls import set_tenant_context
+
+        metadata = data.get("metadata") or {}
+        org_id = metadata.get("org_id") or metadata.get("org")
+        if org_id:
+            try:
+                return Organization.objects.get(id=org_id)
+            except (Organization.DoesNotExist, ValidationError, ValueError):
+                logger.warning(
+                    "billing.charge_success_org_not_found",
+                    org_id=str(org_id),
+                    reference=data.get("reference"),
+                )
 
         customer_email = (data.get("customer") or {}).get("email", "")
-        reference = data.get("reference", "")
-        amount_kobo = data.get("amount", 0)
-        channel = data.get("channel", "")
-        transaction_id = str(data.get("id", ""))
-        authorization_code = (data.get("authorization") or {}).get("authorization_code", "")
-        paid_at = timezone.now()
-        plan_tier = (data.get("metadata") or {}).get("plan_tier")
+        if not customer_email:
+            return None
 
-        org = Organization.objects.filter(owner_email=customer_email).first()
+        org = Organization.objects.filter(
+            owner_email__iexact=customer_email
+        ).first()
+        if org:
+            return org
+
+        # Owner may have changed their login email without owner_email
+        # being updated — match the owner user instead.
+        from django.contrib.auth import get_user_model
+
+        user = (
+            get_user_model().objects
+            .filter(email__iexact=customer_email, role="owner")
+            .select_related("org")
+            .first()
+        )
+        return user.org if user else None
+
+    @staticmethod
+    def _match_renewal_plan(data: dict):
+        """
+        Match a metadata-less charge (Paystack-initiated subscription renewal)
+        back to a BillingPlan via the Paystack plan code carried on the charge.
+        BillingPlan is global (RLS disabled) — safe without a tenant context.
+        """
+        from apps.infrastructure.billing.models import BillingPlan
+
+        plan_data = data.get("plan") or data.get("plan_object") or {}
+        if isinstance(plan_data, dict):
+            plan_code = plan_data.get("plan_code", "")
+        else:
+            plan_code = str(plan_data)
+        if not plan_code:
+            return None
+        return BillingPlan.objects.filter(
+            paystack_plan_code=plan_code, is_active=True
+        ).first()
+
+    def _handle_charge_success(self, data: dict):
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        reference = data.get("reference", "")
+        plan_tier = (data.get("metadata") or {}).get("plan_tier")
+        payment_kwargs = {
+            "amount_kobo": data.get("amount", 0),
+            "channel": data.get("channel", ""),
+            "authorization_code": (data.get("authorization") or {}).get(
+                "authorization_code", ""
+            ),
+            "paystack_transaction_id": str(data.get("id", "")),
+            "paid_at": timezone.now(),
+        }
+
+        org = self._resolve_org(data)
         if org is None:
-            logger.warning("webhook.org_not_found", email=customer_email, reference=reference)
+            logger.warning(
+                "billing.charge_success_unmatched",
+                reference=reference,
+                email=(data.get("customer") or {}).get("email", ""),
+            )
             return
 
         with set_tenant_context(org):
             svc = BillingService(org)
             if plan_tier:
-                # Plan upgrade/renewal — activate (records payment, sets expiry,
-                # notifies). Idempotent on reference, so a prior callback that
+                # FlockIQ-initiated upgrade/renewal — metadata carries the
+                # tier. activate_plan records the payment, extends expiry and
+                # notifies; idempotent on reference, so a prior callback that
                 # already activated this payment is a safe no-op.
                 svc.activate_plan(
                     plan_tier=plan_tier,
                     payment_reference=reference,
                     activated_by="paystack",
-                    amount_kobo=amount_kobo,
-                    channel=channel,
-                    authorization_code=authorization_code,
-                    paystack_transaction_id=transaction_id,
-                    paid_at=paid_at,
+                    **payment_kwargs,
                 )
             else:
-                # Non-plan charge (e.g. cycle subscription) — just record it.
-                svc.record_payment(
-                    reference=reference,
-                    amount_kobo=amount_kobo,
-                    status="success",
-                    channel=channel,
-                    paystack_transaction_id=transaction_id,
-                    authorization_code=authorization_code,
-                    paid_at=paid_at,
-                )
-                if org.subscription_status in ("trial",):
-                    org.subscription_status = "active"
-                    org.save(update_fields=["subscription_status"])
+                # No metadata — a Paystack-initiated subscription renewal.
+                # Match the plan code on the charge so the renewal extends
+                # plan_expires_at instead of only logging a payment.
+                renewal_plan = self._match_renewal_plan(data)
+                if renewal_plan:
+                    svc.activate_plan(
+                        plan_tier=renewal_plan.plan_tier,
+                        payment_reference=reference,
+                        activated_by="paystack_renewal",
+                        **payment_kwargs,
+                    )
+                else:
+                    # Truly unmatched charge — record it and flag for manual
+                    # review; do NOT guess a plan tier.
+                    svc.record_payment(
+                        reference=reference,
+                        status="success",
+                        **payment_kwargs,
+                    )
+                    if org.subscription_status == "trial":
+                        org.subscription_status = "active"
+                        org.save(update_fields=["subscription_status"])
+                    logger.warning(
+                        "billing.charge_success_no_plan_matched",
+                        reference=reference,
+                        org=str(org.id),
+                    )
         logger.info("webhook.charge_success_processed", reference=reference)
 
     def _handle_subscription_created(self, data: dict):
@@ -164,22 +265,37 @@ class PaystackWebhookView(View):
         logger.info("webhook.subscription_disabled", code=subscription_code)
 
     def _handle_invoice_payment_failed(self, data: dict):
-        from apps.infrastructure.tenants.models import Organization
         from apps.infrastructure.core.rls import set_tenant_context
-        from apps.infrastructure.notifications.services import NotificationService
+        from apps.infrastructure.notifications.models import NotificationLog
 
-        customer_email = (data.get("customer") or {}).get("email", "")
-        org = Organization.objects.filter(owner_email=customer_email).first()
+        org = self._resolve_org(data)
         if org is None:
-            logger.warning("webhook.invoice_failed_org_not_found", email=customer_email)
+            logger.warning(
+                "webhook.invoice_failed_org_not_found",
+                email=(data.get("customer") or {}).get("email", ""),
+            )
             return
 
-        with set_tenant_context(org):
-            NotificationService(org).send(
-                "disease_outbreak",  # closest available alert for financial failure
-                {"farm_name": org.name, "value": "payment failed"},
-                severity="critical",
-            )
+        # A failed card charge is a billing event — never reuse health/alert
+        # event types here (a farmer once got a "disease outbreak" SMS for a
+        # declined card).
+        owner = org.users.filter(role="owner").first()
+        if owner:
+            with set_tenant_context(org):
+                NotificationLog.objects.create(
+                    org=org,
+                    recipient=owner,
+                    event_type="payment_failed",
+                    title="Payment failed",
+                    body=(
+                        "Your subscription payment could not be processed. "
+                        "Please update your payment method on the billing "
+                        "page to keep your plan active."
+                    ),
+                    severity="warning",
+                    channel="in_app",
+                    action_url="/billing/",
+                )
         logger.warning("webhook.invoice_payment_failed", org=str(org.id))
 
 

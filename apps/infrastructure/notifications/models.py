@@ -27,6 +27,10 @@ EVENT_TYPE_CHOICES = [
     ("ai_anomaly", "AI Anomaly"),
     ("announcement", "Announcement"),
     ("support_reply", "Support Reply"),
+    # Billing events — never reuse health/alert types for billing failures.
+    ("payment_failed", "Payment Failed"),
+    ("payment_success", "Payment Success"),
+    ("plan_expired", "Plan Expired"),
 ]
 
 SEVERITY_CHOICES = [

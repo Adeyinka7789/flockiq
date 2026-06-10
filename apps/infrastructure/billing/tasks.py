@@ -70,6 +70,32 @@ def _send_expiry_reminder(org, days_left: int) -> None:
     )
 
 
+@shared_task(name="billing.mark_lapsed_orgs")
+def mark_lapsed_orgs():
+    """
+    Celery Beat — 00:30 daily.
+    Sets subscription_status='lapsed' on paid orgs whose plan_expires_at has
+    passed. Access control does NOT depend on this task: Organization.is_lapsed
+    is purely date-based, so writes are blocked the moment the plan expires.
+    This keeps subscription_status accurate for reporting and admin filters.
+    """
+    from django.utils import timezone
+
+    from apps.infrastructure.core.rls import no_tenant_context
+    from apps.infrastructure.tenants.models import Organization
+
+    with no_tenant_context():
+        count = Organization.objects.filter(
+            is_active=True,
+            plan_tier__in=["monthly", "cycle", "yearly"],
+            plan_expires_at__lt=timezone.now(),
+            subscription_status="active",
+        ).update(subscription_status="lapsed")
+
+    if count:
+        logger.info("billing.mark_lapsed_orgs", count=count)
+
+
 @shared_task(name="billing.send_trial_expiry_reminders")
 def send_trial_expiry_reminders():
     """

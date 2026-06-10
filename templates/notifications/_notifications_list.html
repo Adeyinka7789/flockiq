@@ -1,119 +1,45 @@
-<!-- sub-header: counts + mark-all button -->
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-  <div style="font-size:13px;color:#8a96a8">
-    {{ unread|length }} unread · {{ read|length }} read
+<div id="notification-feed">
+  {% if grouped_notifications %}
+
+    {% for group_label, notifications in grouped_notifications %}
+
+    <p class="text-xs font-semibold uppercase {% if not forloop.first %}mt-8{% endif %} mb-4"
+       style="color: #64748b; letter-spacing: 0.06em; font-family: Inter, sans-serif;">
+      {{ group_label }}
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+      {% for notif in notifications %}
+        {% include "notifications/_notification_card.html" %}
+      {% endfor %}
+    </div>
+
+    {% endfor %}
+
+  {% else %}
+
+  <div style="background: white; border-radius: 1.5rem; padding: 5rem 2rem;
+              text-align: center; box-shadow: 0px 12px 32px rgba(35,66,128,0.04);">
+    <div style="width: 4rem; height: 4rem; background: #f1f4fb; border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                margin: 0 auto 1.5rem;">
+      <svg style="width: 1.75rem; height: 1.75rem; color: #234280;" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118
+                 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64
+                 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714
+                 0a3 3 0 11-5.714 0"/>
+      </svg>
+    </div>
+    <h3 style="font-family: Manrope, sans-serif; font-size: 1.25rem; font-weight: 700;
+               color: #234280; margin: 0 0 0.5rem;">
+      {% if q %}No results for "{{ q }}"{% else %}All caught up{% endif %}
+    </h3>
+    <p style="font-family: Inter, sans-serif; font-size: 0.875rem; color: #64748b; margin: 0;">
+      {% if q %}Try a different search term{% else %}New alerts and insights will appear here{% endif %}
+    </p>
   </div>
-  {% if unread %}
-  <form hx-post="{% url 'notifications:mark_all_read_page' %}"
-        hx-target="#notifications-list"
-        hx-swap="innerHTML"
-      hx-indicator="#htmx-spinner">
-    {% csrf_token %}
-    <button type="submit"
-            style="padding:8px 16px;background:#3d5a99;color:white;border:none;
-                   border-radius:8px;font-size:13px;font-weight:600;cursor:pointer"
-        hx-disabled-elt="this">
-      Mark all read
-    </button>
-  </form>
+
   {% endif %}
 </div>
-
-<!-- Unread section -->
-{% if unread %}
-<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
-            overflow:hidden;margin-bottom:16px">
-  <div style="padding:12px 18px;border-bottom:1px solid #f1f5f9;
-              font-size:11px;font-weight:700;color:#8a96a8;
-              text-transform:uppercase;letter-spacing:0.06em">
-    Unread — {{ unread|length }}
-  </div>
-  {% for notif in unread %}
-  <a href="{% url 'notifications:notifications_page' %}"
-     hx-post="{% url 'notifications:mark_read' notif.pk %}"
-     hx-swap="none"
-     style="display:flex;gap:12px;padding:14px 18px;text-decoration:none;
-            background:#f4f7fe;border-bottom:1px solid #f1f5f9;
-            transition:background 0.1s"
-     onmouseover="this.style.background='#e8eef8'"
-     onmouseout="this.style.background='#f4f7fe'">
-    <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;
-                background:{% if notif.severity == 'critical' %}#ef4444
-                {% elif notif.severity == 'warning' %}#f59e0b
-                {% else %}#5b8dd9{% endif %}">
-    </div>
-    <div style="flex:1;min-width:0">
-      <div style="font-size:13px;font-weight:700;color:#1a2744;margin-bottom:3px">
-        {{ notif.title }}
-      </div>
-      <div style="font-size:12px;color:#4a5568;line-height:1.5">{{ notif.body }}</div>
-        <div style="font-size:11px;color:#b0bac9;margin-top:5px">
-        {{ notif.created_at|timesince }} ago
-      </div>
-      {% if not notif.acknowledged and notif.severity in 'critical,warning' %}
-      <div style="margin-top:6px">
-        <button hx-post="{% url 'notifications:acknowledge' notif.pk %}"
-                hx-swap="none"
-                style="padding:4px 10px;background:#f1f5f9;border:none;
-                       border-radius:6px;font-size:11px;font-weight:600;
-                       color:#4a5568;cursor:pointer;transition:all 0.15s"
-                onmouseover="this.style.background='#e2e8f0'"
-                onmouseout="this.style.background='#f1f5f9'">
-          Acknowledge
-        </button>
-      </div>
-      {% elif notif.acknowledged %}
-      <div style="margin-top:6px;font-size:10px;color:#8a96a8;font-weight:600">
-        ✓ Acknowledged
-      </div>
-      {% endif %}
-    </div>
-    <div style="width:8px;height:8px;border-radius:50%;
-                background:#3d5a99;flex-shrink:0;margin-top:5px"></div>
-  </a>
-  {% endfor %}
-</div>
-{% endif %}
-
-<!-- Read section -->
-{% if read %}
-<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden">
-  <div style="padding:12px 18px;border-bottom:1px solid #f1f5f9;
-              font-size:11px;font-weight:700;color:#8a96a8;
-              text-transform:uppercase;letter-spacing:0.06em">
-    Read — {{ read|length }}
-  </div>
-  {% for notif in read %}
-  <div style="display:flex;gap:12px;padding:14px 18px;
-              border-bottom:1px solid #f8faff">
-    <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;
-                background:{% if notif.severity == 'critical' %}#fca5a5
-                {% elif notif.severity == 'warning' %}#fcd34d
-                {% else %}#93c5fd{% endif %}">
-    </div>
-    <div style="flex:1;min-width:0">
-      <div style="font-size:13px;font-weight:500;color:#4a5568;margin-bottom:3px">
-        {{ notif.title }}
-      </div>
-      <div style="font-size:12px;color:#8a96a8;line-height:1.5">{{ notif.body }}</div>
-      <div style="font-size:11px;color:#b0bac9;margin-top:5px">
-        {{ notif.created_at|timesince }} ago
-      </div>
-    </div>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
-{% if not unread and not read %}
-<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
-            padding:60px 18px;text-align:center">
-  <div style="font-size:32px;margin-bottom:12px">🔔</div>
-  <div style="font-size:14px;font-weight:600;color:#1a2744;margin-bottom:6px">
-    No notifications yet
-  </div>
-  <div style="font-size:13px;color:#8a96a8">
-    Alerts and system messages will appear here
-  </div>
-</div>
-{% endif %}

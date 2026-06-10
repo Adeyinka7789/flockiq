@@ -3,17 +3,163 @@
 {% block breadcrumb %}Notifications{% endblock %}
 
 {% block content %}
-<div style="max-width:720px;margin:0 auto">
+<div class="max-w-4xl mx-auto">
 
-  <!-- Static page title -->
-  <div style="margin-bottom:20px">
-    <div style="font-size:20px;font-weight:700;color:#1a2744">Notifications</div>
+  <!-- Section 1: Page header -->
+  <div class="mb-8">
+    <p class="text-xs font-semibold uppercase tracking-widest mb-2"
+       style="color: #336a28; letter-spacing: 0.08em;">
+      System Intelligence
+    </p>
+    <div class="flex items-start justify-between flex-wrap gap-4">
+      <div>
+        <h1 style="font-family: Manrope, sans-serif; font-size: 2.25rem; font-weight: 800;
+                   color: #234280; letter-spacing: -0.02em; line-height: 1.1;">
+          Notifications
+        </h1>
+        {% if unread_count > 0 %}
+        <p class="flex items-center gap-2 mt-2 text-sm"
+           style="color: #181c21; font-family: Inter, sans-serif;">
+          <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block"></span>
+          {{ unread_count }} critical alert{{ unread_count|pluralize }}
+          require{{ unread_count|pluralize:"s," }} attention
+        </p>
+        {% else %}
+        <p class="mt-2 text-sm" style="color: #64748b; font-family: Inter, sans-serif;">
+          All caught up · {{ total_count }} total
+        </p>
+        {% endif %}
+      </div>
+
+      <div class="flex items-center gap-3 flex-wrap">
+        <a href="{% url 'accounts:profile' %}"
+           class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition"
+           style="background: #f1f4fb; color: #181c21; font-family: Inter, sans-serif;
+                  min-height: 3rem; text-decoration: none;"
+           onmouseover="this.style.background='#e8edf8'"
+           onmouseout="this.style.background='#f1f4fb'">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Notification Settings
+        </a>
+
+        {% if unread_count > 0 %}
+        <button
+          hx-post="{% url 'notifications:mark_all_read_page' %}"
+          hx-target="#notification-feed"
+          hx-swap="outerHTML"
+          hx-disabled-elt="this"
+          class="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
+                 text-white transition"
+          style="background: linear-gradient(135deg, #234280 0%, #2d5099 100%);
+                 box-shadow: 0px 12px 32px rgba(35,66,128,0.15);
+                 min-height: 3rem; font-family: Inter, sans-serif; border: none;
+                 cursor: pointer;">
+          <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+          </svg>
+          Mark All Read
+        </button>
+        {% endif %}
+      </div>
+    </div>
   </div>
 
-  <!-- Dynamic list: counts, mark-all button, unread/read items -->
-  <div id="notifications-list">
-    {% include 'notifications/_notifications_list.html' %}
+  <!-- Section 2: Tab navigation (underline style) -->
+  <div class="mb-6" style="border-bottom: 1px solid rgba(35,66,128,0.08);">
+    <nav class="flex gap-1 overflow-x-auto">
+      {% for tab in filter_tabs %}
+      <a href="?type={{ tab.value }}&days={{ days }}{% if q %}&q={{ q }}{% endif %}"
+         class="px-4 py-3 text-sm font-medium transition relative whitespace-nowrap
+                flex-shrink-0"
+         style="font-family: Inter, sans-serif; min-height: 3rem; display: inline-flex;
+                align-items: center;
+                {% if current_type == tab.value %}
+                  color: #234280; border-bottom: 2px solid #234280; margin-bottom: -1px;
+                {% else %}
+                  color: #64748b;
+                {% endif %}">
+        {{ tab.label }}
+        {% if tab.count and tab.count > 0 %}
+        <span class="ml-1.5 px-1.5 py-0.5 rounded-full text-xs font-semibold
+                     {% if current_type == tab.value %}
+                       bg-blue-100 text-blue-700
+                     {% else %}
+                       bg-gray-100 text-gray-500
+                     {% endif %}">
+          {{ tab.count }}
+        </span>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </nav>
   </div>
+
+  <!-- Section 3: Filters row -->
+  <div class="flex items-center gap-3 mb-8 flex-wrap">
+    <input type="hidden" name="type" value="{{ current_type }}">
+    <input type="hidden" name="days" value="{{ days }}">
+
+    <div class="relative" style="flex: 1; min-width: 14rem;">
+      <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+           style="color: #94a3b8;" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+      <input type="search" name="q"
+             value="{{ q }}"
+             placeholder="Search notifications..."
+             hx-get="{% url 'notifications:notifications_page' %}"
+             hx-trigger="keyup changed delay:400ms, search"
+             hx-target="#notification-feed"
+             hx-swap="outerHTML"
+             hx-include="[name='type'],[name='days']"
+             style="background: #f1f4fb; border: none; border-radius: 0.75rem;
+                    padding: 0.75rem 1rem 0.75rem 2.5rem; font-family: Inter, sans-serif;
+                    font-size: 0.875rem; color: #181c21; width: 100%;
+                    min-height: 3rem; outline: none; display: block;"
+             onfocus="this.style.background='white';
+                      this.style.boxShadow='0 0 0 2px rgba(35,66,128,0.2)'"
+             onblur="this.style.background='#f1f4fb'; this.style.boxShadow='none'">
+    </div>
+
+    <select
+      onchange="window.location='?type={{ current_type }}&days='+this.value{% if q %}+'&q={{ q }}'{% endif %}"
+      style="background: #f1f4fb; border: none; border-radius: 0.75rem;
+             padding: 0.75rem 1rem; font-family: Inter, sans-serif;
+             font-size: 0.875rem; color: #181c21; min-height: 3rem;
+             cursor: pointer; outline: none; flex-shrink: 0;">
+      {% for opt in date_options.quick %}
+      <option value="{{ opt.value }}"
+              {% if days == opt.value %}selected{% endif %}>
+        {{ opt.label }}
+      </option>
+      {% endfor %}
+
+      {% for group in date_options.year_groups %}
+        {% for opt in group.months %}
+        <option value="{{ opt.value }}"
+                {% if days == opt.value %}selected{% endif %}>
+          {{ opt.label }}
+        </option>
+        {% endfor %}
+      {% endfor %}
+
+      <option value="{{ date_options.all_time.value }}"
+              {% if days == date_options.all_time.value %}selected{% endif %}>
+        {{ date_options.all_time.label }}
+      </option>
+    </select>
+  </div>
+
+  <!-- Section 4: Notification feed -->
+  {% include "notifications/_notifications_list.html" %}
 
 </div>
 {% endblock %}

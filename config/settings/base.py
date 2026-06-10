@@ -327,6 +327,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.recompute_all_credit_scores",
         "schedule": crontab(hour=3, minute=0),
     },
+    # Daily 00:30: flip subscription_status to 'lapsed' on expired paid orgs
+    # (reporting only — is_lapsed is date-based and enforces independently).
+    "mark-lapsed-orgs": {
+        "task": "billing.mark_lapsed_orgs",
+        "schedule": crontab(hour=0, minute=30),
+    },
 }
 
 # --- JWT ---

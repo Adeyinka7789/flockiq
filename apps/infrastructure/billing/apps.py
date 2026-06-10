@@ -10,3 +10,5 @@ class BillingConfig(AppConfig):
         from auditlog.registry import auditlog
         from apps.infrastructure.billing.models import PaymentRecord
         auditlog.register(PaymentRecord)
+
+        import apps.infrastructure.billing.checks  # noqa: F401

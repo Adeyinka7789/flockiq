@@ -1,9 +1,13 @@
+import calendar as _cal
 import json
 import uuid
+from datetime import timedelta
+from urllib.parse import parse_qs, urlparse
 
 import structlog
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -17,6 +21,168 @@ from apps.infrastructure.core.rls import set_tenant_context
 from .services import NotificationService
 
 logger = structlog.get_logger(__name__)
+
+# ─── Notification page helpers ────────────────────────────────────────────────
+
+_TYPE_GROUPS = {
+    "ai_alert": {
+        "label": "AI Alerts",
+        "filter": lambda qs: qs.filter(event_type__icontains="ai"),
+    },
+    "health": {
+        "label": "Health",
+        "filter": lambda qs: qs.filter(
+            event_type__in=["vaccination", "health", "mortality_alert",
+                            "vaccination_due", "vaccination_overdue",
+                            "medication_withdrawal", "disease_outbreak"]
+        ),
+    },
+    "production": {
+        "label": "Production",
+        "filter": lambda qs: qs.filter(
+            event_type__in=["feed", "water", "egg", "production",
+                            "production_drop", "water_drop", "heavy_rain",
+                            "high_humidity", "heat_stress", "batch_closed"]
+        ),
+    },
+    "finance": {
+        "label": "Finance",
+        "filter": lambda qs: qs.filter(event_type__icontains="billing"),
+    },
+    "system": {
+        "label": "System",
+        "filter": lambda qs: qs.filter(
+            event_type__in=["system", "support", "platform",
+                            "weekly_summary", "incomplete_tasks",
+                            "announcement", "support_reply"]
+        ),
+    },
+}
+
+
+def _apply_date_filter(qs, days_filter):
+    if not days_filter:
+        days_filter = "30"
+    if days_filter.startswith("month-"):
+        parts = days_filter.split("-")
+        try:
+            return qs.filter(created_at__year=int(parts[1]), created_at__month=int(parts[2]))
+        except (IndexError, ValueError):
+            return qs
+    if days_filter.startswith("year-"):
+        parts = days_filter.split("-")
+        try:
+            return qs.filter(created_at__year=int(parts[1]))
+        except (IndexError, ValueError):
+            return qs
+    try:
+        days = int(days_filter)
+    except (ValueError, TypeError):
+        days = 30
+    if days >= 365:
+        return qs
+    return qs.filter(created_at__gte=timezone.now() - timedelta(days=days))
+
+
+def _group_notifications_by_date(notifications):
+    today = timezone.localdate()
+    yesterday = today - timedelta(days=1)
+    week_start = today - timedelta(days=today.weekday())
+    month_start = today.replace(day=1)
+    seen_labels, groups = [], {}
+    for notif in notifications:
+        local_date = timezone.localtime(notif.created_at).date()
+        if local_date == today:
+            label = "Today"
+        elif local_date == yesterday:
+            label = "Yesterday"
+        elif local_date >= week_start:
+            label = "This Week"
+        elif local_date >= month_start:
+            label = "This Month"
+        else:
+            label = local_date.strftime("%B %Y")
+        if label not in groups:
+            groups[label] = []
+            seen_labels.append(label)
+        groups[label].append(notif)
+    return [(lbl, groups[lbl]) for lbl in seen_labels]
+
+
+def _build_date_options(earliest_dt):
+    today = timezone.localdate()
+    quick = [
+        {"value": "7", "label": "Last 7 days"},
+        {"value": "30", "label": "Last 30 days"},
+        {"value": "90", "label": "Last 90 days"},
+    ]
+    if earliest_dt is None:
+        return {"quick": quick, "year_groups": [], "all_time": {"value": "365", "label": "All time"}}
+    earliest_local = timezone.localtime(earliest_dt).date()
+    current_year = today.year
+    earliest_year = earliest_local.year
+    year_groups = []
+    for year in range(current_year, earliest_year - 1, -1):
+        if year == current_year:
+            months = [
+                {"value": f"month-{year}-{m:02d}", "label": f"{_cal.month_name[m]} {year}"}
+                for m in range(today.month, 0, -1)
+            ]
+            year_groups.append({"year": year, "months": months, "single": False})
+        else:
+            year_groups.append({
+                "year": year,
+                "months": [{"value": f"year-{year}", "label": f"All of {year}"}],
+                "single": True,
+            })
+    return {"quick": quick, "year_groups": year_groups, "all_time": {"value": "365", "label": "All time"}}
+
+
+def _build_notifications_context(request, params=None):
+    from .models import NotificationLog
+    if params is None:
+        params = request.GET
+    type_filter = params.get("type", "all")
+    q = params.get("q", "").strip()
+    days_filter = params.get("days", "30")
+
+    with set_tenant_context(request.user.org):
+        base_qs = NotificationLog.objects.filter(recipient=request.user)
+        unread_count = base_qs.filter(is_read=False).count()
+        total_count = base_qs.count()
+
+        # Date + search filtered qs (without type filter) — used for tab counts
+        date_qs = _apply_date_filter(base_qs, days_filter)
+        if q:
+            date_qs = date_qs.filter(Q(title__icontains=q) | Q(body__icontains=q))
+
+        filter_tabs = [{"value": "all", "label": "All", "count": date_qs.count()}]
+        for key, group in _TYPE_GROUPS.items():
+            filter_tabs.append({
+                "value": key,
+                "label": group["label"],
+                "count": group["filter"](date_qs).count(),
+            })
+
+        # Apply type filter for the actual list
+        final_qs = date_qs
+        if type_filter != "all" and type_filter in _TYPE_GROUPS:
+            final_qs = _TYPE_GROUPS[type_filter]["filter"](final_qs)
+
+        notifications = list(final_qs.order_by("-created_at")[:200])
+        earliest_dt = base_qs.order_by("created_at").values_list("created_at", flat=True).first()
+        date_options = _build_date_options(earliest_dt)
+
+    return {
+        "grouped_notifications": _group_notifications_by_date(notifications),
+        "unread_count": unread_count,
+        "total_count": total_count,
+        "filter_tabs": filter_tabs,
+        "current_type": type_filter,
+        "days": days_filter,
+        "q": q,
+        "date_options": date_options,
+    }
 
 
 class NotificationBellView(LoginRequiredMixin, View):
@@ -83,23 +249,36 @@ class NotificationsPageView(LoginRequiredMixin, View):
     def get(self, request):
         if not getattr(request.user, "org", None):
             return redirect("/")
-        from .models import NotificationLog
-        with set_tenant_context(request.user.org):
-            all_notifications = list(
-                NotificationLog.objects.filter(
-                    recipient=request.user,
-                ).order_by("-created_at")[:50]
-            )
-        unread = [n for n in all_notifications if not n.is_read]
-        read = [n for n in all_notifications if n.is_read]
-        return render(
-            request,
-            "notifications/notifications_page.html",
-            {"unread": unread, "read": read},
-        )
+        context = _build_notifications_context(request)
+        if request.headers.get("HX-Request"):
+            return render(request, "notifications/_notifications_list.html", context)
+        return render(request, "notifications/notifications_page.html", context)
 
 
 class MarkReadView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        """Mark a single notification read; return the updated card fragment for HTMX."""
+        if not getattr(request.user, "org", None):
+            return HttpResponse(status=400)
+        from .models import NotificationLog
+        with set_tenant_context(request.user.org):
+            try:
+                notif = NotificationLog.objects.get(pk=pk, recipient=request.user)
+            except NotificationLog.DoesNotExist:
+                return HttpResponse(status=404)
+            if not notif.is_read:
+                notif.is_read = True
+                notif.read_at = timezone.now()
+                notif.save(update_fields=["is_read", "read_at"])
+        html = render_to_string(
+            "notifications/_notification_card.html",
+            {"notif": notif},
+            request=request,
+        )
+        response = HttpResponse(html)
+        response["HX-Trigger"] = json.dumps({"refreshBell": True})
+        return response
+
     def post(self, request, pk):
         if request.user.is_superuser:
             from .models import AdminNotification
@@ -191,7 +370,6 @@ class MarkAllReadPageView(LoginRequiredMixin, View):
     def post(self, request):
         if not getattr(request.user, "org", None):
             return redirect("/")
-        from django.utils import timezone
         from .models import NotificationLog
         with set_tenant_context(request.user.org):
             NotificationLog.objects.filter(
@@ -199,23 +377,39 @@ class MarkAllReadPageView(LoginRequiredMixin, View):
                 recipient=request.user,
                 is_read=False,
             ).update(is_read=True, read_at=timezone.now())
-            all_notifications = list(
-                NotificationLog.objects.filter(
-                    recipient=request.user,
-                ).order_by("-created_at")[:50]
-            )
-        unread = [n for n in all_notifications if not n.is_read]
-        read = [n for n in all_notifications if n.is_read]
-        response = render(
-            request,
-            "notifications/_notifications_list.html",
-            {"unread": unread, "read": read},
-        )
+        # Preserve current filters from the page URL sent by HTMX
+        current_url = request.META.get("HTTP_HX_CURRENT_URL", "")
+        params = {}
+        if current_url:
+            parsed = urlparse(current_url)
+            params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        context = _build_notifications_context(request, params)
+        response = render(request, "notifications/_notifications_list.html", context)
         response["HX-Trigger"] = json.dumps({
             "showToast": {"message": "All notifications marked as read", "type": "success"},
             "refreshBell": True,
         })
         return response
+
+
+class ReadRedirectView(LoginRequiredMixin, View):
+    """GET /notifications/<uuid>/redirect/ — mark read then redirect to action_url."""
+
+    def get(self, request, pk):
+        if not getattr(request.user, "org", None):
+            return redirect("/")
+        from .models import NotificationLog
+        with set_tenant_context(request.user.org):
+            try:
+                notif = NotificationLog.objects.get(pk=pk, recipient=request.user)
+            except NotificationLog.DoesNotExist:
+                return redirect(reverse("notifications:notifications_page"))
+            if not notif.is_read:
+                notif.is_read = True
+                notif.read_at = timezone.now()
+                notif.save(update_fields=["is_read", "read_at"])
+            action_url = notif.action_url
+        return redirect(action_url if action_url else reverse("notifications:notifications_page"))
 
 
 class MySupportTicketsView(LoginRequiredMixin, View):

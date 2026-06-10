@@ -45,6 +45,13 @@ DATABASES = {
 # Override in .env: REDIS_URL=redis://127.0.0.1:6379/1
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
+# Dev-only webhook HMAC key. The webhook view fails closed (503) when this is
+# empty, and a system check (billing.E001) blocks production startup — this
+# default keeps local webhook testing and the test suite working without a
+# real Paystack key. Production reads it from the environment (base.py).
+if not PAYSTACK_WEBHOOK_SECRET:  # noqa: F405
+    PAYSTACK_WEBHOOK_SECRET = "dev-webhook-secret"
+
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 

@@ -1,13 +1,15 @@
-<div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 transition-all duration-200 hover:shadow-md hover:border-green-500 group relative">
+  
+  <a href="{% url 'farms:detail' farm.id %}" class="absolute inset-0 z-10" aria-label="View {{ farm.name }} details"></a>
+
   <div class="flex items-start justify-between mb-3">
     <div>
-      <a href="{% url 'farms:detail' farm.id %}"
-         class="text-base font-semibold text-gray-900 hover:text-green-700 transition-colors">
+      <h3 class="text-base font-bold text-gray-900 group-hover:text-green-600 transition-colors duration-200">
         {{ farm.name }}
-      </a>
+      </h3>
       <p class="text-xs text-gray-400 mt-0.5">{{ farm.location }}</p>
     </div>
-    <span class="px-2 py-0.5 rounded text-xs font-medium
+    <span class="px-2 py-0.5 rounded text-xs font-medium relative z-20
       {% if farm.farm_type == 'layer' %}bg-yellow-100 text-yellow-700
       {% elif farm.farm_type == 'broiler' %}bg-blue-100 text-blue-700
       {% else %}bg-gray-100 text-gray-600{% endif %}">
@@ -16,11 +18,11 @@
   </div>
 
   <div class="grid grid-cols-2 gap-3 mt-4 text-center">
-    <div class="bg-gray-50 rounded-lg p-2">
+    <div class="bg-gray-50 rounded-lg p-2 transition-colors duration-200 group-hover:bg-green-50/50">
       <p class="text-lg font-bold text-gray-800">{{ farm.live_birds|default:0 }}</p>
       <p class="text-xs text-gray-400">Live Birds</p>
     </div>
-    <div class="bg-gray-50 rounded-lg p-2">
+    <div class="bg-gray-50 rounded-lg p-2 transition-colors duration-200 group-hover:bg-green-50/50">
       <p class="text-lg font-bold text-gray-800">{{ farm.active_batches|default:0 }}</p>
       <p class="text-xs text-gray-400">Active Batches</p>
     </div>
@@ -33,9 +35,10 @@
         {% if farm.is_active %}bg-green-500{% else %}bg-gray-300{% endif %}"></span>
       {% if farm.is_active %}Active{% else %}Inactive{% endif %}
     </span>
-    <a href="{% url 'farms:detail' farm.id %}"
-       class="text-xs text-green-600 hover:text-green-800 font-medium">
-      View details →
-    </a>
+    
+    <span class="text-xs text-green-600 group-hover:text-green-700 font-semibold flex items-center gap-0.5 transition-colors duration-200">
+      View details 
+      <span class="inline-block transform transition-transform duration-200 group-hover:translate-x-1">→</span>
+    </span>
   </div>
 </div>
