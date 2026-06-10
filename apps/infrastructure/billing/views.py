@@ -438,10 +438,24 @@ class PaystackCallbackView(View):
         if not request.user.is_authenticated or not request.user.org:
             return redirect("/login/")
 
+        # Verify with Paystack BEFORE entering the explicit tenant context so
+        # the HTTP round-trip (up to 10s) is not spent inside the activation
+        # transaction.
+        # KNOWN ISSUE: TenantMiddleware already wraps this whole request in
+        # set_tenant_context() (one transaction per request — required for
+        # SET LOCAL), so a PgBouncer connection is still pinned during this
+        # call. Mitigated by statement/idle-in-transaction timeouts in
+        # production.py; the full fix is restructuring the per-request
+        # transaction scope. See RUNBOOK.md "PgBouncer Configuration".
+        try:
+            result = PaystackService().verify_transaction(reference)
+        except Exception:
+            result = None
+
         from apps.infrastructure.core.rls import set_tenant_context
         with set_tenant_context(request.user.org):
             service = BillingService(request.user.org)
-            success = service.verify_and_activate(reference)
+            success = service.activate_from_verified_data(result, reference)
 
         if success:
             return redirect("/billing/?upgraded=1")

@@ -569,10 +569,23 @@ class BillingService(BaseService):
             ),
         }
 
-    @transaction.atomic
     def verify_and_activate(self, reference: str) -> bool:
+        """
+        Fetch the transaction from Paystack, then activate from the result.
+        The HTTP call runs OUTSIDE the atomic activation block so a slow
+        Paystack response (up to 10s) never holds a DB transaction open.
+        Callers that already have the verified payload should call
+        activate_from_verified_data() directly (see PaystackCallbackView,
+        which fetches before entering the tenant context).
+        """
         result = PaystackService().verify_transaction(reference)
-        if not result.get("status"):
+        return self.activate_from_verified_data(result, reference)
+
+    @transaction.atomic
+    def activate_from_verified_data(self, result: dict, reference: str) -> bool:
+        """Validate a pre-fetched Paystack verify response and activate.
+        No network I/O in here — only DB work, inside one transaction."""
+        if not result or not result.get("status"):
             return False
 
         data = result.get("data", {})

@@ -82,6 +82,13 @@ class CycleSubscription(TenantAwareModel):
 
 
 class PaymentRecord(TenantAwareModel):
+    # unique=True is the webhook/callback idempotency guard: a globally unique
+    # index on reference is strictly stronger than unique_together
+    # (org, reference). activate_plan() and record_payment() both use
+    # get_or_create(org=..., reference=...), which recovers from the
+    # IntegrityError race (Django wraps the insert in a savepoint), so
+    # concurrent webhook + callback deliveries cannot double-record or
+    # double-extend a plan. Do not remove this constraint.
     reference = models.CharField(max_length=100, unique=True)
     amount_kobo = models.IntegerField()
     status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES)

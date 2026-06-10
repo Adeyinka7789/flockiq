@@ -26,18 +26,25 @@ DATABASE_URL must use flockiq_app credentials — never flockiq_admin.
 
 ## Redis DB allocation
 
-| DB | Env var            | Used for                          |
-|----|--------------------|-----------------------------------|
-| 0  | —                  | reserved (Redis default)          |
-| 1  | REDIS_URL          | Celery broker + general cache     |
-| 2  | REDIS_SESSION_URL  | Sessions only                     |
-| 3  | —                  | Celery results (prod: REDIS_URL/3)|
+Each concern gets a DEDICATED Redis DB. Never share — a Celery broker flush
+on a shared DB would wipe every user session (this was a real misconfiguration:
+broker and sessions both sat on DB 2 until June 2026).
+
+| DB | Env var               | Used for                          |
+|----|-----------------------|-----------------------------------|
+| 0  | CELERY_BROKER_URL     | Celery broker (dedicated)         |
+| 1  | REDIS_URL (+/1)       | General cache                     |
+| 2  | REDIS_SESSION_URL     | Sessions only                     |
+| 3  | CELERY_RESULT_BACKEND | Celery results                    |
 
 In production set (VPS environment / .env):
 
+    CELERY_BROKER_URL=redis://127.0.0.1:6379/0
     REDIS_SESSION_URL=redis://127.0.0.1:6379/2
+    CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/3
 
-If unset, production.py defaults it to DB 2 of REDIS_URL.
+If unset, production.py defaults broker to `{REDIS_URL}/0`, sessions to
+`{REDIS_URL}/2` and results to `{REDIS_URL}/3` — the same safe layout.
 
 ### Why sessions get their own Redis DB
 - Celery can flush or restart DB 1 without wiping user sessions on DB 2.
@@ -48,6 +55,57 @@ If unset, production.py defaults it to DB 2 of REDIS_URL.
 ### Session backend per environment
 - Local (development.py):  `db`        — pure PostgreSQL, no Redis dependency.
 - Production (production.py): `cached_db` — Redis "sessions" cache + PostgreSQL fallback.
+
+## PgBouncer Configuration
+
+    [pgbouncer]
+    pool_mode = transaction
+    default_pool_size = 20        # per database
+    max_client_conn = 100
+    ; REQUIRED: Django sends statement/idle timeouts as a startup parameter
+    ; (DATABASES OPTIONS "options" in production.py). Without this line
+    ; PgBouncer rejects every connection.
+    ignore_startup_parameters = options
+
+FlockIQ's RLS requires `SET LOCAL` (transaction-scoped), which only works
+correctly with `pool_mode = transaction` — do not change the pool mode.
+
+### PostgreSQL timeouts
+production.py sets per-connection:
+- `statement_timeout=20000` (20s) — kills runaway queries
+- `idle_in_transaction_session_timeout=30000` (30s) — frees connections held
+  by a transaction that is waiting on something else (e.g. network I/O)
+
+If PgBouncer cannot pass startup parameters for some reason, set the same
+timeouts at the role level instead and remove the "options" key:
+
+    ALTER ROLE flockiq_app SET statement_timeout = '20s';
+    ALTER ROLE flockiq_app SET idle_in_transaction_session_timeout = '30s';
+
+### WARNING: external HTTP calls pin connections
+TenantMiddleware wraps every tenant request in one transaction (required for
+SET LOCAL), so an external HTTP call inside a request handler (Paystack,
+weather API, WeasyPrint generation) pins a PgBouncer backend connection for
+its full duration. Keep external calls outside `set_tenant_context` blocks
+where possible (see `billing/views.py PaystackCallbackView` for the pattern)
+and keep `requests` timeouts short. Effective request concurrency is capped
+at `default_pool_size` — size it against your gunicorn worker count.
+
+## Custom domain onboarding (per tenant)
+
+When a tenant verifies a custom domain (e.g. app.obasanjofarm.com), the
+domain must ALSO be added to two env vars, then the app restarted:
+
+    ALLOWED_HOSTS=flockiq.com,www.flockiq.com,.flockiq.com,app.obasanjofarm.com
+    CSRF_TRUSTED_ORIGINS=https://flockiq.com,https://www.flockiq.com,https://*.flockiq.com,https://app.obasanjofarm.com
+
+- ALLOWED_HOSTS is mandatory — without it Django rejects every request for
+  the domain with a 400 before any middleware runs.
+- CSRF_TRUSTED_ORIGINS covers cross-origin POSTs. (Same-origin POSTs pass
+  Django's Origin check automatically once the host is allowed.)
+- Settings cannot be mutated safely at runtime across gunicorn workers, so
+  this is a deliberate restart-required step until domains move to a
+  DB-backed allowlist.
 
 ## Monitoring Stack
 

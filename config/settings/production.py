@@ -26,13 +26,29 @@ DATABASES = {
         "OPTIONS": {
             "connect_timeout": 10,
             "application_name": "flockiq_web",
+            # Connection starvation guards: kill any statement over 20s and
+            # any transaction idle over 30s. TenantMiddleware holds a
+            # transaction for the whole request (SET LOCAL requires it), so a
+            # slow external call inside a request would otherwise pin a
+            # PgBouncer backend connection indefinitely.
+            # NOTE: PgBouncer must allow the startup parameter:
+            #   ignore_startup_parameters = options
+            # in pgbouncer.ini, or every connection is rejected. See
+            # RUNBOOK.md "PgBouncer Configuration" (an ALTER ROLE alternative
+            # is documented there too).
+            "options": (
+                "-c statement_timeout=20000 "
+                "-c idle_in_transaction_session_timeout=30000"
+            ),
         },
     }
 }
 
 # ── Cache / Session ───────────────────────────────────────────────────────────
 # REDIS_URL is the base connection (no DB suffix); DB numbers are appended below.
-#   DB 1 → general cache   DB 2 → sessions   DB 2/3 (broker/results) set under Celery.
+# Redis DB allocation (each concern gets its own DB — see RUNBOOK.md):
+#   DB 0 → Celery broker   DB 1 → general cache
+#   DB 2 → sessions        DB 3 → Celery results
 REDIS_URL = config("REDIS_URL")
 # Dedicated session store. Defaults to DB 2 of the same Redis if unset.
 REDIS_SESSION_URL = config("REDIS_SESSION_URL", default=f"{REDIS_URL}/2")
@@ -71,8 +87,10 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_CACHE_ALIAS = "sessions"
 
 # ── Celery ────────────────────────────────────────────────────────────────────
-CELERY_BROKER_URL = f"{REDIS_URL}/2"
-CELERY_RESULT_BACKEND = f"{REDIS_URL}/3"
+# Broker on DB 0, results on DB 3 — NEVER share a DB with sessions (DB 2) or
+# the cache (DB 1): a broker flush would wipe every user session.
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=f"{REDIS_URL}/0")
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=f"{REDIS_URL}/3")
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # ── Static & Media ────────────────────────────────────────────────────────────
@@ -94,13 +112,17 @@ X_FRAME_OPTIONS = "DENY"
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
-# REQUIRED: set this env var in production
-# CSRF_TRUSTED_ORIGINS=https://*.flockiq.com,https://flockiq.com
-CSRF_TRUSTED_ORIGINS = [
-    "https://flockiq.com",
-    "https://www.flockiq.com",
-    "https://*.flockiq.com",
-]
+# Env-driven so tenant custom domains can be appended without a code change.
+# Same-origin POSTs already pass Django's Origin check, so this list only
+# matters for cross-origin requests — but every custom domain MUST also be in
+# ALLOWED_HOSTS or Django rejects the request outright (see RUNBOOK.md
+# "Custom domain onboarding"). Runtime mutation of settings is not
+# thread/process-safe, so domains are listed at startup via this env var.
+CSRF_TRUSTED_ORIGINS = config(
+    "CSRF_TRUSTED_ORIGINS",
+    default="https://flockiq.com,https://www.flockiq.com,https://*.flockiq.com",
+    cast=Csv(),
+)
 
 # ── Password hashing ──────────────────────────────────────────────────────────
 PASSWORD_HASHERS = [

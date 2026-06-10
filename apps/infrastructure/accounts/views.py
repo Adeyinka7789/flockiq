@@ -21,6 +21,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.views import TokenRefreshView as BaseTokenRefreshView
 
 from apps.infrastructure.core.email_service import EmailService
@@ -38,6 +39,17 @@ from .serializers import (
 )
 
 logger = structlog.get_logger(__name__)
+
+
+class ThrottledTokenObtainPairView(TokenObtainPairView):
+    """
+    Stock JWT login with the 'login' throttle scope (10/h, see
+    DEFAULT_THROTTLE_RATES). The stock view has no throttle_scope, so without
+    this subclass the /api/auth/token/ endpoint was only covered by the
+    blanket 30/h anon rate — and django-axes does not see this surface at
+    all (it protects the web login form).
+    """
+    throttle_classes = [LoginRateThrottle]
 
 
 def _token_response(user):

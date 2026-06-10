@@ -9,7 +9,6 @@ from drf_spectacular.views import (
     SpectacularRedocView,
 )
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
     TokenRefreshView,
     TokenVerifyView,
 )
@@ -18,7 +17,12 @@ from rest_framework.permissions import AllowAny
 from django.views.generic import TemplateView
 from . import views
 
-from apps.infrastructure.accounts.views import WebLoginView, WebLogoutView, SignupView
+from apps.infrastructure.accounts.views import (
+    SignupView,
+    ThrottledTokenObtainPairView,
+    WebLoginView,
+    WebLogoutView,
+)
 from apps.infrastructure.core.views import DashboardView, SessionCheckView, custom_404, custom_500, user_manual_pdf
 from apps.infrastructure.core.search import GlobalSearchView
 from apps.infrastructure.superadmin import urls as superadmin_urls
@@ -68,7 +72,9 @@ urlpatterns = [
     path("", include("apps.finance.market.urls")),
     path("", include(superadmin_urls)),
     path("admin/", admin.site.urls),
-    path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    # Throttled subclass — stock TokenObtainPairView has no throttle scope,
+    # and axes only covers the web login form, not this JWT surface.
+    path("api/auth/token/", ThrottledTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
     # ── Monitoring (always available, not DEBUG-only) ────────────────────────

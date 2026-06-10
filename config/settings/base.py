@@ -289,8 +289,11 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- Celery ---
-CELERY_BROKER_URL = config("REDIS_URL", default="redis://127.0.0.1:6379/1")
-CELERY_RESULT_BACKEND = "django-db"
+# Dedicated broker DB (0) — never share with the cache (DB 1) or sessions
+# (DB 2): a broker flush must not be able to wipe sessions or cached data.
+# production.py overrides both against its own REDIS_URL.
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/0")
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default="django-db")
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_TASK_ACKS_LATE = True
