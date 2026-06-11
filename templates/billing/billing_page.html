@@ -469,6 +469,25 @@
   </div>
 
   <!-- Farm Credit Score -->
+  {% if not credit_score %}
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-6">
+    <h3 class="font-semibold text-gray-800 mb-3">Farm Credit Score</h3>
+    <div class="flex items-center gap-3 p-4 bg-blue-50 rounded-xl">
+      <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+        <svg class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <div>
+        <p class="text-sm font-semibold text-blue-800">Building your credit profile</p>
+        <p class="text-xs text-blue-600 mt-0.5">
+          Complete your first batch to generate your Farm Credit Score.
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
   {% if credit_score %}
   <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-6">
     <div class="flex items-center justify-between mb-4">

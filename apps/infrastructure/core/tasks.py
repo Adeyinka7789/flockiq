@@ -5,6 +5,40 @@ from django.core.management import call_command
 logger = structlog.get_logger(__name__)
 
 
+@shared_task(name="core.backup_database")
+def backup_database():
+    """Nightly database backup."""
+    try:
+        call_command("backup_database")
+    except Exception as e:
+        logger.error("backup.task_failed", error=str(e))
+        import sentry_sdk
+        sentry_sdk.capture_exception(e)
+
+
+@shared_task(name="core.check_disk_space")
+def check_disk_space():
+    """Alert via Sentry if disk usage exceeds 80%."""
+    import shutil
+    import sentry_sdk
+
+    total, used, free = shutil.disk_usage("/")
+    usage_pct = (used / total) * 100
+
+    if usage_pct > 80:
+        logger.warning(
+            "disk.usage_high",
+            usage_pct=round(usage_pct, 1),
+            free_gb=round(free / (1024 ** 3), 2),
+        )
+        sentry_sdk.capture_message(
+            f"Disk usage at {usage_pct:.1f}% on FlockIQ VPS",
+            level="warning",
+        )
+    else:
+        logger.info("disk.usage_ok", usage_pct=round(usage_pct, 1))
+
+
 @shared_task(name="core.clear_expired_sessions")
 def clear_expired_sessions():
     call_command("clearsessions")

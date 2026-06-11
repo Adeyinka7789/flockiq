@@ -12,6 +12,27 @@ from django.core.checks import Error, Warning, register
 
 
 @register()
+def check_celery_beat_seeded(app_configs, **kwargs):
+    """Warn if fewer than 10 periodic tasks are registered in the DB scheduler."""
+    errors = []
+    try:
+        from django_celery_beat.models import PeriodicTask
+
+        count = PeriodicTask.objects.count()
+        if count < 10:
+            errors.append(
+                Warning(
+                    f"Only {count} Celery beat tasks found. "
+                    f"Run: python manage.py seed_celery_beat",
+                    id="billing.W002",
+                )
+            )
+    except Exception:
+        pass
+    return errors
+
+
+@register()
 def check_paystack_webhook_secret(app_configs, **kwargs):
     if getattr(settings, "PAYSTACK_WEBHOOK_SECRET", ""):
         return []

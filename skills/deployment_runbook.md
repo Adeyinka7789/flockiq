@@ -1836,6 +1836,79 @@ fi
 
 ---
 
+---
+
+## 17. Email Setup (Truehost VPS)
+
+Truehost provides cPanel email hosting with your domain.
+
+1. Log into cPanel → Email Accounts
+2. Create: `noreply@flockiq.com`
+3. Note the SMTP credentials
+4. Set env vars:
+   ```bash
+   EMAIL_HOST=mail.flockiq.com
+   EMAIL_PORT=465
+   EMAIL_USE_SSL=True
+   EMAIL_HOST_USER=noreply@flockiq.com
+   EMAIL_HOST_PASSWORD=your-email-password
+   DEFAULT_FROM_EMAIL=FlockIQ <noreply@flockiq.com>
+   SERVER_EMAIL=errors@flockiq.com
+   ```
+
+Test from shell:
+
+```bash
+python manage.py shell -c "
+from django.core.mail import send_mail
+send_mail('Test', 'Test body', None, ['your@email.com'])
+print('Sent')
+"
+```
+
+**DNS records to configure in cPanel Zone Editor:**
+
+| Type | Value |
+|------|-------|
+| SPF  | `v=spf1 include:truehost.com ~all` (verify with Truehost support) |
+| DMARC | `v=DMARC1; p=quarantine; rua=mailto:dmarc@flockiq.com` |
+
+Verify at [mxtoolbox.com](https://mxtoolbox.com) before sending to farmers.
+
+---
+
+## 18. Database Backup via Django Management Command
+
+The `backup_database` management command (and Celery beat task) runs at 02:00 WAT daily.
+
+**Manual backup:**
+
+```bash
+python manage.py backup_database
+```
+
+Local backups go to `/var/backups/flockiq/` (last 7 kept). Remote upload to Backblaze B2 if `BACKUP_B2_BUCKET` is set.
+
+**Required env vars for remote backup:**
+
+```bash
+BACKUP_B2_BUCKET=flockiq-backups
+BACKUP_B2_ENDPOINT=https://s3.us-west-002.backblazeb2.com
+BACKUP_B2_KEY_ID=your-key-id
+BACKUP_B2_APP_KEY=your-app-key
+```
+
+**Restore:**
+
+```bash
+pg_restore -h 127.0.0.1 -p 6432 -U flockiq_app \
+           -d flockiq_restore backup_file.dump
+```
+
+> **Test restore quarterly.** Untested backups are not backups.
+
+---
+
 *End of FlockIQ Deployment Runbook v1.0*  
 *Companion documents:*  
 *— `skills/system_architectures.md` (Core Engine Technical Specification)*  

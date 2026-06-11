@@ -260,6 +260,9 @@ Edit `.env` with your local values. At minimum, set:
 SECRET_KEY=your-local-secret-key
 DATABASE_URL=postgresql://flockiq_app:flockiq_dev_pass@localhost:5432/flockiq_dev
 REDIS_URL=redis://127.0.0.1:6379/1
+
+# Production only (use PgBouncer port 6432):
+# DATABASE_URL=postgresql://flockiq_app:password@127.0.0.1:6432/flockiq
 ```
 
 **7. Run migrations**
@@ -306,7 +309,7 @@ celery -A config beat -l info --scheduler django_celery_beat.schedulers:Database
 | `SECRET_KEY` | Yes | Django secret key — generate with `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
 | `DEBUG` | No | `True` for development, never `True` in production |
 | `ALLOWED_HOSTS` | Yes | Comma-separated list of allowed hostnames (e.g., `flockiq.com,.flockiq.com`) |
-| `DATABASE_URL` | Yes | PostgreSQL connection string — must use `flockiq_app` role at runtime |
+| `DATABASE_URL` | Yes | PostgreSQL connection string — must use `flockiq_app` role. Dev: `postgresql://flockiq_app:pass@localhost:5432/flockiq_dev`. Production: `postgresql://flockiq_app:pass@127.0.0.1:6432/flockiq` (PgBouncer port 6432) |
 | `REDIS_URL` | Yes | Redis connection string for Celery broker and default cache (DB 1) |
 | `REDIS_SESSION_URL` | No | Redis connection for sessions only (DB 2). Defaults to DB 2 of `REDIS_URL` if unset |
 | `PAYSTACK_SECRET_KEY` | Yes (prod) | Paystack secret key — starts with `sk_live_` in production |
@@ -324,10 +327,12 @@ celery -A config beat -l info --scheduler django_celery_beat.schedulers:Database
 | `PAPERTRAIL_PORT` | No | Papertrail syslog UDP port |
 | `DJANGO_ENV` | No | Environment name reported to Sentry (`production`, `staging`, `development`) |
 | `GIT_COMMIT_SHA` | No | Git commit SHA set by CI/CD pipeline; used as the Sentry release identifier |
-| `EMAIL_HOST` | No | SMTP host (default: `smtp.gmail.com`) |
-| `EMAIL_PORT` | No | SMTP port (default: `587`) |
-| `EMAIL_HOST_USER` | No | SMTP username |
-| `EMAIL_HOST_PASSWORD` | No | SMTP password or app password |
+| `EMAIL_HOST` | No | SMTP host (default: `mail.flockiq.com` — Truehost cPanel) |
+| `EMAIL_PORT` | No | SMTP port (default: `465` — SSL) |
+| `EMAIL_USE_SSL` | No | Use SSL for SMTP (default: `True`) |
+| `EMAIL_HOST_USER` | No | SMTP username (e.g. `noreply@flockiq.com`) |
+| `EMAIL_HOST_PASSWORD` | No | SMTP password |
+| `SERVER_EMAIL` | No | From address for error emails (default: `errors@flockiq.com`) |
 | `CSRF_TRUSTED_ORIGINS` | Yes (prod) | Comma-separated origins for CSRF protection (e.g., `https://flockiq.com,https://app.flockiq.com`) |
 | `IMPERSONATION_MAX_SECONDS` | No | Max duration of a superadmin impersonation session in seconds (default: `1800`) |
 | `ENABLE_SILK` | No | Set to `True` to enable Django Silk query profiling (development only) |
@@ -374,7 +379,7 @@ This is the most critical test suite. It spins up two separate tenant organisati
 
 FlockIQ's RLS tests use PostgreSQL-specific SQL (`SET LOCAL app.current_org_id`, `CREATE POLICY`, `ENABLE ROW LEVEL SECURITY`). SQLite does not support these features. Tests will fail immediately with a database error if run against SQLite.
 
-Always configure a real PostgreSQL instance in your test environment. The `pytest.ini` points to `config.settings.development`, which reads `DATABASE_URL` from your `.env`.
+Always configure a real PostgreSQL instance in your test environment. The `pytest.ini` points to `config.settings.development`, which reads `DATABASE_URL` from your `.env` (e.g. `postgresql://flockiq_app:pass@localhost:5432/flockiq_dev`).
 
 ---
 

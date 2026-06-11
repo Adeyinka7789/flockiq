@@ -80,6 +80,8 @@ class PaystackWebhookView(View):
         try:
             self._dispatch(event_type, data.get("data", {}))
         except Exception as exc:
+            import sentry_sdk
+
             log_entry.error = str(exc)
             log_entry.save(update_fields=["error"])
             logger.error(
@@ -87,6 +89,7 @@ class PaystackWebhookView(View):
                 event_type=event_type,
                 error=str(exc),
             )
+            sentry_sdk.capture_exception(exc)
             # 500 — Paystack retries for up to 72 hours, so a transient DB or
             # service failure cannot silently drop a billing event. Duplicates,
             # unknown event types and invalid signatures still return 200/400

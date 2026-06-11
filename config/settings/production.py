@@ -1,4 +1,5 @@
 from .base import *  # noqa: F401, F403
+import dj_database_url
 from decouple import config, Csv
 import os
 
@@ -13,36 +14,31 @@ ALLOWED_HOSTS = config(
 
 # ── Database — connects via PgBouncer (transaction mode) ─────────────────────
 # CONN_MAX_AGE=0 is REQUIRED: PgBouncer transaction mode leaks connections otherwise.
-# This is already enforced in base.py via dj_database_url — do not override.
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "HOST": "127.0.0.1",
-        "PORT": "6432",  # PgBouncer — NOT 5432
-        "NAME": config("DB_NAME"),
-        "USER": config("DB_USER"),
-        "PASSWORD": config("DB_PASSWORD"),
-        "CONN_MAX_AGE": 0,
-        "OPTIONS": {
-            "connect_timeout": 10,
-            "application_name": "flockiq_web",
-            # Connection starvation guards: kill any statement over 20s and
-            # any transaction idle over 30s. TenantMiddleware holds a
-            # transaction for the whole request (SET LOCAL requires it), so a
-            # slow external call inside a request would otherwise pin a
-            # PgBouncer backend connection indefinitely.
-            # NOTE: PgBouncer must allow the startup parameter:
-            #   ignore_startup_parameters = options
-            # in pgbouncer.ini, or every connection is rejected. See
-            # RUNBOOK.md "PgBouncer Configuration" (an ALTER ROLE alternative
-            # is documented there too).
-            "options": (
-                "-c statement_timeout=20000 "
-                "-c idle_in_transaction_session_timeout=30000"
-            ),
-        },
-    }
+# DATABASE_URL must use port 6432 (PgBouncer), NOT 5432:
+#   postgresql://flockiq_app:password@127.0.0.1:6432/flockiq
+_db = dj_database_url.config(
+    env="DATABASE_URL",
+    conn_max_age=0,
+)
+_db["OPTIONS"] = {
+    "connect_timeout": 10,
+    "application_name": "flockiq_web",
+    # Connection starvation guards: kill any statement over 20s and
+    # any transaction idle over 30s. TenantMiddleware holds a
+    # transaction for the whole request (SET LOCAL requires it), so a
+    # slow external call inside a request would otherwise pin a
+    # PgBouncer backend connection indefinitely.
+    # NOTE: PgBouncer must allow the startup parameter:
+    #   ignore_startup_parameters = options
+    # in pgbouncer.ini, or every connection is rejected. See
+    # RUNBOOK.md "PgBouncer Configuration" (an ALTER ROLE alternative
+    # is documented there too).
+    "options": (
+        "-c statement_timeout=20000 "
+        "-c idle_in_transaction_session_timeout=30000"
+    ),
 }
+DATABASES = {"default": _db}
 
 # ── Cache / Session ───────────────────────────────────────────────────────────
 # REDIS_URL is the base connection (no DB suffix); DB numbers are appended below.
@@ -130,14 +126,18 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.PBKDF2PasswordHasher",  # Fallback for existing hashes
 ]
 
-# ── Email ─────────────────────────────────────────────────────────────────────
+# ── Email (Truehost VPS cPanel SMTP) ─────────────────────────────────────────
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = config("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_HOST = config("EMAIL_HOST", default="mail.flockiq.com")
 EMAIL_PORT = config("EMAIL_PORT", cast=int, default=465)
+EMAIL_USE_SSL = True
+EMAIL_USE_TLS = False
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
-EMAIL_USE_SSL = True
-DEFAULT_FROM_EMAIL = "FlockIQ <noreply@flockiq.com>"
+DEFAULT_FROM_EMAIL = config(
+    "DEFAULT_FROM_EMAIL", default="FlockIQ <noreply@flockiq.com>"
+)
+SERVER_EMAIL = config("SERVER_EMAIL", default="errors@flockiq.com")
 
 # ── Sentry ────────────────────────────────────────────────────────────────────
 # Sentry is initialised ONCE in base.py (imported above). Set SENTRY_DSN and
