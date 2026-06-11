@@ -67,7 +67,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install pip-audit bandit
       # Switched data collection source to OSV to bypass 503 PyPI server errors completely
-      - run: pip-audit --service osv -r requirements/production.txt
+      - run: pip-audit --service osv --requirement requirements/production.txt
       - run: bandit -r apps/ -ll --exclude apps/*/tests/
 
   # ── Deploy (main branch push only, skipped if VPS secrets not set) ──────
