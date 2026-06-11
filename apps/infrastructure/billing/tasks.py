@@ -4,42 +4,68 @@ from django.utils import timezone
 
 logger = structlog.get_logger(__name__)
 
+REMINDER_DAYS = {7, 3, 1}
+
 
 @shared_task(name="billing.send_subscription_expiry_reminders")
 def send_subscription_expiry_reminders():
     """
     Celery Beat — 08:00 daily.
-    Email + in-app reminder to org owners at 7, 3, and 1 days before their paid
-    plan expires. Trial orgs are excluded (they get the separate trial banner).
+    Fan-out: dispatch a per-org subtask for every paid org whose plan expires
+    in exactly 7, 3 or 1 days. Trial orgs are excluded (separate trial banner).
+
+    Day math is calendar-date based, NOT timedelta based: (expiry - now).days
+    truncates, so an org activated at 07:00 and checked at 08:00 reads 6 days
+    instead of 7 and silently misses its reminder.
     """
-    from apps.infrastructure.core.rls import no_tenant_context, set_tenant_context
+    from apps.infrastructure.core.rls import no_tenant_context
     from apps.infrastructure.tenants.models import Organization
 
-    now = timezone.now()
-    reminder_days = {7, 3, 1}
+    # localdate/localtime: calendar days in the platform timezone
+    # (Africa/Lagos), not UTC — datetimes are stored in UTC.
+    today = timezone.localdate()
 
     with no_tenant_context():
-        org_ids = list(
+        rows = list(
             Organization.objects.filter(
                 is_active=True,
                 plan_tier__in=["monthly", "yearly", "cycle"],
                 plan_expires_at__isnull=False,
-            ).values_list("id", flat=True)
+            ).values_list("id", "plan_expires_at")
         )
 
-    sent = 0
-    for org_id in org_ids:
-        try:
-            with set_tenant_context(str(org_id)):
-                org = Organization.objects.get(id=org_id)
-                days_left = (org.plan_expires_at - now).days
-                if days_left in reminder_days:
-                    _send_expiry_reminder(org, days_left)
-                    sent += 1
-        except Exception as exc:
-            logger.error("billing.expiry_reminder_error", org_id=str(org_id), error=str(exc))
+    dispatched = 0
+    for org_id, expires_at in rows:
+        days_left = (timezone.localtime(expires_at).date() - today).days
+        if days_left in REMINDER_DAYS:
+            send_expiry_reminder_for_org.delay(str(org_id), days_left)
+            dispatched += 1
 
-    logger.info("billing.expiry_reminders_sent", count=sent, scanned=len(org_ids))
+    logger.info("billing.expiry_reminders_dispatched", count=dispatched, scanned=len(rows))
+
+
+@shared_task(
+    name="billing.send_expiry_reminder_for_org",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def send_expiry_reminder_for_org(self, org_id: str, days_left: int):
+    """Send one paid-plan expiry reminder. Per-org so one failure retries alone."""
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.tenants.models import Organization
+
+    try:
+        org = Organization.objects.get(id=org_id)
+    except Organization.DoesNotExist:
+        return
+
+    try:
+        with set_tenant_context(org):
+            _send_expiry_reminder(org, days_left)
+    except Exception as exc:
+        logger.error("billing.expiry_reminder_error", org_id=org_id, error=str(exc))
+        raise self.retry(exc=exc)
 
 
 def _send_expiry_reminder(org, days_left: int) -> None:
@@ -85,10 +111,14 @@ def mark_lapsed_orgs():
     from apps.infrastructure.tenants.models import Organization
 
     with no_tenant_context():
+        # Date-based: an org whose plan expires later today is not flagged
+        # until tomorrow's run — only fully past calendar dates count.
+        # localdate() matches the __date lookup, which converts the stored UTC
+        # datetime to TIME_ZONE (Africa/Lagos) before taking the date.
         count = Organization.objects.filter(
             is_active=True,
             plan_tier__in=["monthly", "cycle", "yearly"],
-            plan_expires_at__lt=timezone.now(),
+            plan_expires_at__date__lt=timezone.localdate(),
             subscription_status="active",
         ).update(subscription_status="lapsed")
 
@@ -100,37 +130,57 @@ def mark_lapsed_orgs():
 def send_trial_expiry_reminders():
     """
     Celery Beat — 08:30 daily.
-    Email + in-app reminder to trial org owners at 7, 3, and 1 days before
-    trial_ends_at. Separate from the paid-plan reminder task, which skips trials.
+    Fan-out: dispatch a per-org subtask for every trial org whose trial ends in
+    exactly 7, 3 or 1 days. Separate from the paid-plan reminder task, which
+    skips trials. Day math is calendar-date based — see
+    send_subscription_expiry_reminders for why timedelta .days is wrong here.
     """
-    from apps.infrastructure.core.rls import no_tenant_context, set_tenant_context
+    from apps.infrastructure.core.rls import no_tenant_context
     from apps.infrastructure.tenants.models import Organization
 
-    now = timezone.now()
-    reminder_days = {7, 3, 1}
+    today = timezone.localdate()
 
     with no_tenant_context():
-        org_ids = list(
+        rows = list(
             Organization.objects.filter(
                 is_active=True,
                 plan_tier="trial",
                 trial_ends_at__isnull=False,
-            ).values_list("id", flat=True)
+            ).values_list("id", "trial_ends_at")
         )
 
-    sent = 0
-    for org_id in org_ids:
-        try:
-            with set_tenant_context(str(org_id)):
-                org = Organization.objects.get(id=org_id)
-                days_left = (org.trial_ends_at - now).days
-                if days_left in reminder_days:
-                    _send_trial_expiry_reminder(org, days_left)
-                    sent += 1
-        except Exception as exc:
-            logger.error("billing.trial_reminder_error", org_id=str(org_id), error=str(exc))
+    dispatched = 0
+    for org_id, trial_ends_at in rows:
+        days_left = (timezone.localtime(trial_ends_at).date() - today).days
+        if days_left in REMINDER_DAYS:
+            send_trial_reminder_for_org.delay(str(org_id), days_left)
+            dispatched += 1
 
-    logger.info("billing.trial_reminders_sent", count=sent, scanned=len(org_ids))
+    logger.info("billing.trial_reminders_dispatched", count=dispatched, scanned=len(rows))
+
+
+@shared_task(
+    name="billing.send_trial_reminder_for_org",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def send_trial_reminder_for_org(self, org_id: str, days_left: int):
+    """Send one trial expiry reminder. Per-org so one failure retries alone."""
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.tenants.models import Organization
+
+    try:
+        org = Organization.objects.get(id=org_id)
+    except Organization.DoesNotExist:
+        return
+
+    try:
+        with set_tenant_context(org):
+            _send_trial_expiry_reminder(org, days_left)
+    except Exception as exc:
+        logger.error("billing.trial_reminder_error", org_id=org_id, error=str(exc))
+        raise self.retry(exc=exc)
 
 
 def _send_trial_expiry_reminder(org, days_left: int) -> None:
@@ -205,15 +255,13 @@ def deactivate_cycle_subscription(cycle_sub_id: str):
 def process_monthly_billing_cycle():
     """
     Celery Beat — 1st of every month.
-    Fan-out: verify Paystack subscription status for all monthly orgs.
-    Runs cross-tenant via no_tenant_context(); only safe to query Organization here.
+    Fan-out only: dispatch a per-org subtask for every active paid org. The
+    Paystack verification (slow HTTP per subscription) happens in
+    process_billing_for_org, so this parent finishes in seconds regardless of
+    org count and never hits the 180s soft time limit.
     """
-    from apps.infrastructure.core.rls import no_tenant_context, set_tenant_context
+    from apps.infrastructure.core.rls import no_tenant_context
     from apps.infrastructure.tenants.models import Organization
-    from .services import BillingService, PaystackService
-    from .models import CycleSubscription
-
-    ps = PaystackService()
 
     with no_tenant_context():
         org_ids = list(
@@ -224,25 +272,45 @@ def process_monthly_billing_cycle():
             ).values_list("id", flat=True)
         )
 
-    logger.info("billing.monthly_cycle_start", org_count=len(org_ids))
-
     for org_id in org_ids:
-        try:
-            with set_tenant_context(str(org_id)):
-                from apps.infrastructure.tenants.models import Organization as Org
-                org = Org.objects.get(id=org_id)
-                # Verify active cycle subscriptions with Paystack
-                active_subs = CycleSubscription.objects.filter(
-                    org=org,
-                    status="active",
-                ).exclude(paystack_subscription_code="")
+        process_billing_for_org.delay(str(org_id))
 
-                for sub in active_subs:
-                    result = ps.get_subscription(sub.paystack_subscription_code)
-                    ps_status = (result.get("data") or {}).get("status")
-                    if ps_status == "non-renewing":
-                        sub.status = "paused"
-                        sub.save(update_fields=["status"])
-                        logger.warning("billing.sub_paused_by_paystack", sub_id=str(sub.id))
-        except Exception as exc:
-            logger.error("billing.monthly_cycle_error", org_id=str(org_id), error=str(exc))
+    logger.info("billing.fan_out_dispatched", count=len(org_ids))
+
+
+@shared_task(
+    name="billing.process_billing_for_org",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def process_billing_for_org(self, org_id: str):
+    """Verify Paystack subscription status for a single org, with retries."""
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.tenants.models import Organization
+    from .models import CycleSubscription
+    from .services import PaystackService
+
+    try:
+        org = Organization.objects.get(id=org_id)
+    except Organization.DoesNotExist:
+        return
+
+    ps = PaystackService()
+    try:
+        with set_tenant_context(org):
+            active_subs = CycleSubscription.objects.filter(
+                org=org,
+                status="active",
+            ).exclude(paystack_subscription_code="")
+
+            for sub in active_subs:
+                result = ps.get_subscription(sub.paystack_subscription_code)
+                ps_status = (result.get("data") or {}).get("status")
+                if ps_status == "non-renewing":
+                    sub.status = "paused"
+                    sub.save(update_fields=["status"])
+                    logger.warning("billing.sub_paused_by_paystack", sub_id=str(sub.id))
+    except Exception as exc:
+        logger.error("billing.monthly_cycle_error", org_id=org_id, error=str(exc))
+        raise self.retry(exc=exc)

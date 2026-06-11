@@ -354,9 +354,33 @@ class BillingService(BaseService):
                 authorization_code=latest_payment.authorization_code,
             )
             data = result.get("data") or {}
-            if data.get("subscription_code"):
-                sub.paystack_subscription_code = data["subscription_code"]
-                sub.paystack_email_token = data.get("email_token", "")
+            code = data.get("subscription_code", "")
+            email_token = data.get("email_token", "")
+            if not code:
+                # The API response was lost (timeout/error) but Paystack may
+                # still have created the subscription — its subscription.create
+                # webhook parks the code on the org when it can't find a
+                # matching CycleSubscription. Consume it here. READ COMMITTED
+                # means this fresh SELECT sees the webhook's committed write
+                # even though we are inside transaction.atomic.
+                from apps.infrastructure.tenants.models import Organization
+
+                code = (
+                    Organization.objects.filter(id=self.org.id)
+                    .values_list("paystack_subscription_code", flat=True)
+                    .first()
+                ) or ""
+                if code:
+                    Organization.objects.filter(id=self.org.id).update(
+                        paystack_subscription_code=""
+                    )
+                    self.logger.info(
+                        "billing.cycle_sub_code_recovered_from_webhook",
+                        batch_id=str(batch_id),
+                    )
+            if code:
+                sub.paystack_subscription_code = code
+                sub.paystack_email_token = email_token
                 sub.status = "active"
                 sub.activated_at = timezone.now()
                 sub.save(update_fields=[

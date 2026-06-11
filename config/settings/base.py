@@ -165,6 +165,13 @@ if ENABLE_SILK:
 
 ROOT_URLCONF = "config.urls"
 
+# Django admin path — default /admin/ is the first thing every scanner probes,
+# and it would otherwise be reachable on every tenant subdomain. Production
+# sets DJANGO_ADMIN_URL to a random secret path (see RUNBOOK.md "Django Admin").
+DJANGO_ADMIN_URL = config("DJANGO_ADMIN_URL", default="_platform-admin/").lstrip("/")
+if not DJANGO_ADMIN_URL.endswith("/"):
+    DJANGO_ADMIN_URL += "/"
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

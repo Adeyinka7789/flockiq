@@ -71,7 +71,8 @@ urlpatterns = [
     path("", include("apps.finance.finance.urls")),
     path("", include("apps.finance.market.urls")),
     path("", include(superadmin_urls)),
-    path("admin/", admin.site.urls),
+    # Served at a non-default, env-configurable path — see RUNBOOK.md "Django Admin".
+    path(settings.DJANGO_ADMIN_URL, admin.site.urls),
     # Throttled subclass — stock TokenObtainPairView has no throttle scope,
     # and axes only covers the web login form, not this JWT surface.
     path("api/auth/token/", ThrottledTokenObtainPairView.as_view(), name="token_obtain_pair"),

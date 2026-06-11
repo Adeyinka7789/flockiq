@@ -114,7 +114,7 @@
     <div class="admin-stat blue">
       <div class="admin-stat-label">Django Admin</div>
       <div class="admin-stat-value" style="font-size:14px;padding-top:8px">
-        <a href="/admin/" class="admin-link">Open Admin →</a>
+        <a href="{% url 'admin:index' %}" class="admin-link">Open Admin →</a>
       </div>
     </div>
   </div>
@@ -122,7 +122,7 @@
   <div class="admin-section">
     <div class="admin-section-header">
       <span class="admin-section-title">All Tenants</span>
-      <a href="/admin/tenants/organization/add/" class="admin-link">+ Add Tenant</a>
+      <a href="{% url 'admin:tenants_organization_add' %}" class="admin-link">+ Add Tenant</a>
     </div>
     <table class="admin-table">
       <thead>
@@ -150,14 +150,14 @@
           <td style="color:#4a5568">{{ org.owner_email|default:"—" }}</td>
           <td style="color:#8a96a8">{{ org.created_at|date:"M d, Y" }}</td>
           <td>
-            <a href="/admin/tenants/organization/{{ org.pk }}/change/" class="admin-link">Edit</a>
+            <a href="{% url 'admin:tenants_organization_change' org.pk %}" class="admin-link">Edit</a>
           </td>
         </tr>
         {% empty %}
         <tr>
           <td colspan="7" style="text-align:center;padding:40px;color:#8a96a8">
             No tenants yet.
-            <a href="/admin/tenants/organization/add/" class="admin-link">Add the first one</a>
+            <a href="{% url 'admin:tenants_organization_add' %}" class="admin-link">Add the first one</a>
           </td>
         </tr>
         {% endfor %}

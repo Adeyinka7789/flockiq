@@ -104,6 +104,14 @@ class Organization(models.Model):
     grace_period_ends_at = models.DateTimeField(
         null=True, blank=True,
         help_text='If set, org has billing grace period until this date')
+    paystack_subscription_code = models.CharField(
+        max_length=100, blank=True, default="",
+        help_text=(
+            "Parking slot for a subscription.create webhook that arrives "
+            "before the create_subscription API response is processed; "
+            "consumed by BillingService.activate_cycle_subscription."
+        ),
+    )
 
     # Contact
     owner_name = models.CharField(max_length=200, blank=True)

@@ -245,15 +245,83 @@ class PaystackWebhookView(View):
         logger.info("webhook.charge_success_processed", reference=reference)
 
     def _handle_subscription_created(self, data: dict):
+        """
+        Race-safe subscription.create handling. Paystack can deliver this
+        webhook BEFORE our create_subscription API response is processed, in
+        which case no CycleSubscription carries the code yet. Resolution order:
+          1. Match an existing CycleSubscription by subscription_code.
+          2. Attach the code to the org's pending code-less CycleSubscription.
+          3. Park the code on the org (paystack_subscription_code) for
+             activate_cycle_subscription to consume later.
+        CycleSubscription is tenant-scoped, so the org must be resolved first
+        and queried inside set_tenant_context — a bare query here matches
+        nothing under RLS.
+        """
         from apps.infrastructure.billing.models import CycleSubscription
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.infrastructure.tenants.models import Organization
 
         subscription_code = data.get("subscription_code", "")
         email_token = data.get("email_token", "")
-        # Match by subscription code if we already stored it, otherwise try email_token
-        CycleSubscription.objects.filter(
+        customer_email = (data.get("customer") or {}).get("email", "")
+
+        if not subscription_code:
+            logger.warning("webhook.subscription_created_no_code", email=customer_email)
+            return
+
+        org = self._resolve_org(data)
+        if org is None:
+            logger.warning(
+                "billing.subscription_created_unmatched",
+                code=subscription_code,
+                email=customer_email,
+            )
+            return
+
+        with set_tenant_context(org):
+            updated = CycleSubscription.objects.filter(
+                paystack_subscription_code=subscription_code
+            ).update(status="active", activated_at=timezone.now())
+            if updated:
+                logger.info("webhook.subscription_created", code=subscription_code)
+                return
+
+            # Webhook beat our response — attach to the newest code-less sub.
+            pending = (
+                CycleSubscription.objects.filter(
+                    org=org, paystack_subscription_code=""
+                )
+                .exclude(status="cancelled")
+                .order_by("-created_at")
+                .first()
+            )
+            if pending:
+                pending.paystack_subscription_code = subscription_code
+                pending.paystack_email_token = email_token
+                pending.status = "active"
+                pending.activated_at = timezone.now()
+                pending.save(update_fields=[
+                    "paystack_subscription_code", "paystack_email_token",
+                    "status", "activated_at",
+                ])
+                logger.info(
+                    "billing.subscription_code_attached_via_webhook",
+                    code=subscription_code,
+                    sub_id=str(pending.id),
+                )
+                return
+
+        # No subscription row visible yet (our transaction has not committed)
+        # — park the code on the org for later matching. Organization has RLS
+        # disabled, so no tenant context is needed.
+        Organization.objects.filter(id=org.id).update(
             paystack_subscription_code=subscription_code
-        ).update(status="active", activated_at=timezone.now())
-        logger.info("webhook.subscription_created", code=subscription_code)
+        )
+        logger.info(
+            "billing.subscription_code_stored_via_webhook",
+            email=customer_email,
+            code=subscription_code,
+        )
 
     def _handle_subscription_disabled(self, data: dict):
         from apps.infrastructure.billing.models import CycleSubscription

@@ -103,8 +103,14 @@ class CreditScoringService:
                     .order_by("-sample_date")
                     .first()
                 )
-                if feed_kg and latest_w and float(latest_w.avg_weight_kg) > 0:
-                    weight_kg = float(latest_w.avg_weight_kg) * batch.initial_count
+                # Surviving birds only — keep in sync with _score_feed_efficiency.
+                if (
+                    feed_kg
+                    and latest_w
+                    and float(latest_w.avg_weight_kg) > 0
+                    and (batch.current_count or 0) > 0
+                ):
+                    weight_kg = float(latest_w.avg_weight_kg) * batch.current_count
                     fcr_list.append(float(feed_kg) / weight_kg)
 
             try:
@@ -261,7 +267,13 @@ class CreditScoringService:
             if not latest_w or float(latest_w.avg_weight_kg) <= 0:
                 scores.append(50)
                 continue
-            weight_kg = float(latest_w.avg_weight_kg) * batch.initial_count
+            # FCR uses the SURVIVING bird count, not initial_count: a batch
+            # with 20% mortality would otherwise overstate total weight by 25%,
+            # understating FCR and making bad farms look better than they are.
+            if (batch.current_count or 0) <= 0:
+                scores.append(50)
+                continue
+            weight_kg = float(latest_w.avg_weight_kg) * batch.current_count
             fcr = float(feed_kg) / weight_kg
             if fcr <= 1.8:
                 scores.append(100)

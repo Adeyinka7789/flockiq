@@ -113,7 +113,9 @@ def assert_tenant_context():
 
     Behaviour:
         DEBUG=True  → raises RuntimeError immediately (surface the bug early)
-        DEBUG=False → logs error (fail-safe; do not crash production on misconfiguration)
+        DEBUG=False → Sentry alert + error log (fail-safe; do not crash
+                      production, but never fail silently — a missing context
+                      means RLS returns empty rows and pages render blank)
 
     Skipped on SQLite (dev fallback without full PostgreSQL RLS support).
     """
@@ -125,12 +127,23 @@ def assert_tenant_context():
         value = cursor.fetchone()[0]
 
     if not value:
-        msg = "Tenant context not set — query would return empty resultset or all rows."
+        import sentry_sdk
         from django.conf import settings
+
+        sentry_sdk.capture_message(
+            "assert_tenant_context: no tenant context active",
+            level="error",
+        )
+        logger.error(
+            "tenant_context.missing",
+            stack_info=True,
+            hint="Ensure set_tenant_context() wraps all DB ops in Celery tasks",
+        )
         if settings.DEBUG:
-            raise RuntimeError(msg)
-        else:
-            logger.error("tenant_context.missing", hint="Ensure set_tenant_context() wraps all DB ops in Celery tasks")
+            raise RuntimeError(
+                "No tenant context active. "
+                "Wrap this call in set_tenant_context()."
+            )
 
 
 # ── Internal helpers ────────────────────────────────────────────────────────

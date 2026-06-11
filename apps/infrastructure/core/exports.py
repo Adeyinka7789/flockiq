@@ -85,7 +85,15 @@ def generate_credit_score_pdf(org, credit_score) -> bytes:
         ('PADDING', (0, 0), (-1, -1), 6),
     ]))
     story.append(t2)
-    story.append(Spacer(1, 0.8 * cm))
+    story.append(Spacer(1, 0.4 * cm))
+
+    story.append(
+        Paragraph(
+            'Note: FCR calculated using surviving bird count at harvest.',
+            styles['Normal'],
+        )
+    )
+    story.append(Spacer(1, 0.4 * cm))
 
     story.append(
         Paragraph(

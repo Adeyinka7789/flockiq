@@ -24,6 +24,24 @@ Any operation that bypasses RLS:
 ## Production .env
 DATABASE_URL must use flockiq_app credentials — never flockiq_admin.
 
+    DJANGO_ADMIN_URL=your-random-string-here/
+
+See "Django Admin" below.
+
+## Django Admin
+Admin URL is set via DJANGO_ADMIN_URL env var (settings.DJANGO_ADMIN_URL).
+Default (development): /_platform-admin/
+Production: set to a random string e.g. 'xK9mP2-admin/'
+Keep this secret — it must never appear in templates (use
+{% url 'admin:index' %}), sitemaps, robots.txt or client-side JS.
+IP-allowlist it in nginx:
+
+    location /your-admin-path/ {
+        allow YOUR_IP;
+        deny all;
+        proxy_pass http://127.0.0.1:8000;
+    }
+
 ## Redis DB allocation
 
 Each concern gets a DEDICATED Redis DB. Never share — a Celery broker flush

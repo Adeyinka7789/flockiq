@@ -29,7 +29,7 @@ from apps.infrastructure.core.email_service import EmailService
 from .constants import COMMON_TIMEZONES, COUNTRY_CHOICES, timezone_for_country
 from .models import CustomUser
 from .permissions import IsManagerOrAbove
-from .throttles import LoginRateThrottle
+from .throttles import LoginRateThrottle, SignupRateThrottle
 from .serializers import (
     ChangePasswordSerializer,
     CustomTokenObtainPairSerializer,
@@ -200,6 +200,22 @@ class WebLoginView(View):
         })
 
 
+# Subdomains that would shadow platform infrastructure, mail routing or app
+# routes if a tenant claimed them. Checked at signup; expand before adding any
+# new platform-level hostname or top-level URL path.
+RESERVED_SUBDOMAINS = {
+    "www", "api", "admin", "superadmin", "app",
+    "mail", "email", "smtp", "pop", "imap",
+    "ftp", "ssh", "vpn", "cdn", "static",
+    "media", "assets", "blog", "docs", "help",
+    "support", "billing", "pay", "payment",
+    "ns", "ns1", "ns2", "dns",
+    "dev", "staging", "test", "demo", "sandbox",
+    "flockiq", "accounts", "auth", "login",
+    "signup", "register", "dashboard",
+}
+
+
 class SignupView(View):
     """Session-based signup — creates Organisation + owner user atomically."""
 
@@ -214,16 +230,28 @@ class SignupView(View):
         import re
         from datetime import timedelta
 
-        from django.db import transaction
+        from django.db import IntegrityError, transaction
+        from django.http import JsonResponse
         from django.utils import timezone
 
         from apps.infrastructure.tenants.models import Organization
+
+        # Rate limit signups per IP (scope "signup" in DEFAULT_THROTTLE_RATES).
+        # This is a plain Django view, so the throttle is invoked manually —
+        # DRF's throttle_classes machinery only runs on APIView.
+        throttle = SignupRateThrottle()
+        if not throttle.allow_request(request, self):
+            logger.warning("signup.throttled", ip=request.META.get("REMOTE_ADDR", ""))
+            return JsonResponse(
+                {"error": "Too many signup attempts. Try again later."},
+                status=429,
+            )
 
         errors = {}
 
         org_name = request.POST.get("org_name", "").strip()
         owner_name = request.POST.get("owner_name", "").strip()
-        email = request.POST.get("email", "").strip()
+        email = request.POST.get("email", "").strip().lower()
         phone = request.POST.get("phone", "").strip()
         subdomain = request.POST.get("subdomain", "").strip().lower()
         country = request.POST.get("country", "").strip()
@@ -241,11 +269,11 @@ class SignupView(View):
             errors["subdomain"] = "Subdomain is required"
         elif not re.match(r"^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$", subdomain):
             errors["subdomain"] = "Use only lowercase letters, numbers, hyphens"
-        elif subdomain in {"www", "api", "admin", "app", "mail", "static", "media"}:
+        elif subdomain in RESERVED_SUBDOMAINS:
             errors["subdomain"] = "This subdomain is reserved"
         elif Organization.objects.filter(subdomain=subdomain).exists():
             errors["subdomain"] = "This subdomain is already taken"
-        if email and CustomUser.objects.filter(email=email).exists():
+        if email and CustomUser.objects.filter(email__iexact=email).exists():
             errors["email"] = "An account with this email already exists"
         if len(password) < 8:
             errors["password"] = "Password must be at least 8 characters"
@@ -259,32 +287,44 @@ class SignupView(View):
                 "country_choices": COUNTRY_CHOICES,
             })
 
-        with transaction.atomic():
-            org = Organization.objects.create(
-                name=org_name,
-                subdomain=subdomain,
-                owner_name=owner_name,
-                owner_email=email,
-                owner_phone=phone,
-                plan_tier="trial",
-                subscription_status="trial",
-                trial_ends_at=timezone.now() + timedelta(days=14),
-                is_active=True,
-            )
-            name_parts = owner_name.split()
-            user = CustomUser.objects.create_user(
-                email=email,
-                password=password,
-                username=email,
-                first_name=name_parts[0] if name_parts else "",
-                last_name=" ".join(name_parts[1:]) if len(name_parts) > 1 else "",
-                phone=phone,
-                country=country,
-                state_region=state_region,
-                timezone=timezone_for_country(country),
-                org=org,
-                role="owner",
-            )
+        # The exists() checks above are advisory only — two concurrent signups
+        # can both pass them. The unique constraints on subdomain and username
+        # are the real guard; IntegrityError converts the race loser into a
+        # form error instead of a 500.
+        try:
+            with transaction.atomic():
+                org = Organization.objects.create(
+                    name=org_name,
+                    subdomain=subdomain,
+                    owner_name=owner_name,
+                    owner_email=email,
+                    owner_phone=phone,
+                    plan_tier="trial",
+                    subscription_status="trial",
+                    trial_ends_at=timezone.now() + timedelta(days=14),
+                    is_active=True,
+                )
+                name_parts = owner_name.split()
+                user = CustomUser.objects.create_user(
+                    email=email,
+                    password=password,
+                    username=email,
+                    first_name=name_parts[0] if name_parts else "",
+                    last_name=" ".join(name_parts[1:]) if len(name_parts) > 1 else "",
+                    phone=phone,
+                    country=country,
+                    state_region=state_region,
+                    timezone=timezone_for_country(country),
+                    org=org,
+                    role="owner",
+                )
+        except IntegrityError:
+            errors["subdomain"] = "This subdomain is already taken. Please choose another."
+            return render(request, "accounts/signup.html", {
+                "errors": errors,
+                "values": request.POST,
+                "country_choices": COUNTRY_CHOICES,
+            })
 
         verification_url = request.build_absolute_uri(
             f"/accounts/verify/{user.email_verification_token}/"

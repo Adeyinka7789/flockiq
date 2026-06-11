@@ -13,13 +13,17 @@ class TrialEnforcementMiddleware:
 
     EXEMPT_PATHS = [
         '/login/', '/logout/', '/signup/', '/billing/',
-        '/api/v1/auth/', '/admin/', '/static/', '/media/',
+        '/api/v1/auth/', '/static/', '/media/',
         '/onboarding/', '/forgot-password/', '/reset-password/',
         '/notifications/',
     ]
 
     def __init__(self, get_response):
         self.get_response = get_response
+        # The admin path is env-configurable (settings.DJANGO_ADMIN_URL), so it
+        # cannot live in the static EXEMPT_PATHS list above.
+        from django.conf import settings
+        self.exempt_paths = self.EXEMPT_PATHS + [f"/{settings.DJANGO_ADMIN_URL}"]
 
     @staticmethod
     def _expired_redirect(request):
@@ -54,7 +58,7 @@ class TrialEnforcementMiddleware:
         if request.user.is_superuser or request.user.role == 'super_admin':
             return self.get_response(request)
 
-        for path in self.EXEMPT_PATHS:
+        for path in self.exempt_paths:
             if request.path.startswith(path):
                 return self.get_response(request)
 
