@@ -5,7 +5,8 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 
-from apps.infrastructure.core.models import TenantAwareModel
+from apps.infrastructure.core.managers import ActiveManager, AllObjectsManager
+from apps.infrastructure.core.models import SoftDeleteMixin, TenantAwareModel
 
 
 FEED_TYPE_CHOICES = [
@@ -17,7 +18,10 @@ FEED_TYPE_CHOICES = [
 ]
 
 
-class FeedLog(TenantAwareModel):
+class FeedLog(SoftDeleteMixin, TenantAwareModel):
+    objects = ActiveManager()
+    all_objects = AllObjectsManager()
+
     batch = models.ForeignKey(
         "flocks.Batch",
         on_delete=models.PROTECT,
@@ -58,7 +62,15 @@ class FeedLog(TenantAwareModel):
 
     class Meta:
         db_table = "feed_feedlog"
-        unique_together = [("org", "batch", "record_date")]
+        # Partial unique: one active log per (org, batch, date). A soft-deleted
+        # row is excluded, so the same date can be re-logged after deletion.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["org", "batch", "record_date"],
+                condition=models.Q(is_deleted=False),
+                name="unique_feedlog_per_batch_date_active",
+            )
+        ]
         indexes = [
             models.Index(
                 fields=["org", "batch", "record_date"],

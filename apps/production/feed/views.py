@@ -10,13 +10,25 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.infrastructure.accounts.permissions import CanRecord
+from apps.infrastructure.core.delete_views import SoftDeleteView
 from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.rls import set_tenant_context
 
+from .models import FeedLog
 from .services import FeedService
 
 logger = structlog.get_logger(__name__)
+
+
+class FeedLogDeleteView(SoftDeleteView):
+    """Soft-delete a feed log (owner, manager, supervisor). Simple confirm."""
+
+    model = FeedLog
+    allowed_roles = ["owner", "manager", "supervisor"]
+
+    def get_success_url(self, obj):
+        return f"/batches/{obj.batch_id}/"
 
 
 class FeedLogView(RoleRequiredMixin, View):

@@ -353,6 +353,11 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.check_disk_space",
         "schedule": crontab(hour="*/6", minute=0),
     },
+    # Daily 03:30: permanently delete records soft-deleted more than 90 days ago.
+    "hard-delete-expired-records": {
+        "task": "core.hard_delete_expired_records",
+        "schedule": crontab(hour=3, minute=30),
+    },
 }
 
 # --- JWT ---

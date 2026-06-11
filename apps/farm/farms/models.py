@@ -1,15 +1,19 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
-from apps.infrastructure.core.models import TenantAwareModel
+from apps.infrastructure.core.managers import ActiveManager, AllObjectsManager
+from apps.infrastructure.core.models import SoftDeleteMixin, TenantAwareModel
 
 # Nigeria bounding box
 _LAT_MIN, _LAT_MAX = 4.0, 14.0
 _LNG_MIN, _LNG_MAX = 2.7, 15.0
 
 
-class Farm(TenantAwareModel):
+class Farm(SoftDeleteMixin, TenantAwareModel):
     """A physical poultry farm location owned by one tenant."""
+
+    objects = ActiveManager()
+    all_objects = AllObjectsManager()
 
     class FarmType(models.TextChoices):
         LAYER = "layer", "Layer"
@@ -75,8 +79,11 @@ class Farm(TenantAwareModel):
             return 0
 
 
-class House(TenantAwareModel):
+class House(SoftDeleteMixin, TenantAwareModel):
     """A poultry house within a farm."""
+
+    objects = ActiveManager()
+    all_objects = AllObjectsManager()
 
     class HouseType(models.TextChoices):
         LAYER = "layer", "Layer"

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Deleted Records{% endblock %}
+{% block breadcrumb %}Deleted Records{% endblock %}
+
+{% block content %}
+<div style="max-width:1000px;margin:0 auto">
+  <div style="margin-bottom:20px">
+    <div style="font-size:22px;font-weight:800;color:#1a2744;letter-spacing:-0.4px">Deleted Records</div>
+    <div style="font-size:13px;color:#8a96a8">
+      Soft-deleted records across all tenants. Restore within 90 days before the nightly purge.
+    </div>
+  </div>
+
+  {% include "superadmin/_deleted_section.html" with rows=deleted_farms model="farm" title="Farms" %}
+  {% include "superadmin/_deleted_section.html" with rows=deleted_houses model="house" title="Houses" %}
+  {% include "superadmin/_deleted_section.html" with rows=deleted_batches model="batch" title="Batches" %}
+</div>
+{% endblock %}

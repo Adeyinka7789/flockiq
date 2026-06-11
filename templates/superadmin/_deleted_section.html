@@ -1,0 +1,30 @@
+<div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:20px;margin-bottom:16px">
+  <div style="font-size:14px;font-weight:700;color:#1a2744;margin-bottom:12px">
+    {{ title }}
+    <span style="color:#8a96a8;font-weight:600">({{ rows|length }})</span>
+  </div>
+
+  {% for obj in rows %}
+  <div style="display:flex;align-items:center;justify-content:space-between;
+              padding:10px 0;border-top:1px solid #f1f4fb">
+    <div style="min-width:0">
+      <div style="font-size:13px;font-weight:600;color:#1a2744">{{ obj }}</div>
+      <div style="font-size:11px;color:#8a96a8">
+        {{ obj.org.name }}
+        · deleted {{ obj.deleted_at|date:"M d, Y · g:i A" }}
+        {% if obj.deleted_by %}by {{ obj.deleted_by.get_full_name|default:obj.deleted_by.email }}{% endif %}
+      </div>
+    </div>
+    <button hx-post="{% url 'superadmin:deleted_records' %}"
+            hx-vals='{"model": "{{ model }}", "pk": "{{ obj.pk }}", "org_id": "{{ obj.org_id }}"}'
+            hx-confirm="Restore {{ obj }}?"
+            style="flex-shrink:0;padding:6px 14px;background:#e8f5ee;color:#1c7a44;
+                   border:1px solid #b6e2c8;border-radius:8px;font-size:12px;
+                   font-weight:700;cursor:pointer">
+      Restore
+    </button>
+  </div>
+  {% empty %}
+  <div style="font-size:12px;color:#8a96a8;padding:8px 0">None.</div>
+  {% endfor %}
+</div>

@@ -4,6 +4,7 @@ from .views import (
     BatchCloseAPIView,
     BatchCloseView,
     BatchCreateView,
+    BatchDeleteView,
     BatchDetailAPIView,
     BatchDetailView,
     BatchExcelExportView,
@@ -13,8 +14,10 @@ from .views import (
     BatchPDFExportView,
     ExitOptimizerPartialView,
     MortalityLogAPIView,
+    MortalityLogDeleteView,
     MortalityLogView,
     MortalityRecentView,
+    WeightRecordDeleteView,
     WeightRecordView,
 )
 
@@ -27,6 +30,17 @@ urlpatterns = [
     path("batches/<uuid:pk>/mortality/", MortalityLogView.as_view(), name="mortality"),
     path("batches/<uuid:pk>/mortality/recent/", MortalityRecentView.as_view(), name="mortality_recent"),
     path("batches/<uuid:pk>/weight/", WeightRecordView.as_view(), name="weight"),
+    path("batches/<uuid:pk>/delete/", BatchDeleteView.as_view(), name="delete"),
+    path(
+        "batches/mortality/<uuid:pk>/delete/",
+        MortalityLogDeleteView.as_view(),
+        name="mortality_delete",
+    ),
+    path(
+        "batches/weight/<uuid:pk>/delete/",
+        WeightRecordDeleteView.as_view(),
+        name="weight_delete",
+    ),
     path("batches/<uuid:pk>/close/", BatchCloseView.as_view(), name="close"),
     path("batches/<uuid:pk>/exit-optimizer/", ExitOptimizerPartialView.as_view(), name="exit_optimizer_partial"),
     path("batches/<uuid:pk>/metrics/", BatchMetricsCardView.as_view(), name="metrics"),

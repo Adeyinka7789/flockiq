@@ -6,12 +6,24 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views import View
 
+from apps.infrastructure.core.delete_views import SoftDeleteView
 from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 
+from .models import WaterLog
 from .services import WaterService
 
 logger = structlog.get_logger(__name__)
+
+
+class WaterLogDeleteView(SoftDeleteView):
+    """Soft-delete a water log (owner, manager, supervisor). Simple confirm."""
+
+    model = WaterLog
+    allowed_roles = ["owner", "manager", "supervisor"]
+
+    def get_success_url(self, obj):
+        return f"/batches/{obj.batch_id}/"
 
 
 class WaterLogView(LoginRequiredMixin, View):

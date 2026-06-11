@@ -31,6 +31,11 @@ urlpatterns = [
         name="stock",
     ),
     path(
+        "feed-logs/<uuid:pk>/delete/",
+        views.FeedLogDeleteView.as_view(),
+        name="delete",
+    ),
+    path(
         "api/v1/feed/log/",
         views.FeedLogAPIView.as_view(),
         name="api_log",

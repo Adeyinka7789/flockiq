@@ -17,6 +17,7 @@ urlpatterns = [
     path('superadmin/billing/', views.BillingControlView.as_view(), name='billing'),
     path('superadmin/billing/<uuid:pk>/manage/', views.BillingManageOrgView.as_view(), name='billing_manage'),
     path('superadmin/audit/', views.AuditTrailView.as_view(), name='audit_trail'),
+    path('superadmin/deleted-records/', views.DeletedRecordsView.as_view(), name='deleted_records'),
     path('superadmin/quotas/', views.TenantQuotasView.as_view(), name='tenant_quotas'),
     path('superadmin/quotas/<uuid:pk>/edit/', views.TenantQuotaEditView.as_view(), name='quota_edit'),
     path('superadmin/impersonation/', views.ImpersonationView.as_view(), name='impersonation'),

@@ -20,4 +20,9 @@ urlpatterns = [
         views.WaterSummaryCardView.as_view(),
         name="summary",
     ),
+    path(
+        "water-logs/<uuid:pk>/delete/",
+        views.WaterLogDeleteView.as_view(),
+        name="delete",
+    ),
 ]

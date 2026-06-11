@@ -1028,6 +1028,106 @@ class TenantDetailView(SuperAdminMixin, View):
         return render(request, 'superadmin/tenant_detail.html', context)
 
 
+class DeletedRecordsView(SuperAdminMixin, View):
+    """View and restore soft-deleted records across all tenants.
+
+    PostgreSQL RLS only exposes a tenant's rows while a matching GUC is active,
+    so listing fans out per org inside set_tenant_context(org); restore is given
+    the record's org_id by the template and re-enters that org's context.
+    """
+
+    # name → Model. Restore POST looks the model up here.
+    def _model_map(self):
+        from apps.farm.farms.models import Farm, House
+        from apps.farm.flocks.models import Batch, MortalityLog, WeightRecord
+        from apps.production.feed.models import FeedLog
+        from apps.production.production.models import EggProductionLog
+        from apps.production.water.models import WaterLog
+
+        return {
+            'farm': Farm,
+            'house': House,
+            'batch': Batch,
+            'mortality': MortalityLog,
+            'weight': WeightRecord,
+            'feed': FeedLog,
+            'egg': EggProductionLog,
+            'water': WaterLog,
+        }
+
+    def get(self, request):
+        from apps.farm.farms.models import Farm, House
+        from apps.farm.flocks.models import Batch
+        from apps.infrastructure.core.rls import no_tenant_context, set_tenant_context
+
+        # Organization has RLS disabled — safe to enumerate without a context.
+        with no_tenant_context():
+            orgs = list(Organization.objects.order_by('name'))
+
+        deleted_farms, deleted_houses, deleted_batches = [], [], []
+        for org in orgs:
+            with set_tenant_context(org):
+                # GUC = this org, so all_objects (tenant-scoped, deleted included)
+                # returns this org's deleted rows. select_related on FKs is
+                # evaluated inside the context where the relations are visible.
+                deleted_farms += list(
+                    Farm.all_objects.filter(is_deleted=True)
+                    .select_related('deleted_by')
+                )
+                deleted_houses += list(
+                    House.all_objects.filter(is_deleted=True)
+                    .select_related('farm', 'deleted_by')
+                )
+                deleted_batches += list(
+                    Batch.all_objects.filter(is_deleted=True)
+                    .select_related('farm', 'deleted_by')
+                )
+
+        deleted_farms.sort(key=lambda o: o.deleted_at or timezone.now(), reverse=True)
+        deleted_houses.sort(key=lambda o: o.deleted_at or timezone.now(), reverse=True)
+        deleted_batches.sort(key=lambda o: o.deleted_at or timezone.now(), reverse=True)
+
+        context = {
+            'deleted_farms': deleted_farms[:50],
+            'deleted_houses': deleted_houses[:50],
+            'deleted_batches': deleted_batches[:50],
+        }
+        return render(request, 'superadmin/deleted_records.html', context)
+
+    def post(self, request):
+        """Restore a soft-deleted record. Needs model, pk and org_id."""
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        model_name = request.POST.get('model')
+        pk = request.POST.get('pk')
+        org_id = request.POST.get('org_id')
+
+        Model = self._model_map().get(model_name)
+        if not Model or not pk or not org_id:
+            return HttpResponse(status=400)
+
+        # Re-enter the record's tenant context so RLS exposes it for the restore.
+        with set_tenant_context(org_id):
+            obj = get_object_or_404(Model.all_objects, pk=pk, is_deleted=True)
+            obj.restore(user=request.user)
+            obj_label = str(obj)
+
+        logger.info(
+            "superadmin.record_restored",
+            model=Model.__name__,
+            object_id=str(pk),
+            org_id=str(org_id),
+            restored_by=str(request.user.pk),
+        )
+
+        response = HttpResponse(status=204)
+        response['HX-Trigger'] = json.dumps({
+            'showToast': {'message': f'Restored: {obj_label}', 'type': 'success'},
+        })
+        response['HX-Refresh'] = 'true'
+        return response
+
+
 class SupportTicketReplyView(SuperAdminMixin, View):
     def post(self, request, pk):
         from django.conf import settings as django_settings

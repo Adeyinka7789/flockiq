@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.core.delete_views import SoftDeleteView
 from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 
@@ -384,6 +385,30 @@ class FarmSummaryCardView(LoginRequiredMixin, View):
                 raise Http404("Farm not found.")
 
         return render(request, "farms/_farm_summary_card.html", summary)
+
+
+# ── Soft delete views ───────────────────────────────────────────────────────
+
+class FarmDeleteView(SoftDeleteView):
+    """Soft-delete a farm (owner only). Requires typing the farm name + phrase."""
+
+    model = Farm
+    allowed_roles = ["owner"]
+    success_url = "/farms/"
+    confirmation_field = "name"
+    require_phrase = "DELETE FARM"
+
+
+class HouseDeleteView(SoftDeleteView):
+    """Soft-delete a house (owner, manager). Requires typing the house name."""
+
+    model = House
+    allowed_roles = ["owner", "manager"]
+    pk_url_kwarg = "house_pk"
+    confirmation_field = "name"
+
+    def get_success_url(self, obj):
+        return f"/farms/{obj.farm_id}/"
 
 
 # ── DRF API views ──────────────────────────────────────────────────────────────

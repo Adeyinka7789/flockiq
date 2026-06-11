@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.core.delete_views import SoftDeleteView
 from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 from apps.infrastructure.core.views import TenantRequiredMixin
@@ -21,6 +22,16 @@ from .serializers import EggProductionLogCreateSerializer, EggProductionLogSeria
 from .services import EggProductionService
 
 logger = structlog.get_logger(__name__)
+
+
+class EggProductionLogDeleteView(SoftDeleteView):
+    """Soft-delete an egg production log (owner, manager, supervisor)."""
+
+    model = EggProductionLog
+    allowed_roles = ["owner", "manager", "supervisor"]
+
+    def get_success_url(self, obj):
+        return f"/batches/{obj.batch_id}/"
 
 
 

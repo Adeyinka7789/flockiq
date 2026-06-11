@@ -46,3 +46,38 @@ class TenantAwareManager(models.Manager):
         Every call site must have a comment explaining why it is safe.
         """
         return super().get_queryset()
+
+
+class ActiveManager(TenantAwareManager):
+    """
+    Default manager for soft-deletable models — excludes soft-deleted rows.
+
+    Inherits TenantAwareManager so every queryset is still tenant-scoped
+    (Layer 1) before SQL is emitted. Layering ``is_deleted=False`` on top means
+    every existing view, service and API endpoint automatically stops seeing
+    soft-deleted records with no further code changes.
+
+    ``.unscoped()`` keeps excluding deleted rows so cross-tenant superadmin
+    aggregates (active bird counts, revenue, etc.) ignore deleted records.
+    """
+
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
+    def unscoped(self):
+        return super().unscoped().filter(is_deleted=False)
+
+
+class AllObjectsManager(TenantAwareManager):
+    """
+    Manager that INCLUDES soft-deleted rows — for the superadmin restore panel
+    and the 90-day hard-delete Celery sweep.
+
+    ``Model.all_objects`` is still tenant-scoped (returns ``none()`` without a
+    context, fail-closed). For cross-tenant access use
+    ``Model.all_objects.unscoped()`` (inherited) — it returns every row,
+    deleted included, exactly like the existing superadmin ``.unscoped()``
+    reads.
+    """
+
+    pass

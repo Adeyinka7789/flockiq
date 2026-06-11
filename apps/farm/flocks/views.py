@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.core.delete_views import SoftDeleteView
 from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
 
@@ -759,6 +760,37 @@ class BatchExcelExportView(LoginRequiredMixin, View):
             f'attachment; filename="batch-{batch.batch_name}.xlsx"'
         )
         return response
+
+
+# ── Soft delete views ───────────────────────────────────────────────────────
+
+class BatchDeleteView(SoftDeleteView):
+    """Soft-delete a batch (owner, manager). Requires typing the batch name."""
+
+    model = Batch
+    allowed_roles = ["owner", "manager"]
+    success_url = "/batches/"
+    confirmation_field = "batch_name"
+
+
+class MortalityLogDeleteView(SoftDeleteView):
+    """Soft-delete a mortality log (owner, manager, supervisor). Simple confirm."""
+
+    model = MortalityLog
+    allowed_roles = ["owner", "manager", "supervisor"]
+
+    def get_success_url(self, obj):
+        return f"/batches/{obj.batch_id}/"
+
+
+class WeightRecordDeleteView(SoftDeleteView):
+    """Soft-delete a weight record (owner, manager, supervisor). Simple confirm."""
+
+    model = WeightRecord
+    allowed_roles = ["owner", "manager", "supervisor"]
+
+    def get_success_url(self, obj):
+        return f"/batches/{obj.batch_id}/"
 
 
 # ── DRF API views ───────────────────────────────────────────────────────────────

@@ -5,11 +5,15 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
-from apps.infrastructure.core.models import TenantAwareModel
+from apps.infrastructure.core.managers import ActiveManager, AllObjectsManager
+from apps.infrastructure.core.models import SoftDeleteMixin, TenantAwareModel
 
 
-class Batch(TenantAwareModel):
+class Batch(SoftDeleteMixin, TenantAwareModel):
     """A single production cycle — the heartbeat of everything in FlockIQ."""
+
+    objects = ActiveManager()
+    all_objects = AllObjectsManager()
 
     class BirdType(models.TextChoices):
         LAYER = "layer", "Layer"
@@ -137,8 +141,11 @@ class Batch(TenantAwareModel):
         return round(self.mortality_to_date / self.initial_count * 100, 2)
 
 
-class MortalityLog(TenantAwareModel):
+class MortalityLog(SoftDeleteMixin, TenantAwareModel):
     """A single mortality event for a batch."""
+
+    objects = ActiveManager()
+    all_objects = AllObjectsManager()
 
     class Cause(models.TextChoices):
         DISEASE = "disease", "Disease"
@@ -232,8 +239,11 @@ class StockReconciliation(TenantAwareModel):
         return f"{self.date} — variance {self.variance}{flag}"
 
 
-class WeightRecord(TenantAwareModel):
+class WeightRecord(SoftDeleteMixin, TenantAwareModel):
     """Sample weight measurement for a broiler batch."""
+
+    objects = ActiveManager()
+    all_objects = AllObjectsManager()
 
     batch = models.ForeignKey(
         Batch,

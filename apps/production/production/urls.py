@@ -46,6 +46,11 @@ urlpatterns = [
         name="summary",
     ),
     path(
+        "egg-logs/<uuid:pk>/delete/",
+        views.EggProductionLogDeleteView.as_view(),
+        name="delete",
+    ),
+    path(
         "api/v1/production/eggs/",
         views.EggProductionAPIView.as_view(),
         name="api_list",

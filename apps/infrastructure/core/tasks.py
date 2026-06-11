@@ -1,8 +1,81 @@
+import datetime
+
 import structlog
 from celery import shared_task
 from django.core.management import call_command
+from django.db.models.deletion import ProtectedError
+from django.utils import timezone
 
 logger = structlog.get_logger(__name__)
+
+
+@shared_task(name="core.hard_delete_expired_records")
+def hard_delete_expired_records():
+    """
+    Permanently delete records soft-deleted more than 90 days ago.
+    Runs nightly at 03:30.
+
+    PostgreSQL RLS only exposes a tenant's rows while a matching GUC is active,
+    so the sweep fans out per org inside set_tenant_context(org). Within each org
+    models are purged leaf-first (logs → batch → house → farm) so PROTECT foreign
+    keys do not block a parent whose children are also expired. A model that still
+    has live (not-yet-expired) children raises ProtectedError; we log and skip it
+    — it is retried on a future night once the children expire.
+    """
+    from apps.farm.farms.models import Farm, House
+    from apps.farm.flocks.models import Batch, MortalityLog, WeightRecord
+    from apps.infrastructure.core.rls import no_tenant_context, set_tenant_context
+    from apps.infrastructure.tenants.models import Organization
+    from apps.production.feed.models import FeedLog
+    from apps.production.production.models import EggProductionLog
+    from apps.production.water.models import WaterLog
+
+    cutoff = timezone.now() - datetime.timedelta(days=90)
+
+    # Leaf-first ordering: children before the parents they PROTECT.
+    models_to_clean = [
+        WaterLog,
+        FeedLog,
+        EggProductionLog,
+        MortalityLog,
+        WeightRecord,
+        Batch,
+        House,
+        Farm,
+    ]
+
+    # Organization has RLS disabled — safe to enumerate without a tenant context.
+    with no_tenant_context():
+        org_ids = list(Organization.objects.values_list("id", flat=True))
+
+    total = 0
+    for org_id in org_ids:
+        with set_tenant_context(org_id):
+            for Model in models_to_clean:
+                # GUC = this org, so all_objects (tenant-scoped, deleted included)
+                # returns exactly this org's expired rows.
+                qs = Model.all_objects.filter(
+                    is_deleted=True,
+                    deleted_at__lt=cutoff,
+                )
+                try:
+                    deleted, _ = qs.delete()
+                    total += deleted
+                except ProtectedError:
+                    logger.warning(
+                        "core.hard_delete_blocked",
+                        model=Model.__name__,
+                        org_id=str(org_id),
+                        hint="rows still referenced by live (not-yet-expired) children",
+                    )
+
+    if total:
+        logger.info(
+            "core.hard_delete_completed",
+            count=total,
+            cutoff=str(cutoff.date()),
+        )
+    return total
 
 
 @shared_task(name="core.backup_database")

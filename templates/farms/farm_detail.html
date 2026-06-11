@@ -114,6 +114,7 @@
   .fd-house-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
   .fd-house-item {
     padding: 14px 18px; border-bottom: 1px solid #f8faff; border-right: 1px solid #f8faff;
+    position: relative;
   }
   .fd-house-item:nth-child(even) { border-right: none; }
   .fd-house-item:nth-last-child(-n+2) { border-bottom: none; }
@@ -227,6 +228,21 @@
         </svg>
         New Intake
       </a>
+      {% if request.user.role == 'owner' %}
+      <button class="fd-btn-secondary"
+              hx-get="{% url 'farms:delete' farm.pk %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML"
+              @click="$dispatch('open-modal')"
+              style="color:#dc2626;border-color:#fecaca">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+        Delete Farm
+      </button>
+      {% endif %}
     </div>
   </div>
 
@@ -373,6 +389,21 @@
                 </div>
               </div>
             </div>
+            {% if request.user.role in 'owner,manager' %}
+            <button hx-get="{% url 'farms:house_delete' farm.pk house.pk %}"
+                    hx-target="#modal-body" hx-swap="innerHTML"
+                    @click="$dispatch('open-modal')"
+                    title="Delete house"
+                    style="position:absolute;top:10px;right:10px;background:none;border:none;
+                           color:#cbd5e1;cursor:pointer;padding:2px"
+                    onmouseover="this.style.color='#dc2626'"
+                    onmouseout="this.style.color='#cbd5e1'">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+            {% endif %}
           </div>
           {% empty %}
           <div style="grid-column:1/-1;padding:24px;text-align:center;
