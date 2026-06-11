@@ -5,7 +5,6 @@ import json
 from datetime import date, timedelta
 
 import structlog
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -14,8 +13,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.accounts.permissions import CanRecord
 from apps.infrastructure.core.filters import DateRangeFilter
 from apps.infrastructure.core.helpers import get_org_or_404
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.rls import set_tenant_context
 from apps.infrastructure.core.views import TenantRequiredMixin
 
@@ -24,8 +25,11 @@ from .services import ExpenseService
 logger = structlog.get_logger(__name__)
 
 
-class ExpenseOverviewView(TenantRequiredMixin, View):
+class ExpenseOverviewView(RoleRequiredMixin, TenantRequiredMixin, View):
     """GET /expenses/ — farm-wide expense overview with break-even calculator."""
+
+    # Financial data — vet_advisor is read-only on farm data and excluded.
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def get(self, request):
         from apps.farm.farms.models import Farm
@@ -184,8 +188,13 @@ class ExpenseOverviewView(TenantRequiredMixin, View):
 
 
 
-class ExpenseLogView(LoginRequiredMixin, View):
-    """GET+POST /finance/expenses/<uuid:batch_pk>/log/"""
+class ExpenseLogView(RoleRequiredMixin, View):
+    """GET+POST /finance/expenses/<uuid:batch_pk>/log/
+
+    Recording expenses — every operational role except vet_advisor (read-only).
+    """
+
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def get(self, request, batch_pk):
         from apps.farm.flocks.models import Batch
@@ -267,8 +276,10 @@ class ExpenseLogView(LoginRequiredMixin, View):
         return response
 
 
-class ExpenseTableView(LoginRequiredMixin, View):
+class ExpenseTableView(RoleRequiredMixin, View):
     """GET /finance/expenses/<uuid:batch_pk>/table/ — supports date range + category filters."""
+
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def get(self, request, batch_pk):
         from apps.infrastructure.core.filters import DateRangeFilter
@@ -311,8 +322,10 @@ class ExpenseTableView(LoginRequiredMixin, View):
         )
 
 
-class ExpenseBreakdownView(LoginRequiredMixin, View):
+class ExpenseBreakdownView(RoleRequiredMixin, View):
     """GET /finance/expenses/<uuid:batch_pk>/breakdown/"""
+
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def get(self, request, batch_pk):
         org = get_org_or_404(request)
@@ -325,8 +338,10 @@ class ExpenseBreakdownView(LoginRequiredMixin, View):
         )
 
 
-class ExpenseFarmSummaryView(LoginRequiredMixin, View):
+class ExpenseFarmSummaryView(RoleRequiredMixin, View):
     """GET /finance/expenses/farm/<uuid:farm_pk>/summary/"""
+
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def get(self, request, farm_pk):
         org = get_org_or_404(request)
@@ -346,7 +361,7 @@ class ExpenseFarmSummaryView(LoginRequiredMixin, View):
 class ExpenseAPIView(APIView):
     """GET+POST /api/v1/expenses/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanRecord]
 
     def get(self, request):
         org = get_org_or_404(request)
@@ -399,7 +414,9 @@ class ExpenseAPIView(APIView):
         )
 
 
-class FinancePDFExportView(TenantRequiredMixin, View):
+class FinancePDFExportView(RoleRequiredMixin, TenantRequiredMixin, View):
+    allowed_roles = ["owner", "manager", "supervisor"]
+
     def get(self, request, batch_pk):
         from apps.infrastructure.billing.features import has_feature
 
@@ -519,7 +536,9 @@ class FinancePDFExportView(TenantRequiredMixin, View):
         return response
 
 
-class FinanceExcelExportView(TenantRequiredMixin, View):
+class FinanceExcelExportView(RoleRequiredMixin, TenantRequiredMixin, View):
+    allowed_roles = ["owner", "manager", "supervisor"]
+
     def get(self, request, batch_pk):
         from apps.infrastructure.billing.features import has_feature
 

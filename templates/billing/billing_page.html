@@ -383,7 +383,7 @@
           {% endif %}
         </div>
         <div style="display:flex;gap:8px;align-items:center">
-          {% if org.plan_tier != 'trial' %}
+          {% if org.plan_tier != 'trial' and can_change_plan %}
           <button type="button"
                   hx-post="{% url 'billing:upgrade_request' %}"
                   hx-vals='{"plan_tier": "{{ org.plan_tier }}", "timing": "immediate"}'
@@ -575,6 +575,12 @@
               title="Free trial is one-time only">
         Trial already used
       </button>
+      {% elif not can_change_plan %}
+      <!-- Managers see plans read-only; only the owner can change the plan. -->
+      <button class="bill-plan-cta disabled-cta" disabled
+              title="Only the farm owner can change the plan">
+        Owner only
+      </button>
       {% elif p.amount_kobo > plan.amount_kobo|default:0 %}
       <button class="bill-plan-cta upgrade-cta"
               onclick="openUpgradeModal('{{ p.plan_tier }}','{{ p.name }}','{{ p.amount_naira|intcomma }}')">
@@ -646,6 +652,14 @@
       <div class="bill-bank-hd" style="border-bottom:1px solid #f1f5f9">
         ✅ I've Already Paid
       </div>
+      {% if not can_change_plan %}
+      <div style="padding:18px">
+        <div class="text-xs text-gray-400 text-center py-2">
+          Only the farm owner can manage payments.
+          {% if owner %}Contact {{ owner.get_full_name|default:owner.email }} to upgrade.{% endif %}
+        </div>
+      </div>
+      {% else %}
       <div style="padding:18px">
         <p style="font-size:13px;color:#4a5568;line-height:1.6;margin-bottom:16px">
           After completing your bank transfer, click below.
@@ -691,6 +705,7 @@
           This will open WhatsApp with a pre-filled message to our support team.
         </p>
       </div>
+      {% endif %}
     </div>
   </div>
 

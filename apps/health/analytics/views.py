@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 
 from apps.farm.flocks.models import Batch
 from apps.infrastructure.core.helpers import get_org_or_404
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.rls import set_tenant_context
 from apps.infrastructure.core.views import TenantRequiredMixin
 
@@ -179,8 +180,10 @@ class DiagnosisView(LoginRequiredMixin, View):
         )
 
 
-class AIAnalyticsPageView(TenantRequiredMixin, View):
+class AIAnalyticsPageView(RoleRequiredMixin, TenantRequiredMixin, View):
     """GET /analytics/ — Full AI analytics dashboard page."""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request):
         org = request.user.org

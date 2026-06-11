@@ -387,7 +387,7 @@ class TestFarmViews:
         org = Organization.objects.create(name="View Org", subdomain="vieworg")
         user = CustomUser.objects.create_user(
             email="viewuser@example.com", password="testpass123",
-            username="viewuser", org=org,
+            username="viewuser", org=org, role='manager',
         )
         return org, user
 

@@ -731,9 +731,19 @@ def _member_row_response(request, member, toast=None, toast_type="success"):
 def export_data(request):
     """GET — download a JSON copy of all data belonging to the user + their org.
 
-    Limited to one export per user per 24 hours to prevent abuse.
+    Owner only — the export contains the entire organisation's data (NDPR data
+    portability is the owner's right). Limited to one export per 24 hours.
     """
     from .services import build_data_export
+
+    # Function-based view, so the role gate is inline (mirrors RoleRequiredMixin).
+    if not request.user.is_superuser and request.user.role != "owner":
+        return render(
+            request,
+            "errors/403.html",
+            {"role": request.user.role, "required_roles": ["owner"]},
+            status=403,
+        )
 
     org = get_org_or_404(request)
 

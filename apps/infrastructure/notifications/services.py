@@ -9,6 +9,37 @@ from .models import AlertRule, NotificationLog, OutboxEvent
 logger = structlog.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
+# Role floor for sensitive notifications.
+#
+# These event types carry financial / security-sensitive information and must
+# NEVER be routed to data_entry or vet_advisor, regardless of how an org's
+# AlertRule.notify_roles is configured. This is a code-level guard so a
+# misconfigured rule cannot leak financial data to a restricted role.
+# Both the canonical event names and the billing-prefixed aliases are listed
+# so the floor holds whichever naming a caller uses.
+# ---------------------------------------------------------------------------
+FINANCIAL_EVENT_TYPES = {
+    "billing_plan_activated",
+    "billing_plan_expired",
+    "plan_expired",
+    "payment_failed",
+    "payment_success",
+    "theft_suspected",
+    "sale_timing",
+    "credit_score_updated",
+}
+
+RESTRICTED_ROLES = {"data_entry", "vet_advisor"}
+
+
+def _should_receive(user, event_type: str) -> bool:
+    """Return False if a financial notification would reach a restricted role."""
+    if event_type in FINANCIAL_EVENT_TYPES and user.role in RESTRICTED_ROLES:
+        return False
+    return True
+
+
+# ---------------------------------------------------------------------------
 # Message templates for all 15 event types.
 # Keys: sms, email_subject, email_body, in_app_title, in_app_body
 # Placeholders: {farm_name}, {batch_name}, {count}, {date}, {value}, {normal}
@@ -151,6 +182,10 @@ class NotificationService(BaseService):
             role__in=rule.notify_roles,
             is_active=True,
         )
+
+        # Code-level floor: financial/sensitive events can never reach
+        # data_entry or vet_advisor, even if the AlertRule lists them.
+        recipients = [u for u in recipients if _should_receive(u, event_type)]
 
         today = date.today().isoformat()
         created = 0

@@ -1,11 +1,14 @@
 from django.shortcuts import render, get_object_or_404
 from django.views import View
 
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
 
 
-class AIInsightsDeepDiveView(TenantRequiredMixin, View):
+class AIInsightsDeepDiveView(RoleRequiredMixin, TenantRequiredMixin, View):
     """Per-batch AI intelligence deep dive page."""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request, batch_pk):
         from apps.farm.flocks.models import Batch, MortalityLog, WeightRecord

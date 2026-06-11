@@ -3,6 +3,7 @@ import json
 import structlog
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
@@ -370,7 +371,11 @@ class PaystackWebhookView(View):
         logger.warning("webhook.invoice_payment_failed", org=str(org.id))
 
 
-class BillingPageView(LoginRequiredMixin, View):
+class BillingPageView(RoleRequiredMixin, View):
+    # Managers may view the billing page read-only; only the owner can change
+    # the plan (enforced both here via can_change_plan and in UpgradeRequestView).
+    allowed_roles = ['owner', 'manager']
+
     def get(self, request):
         # Super admins have no org — redirect to admin dashboard
         if request.user.is_superuser or \
@@ -411,6 +416,14 @@ class BillingPageView(LoginRequiredMixin, View):
         team_count = request.user.__class__.objects.filter(
             org=org, is_active=True
         ).count()
+
+        # Only the owner can change the plan / make payments. Managers see the
+        # page read-only. (accounts_user has RLS disabled, so this is safe
+        # outside the tenant context.)
+        can_change_plan = request.user.role == 'owner'
+        owner = request.user.__class__.objects.filter(
+            org=org, role='owner'
+        ).first()
 
         current_features = get_plan_features(org.plan_tier)
         max_farms = current_features.get('max_farms', 1)
@@ -458,14 +471,17 @@ class BillingPageView(LoginRequiredMixin, View):
             "next_renewal": next_renewal,
             "payments": payments,
             "platform_config": platform_config,
+            "can_change_plan": can_change_plan,
+            "owner": owner,
         })
 
 
-class UpgradeRequestView(LoginRequiredMixin, View):
+class UpgradeRequestView(RoleRequiredMixin, View):
+    # Only the owner can change the plan / initiate payment.
+    allowed_roles = ["owner"]
+
     def post(self, request):
         if not request.user.org:
-            return HttpResponse(status=403)
-        if request.user.role not in ["owner"]:
             return HttpResponse(status=403)
 
         plan_tier = request.POST.get("plan_tier")
@@ -537,11 +553,16 @@ class PaystackCallbackView(View):
         return redirect("/billing/?error=payment_failed")
 
 
-class BankTransferNotifyView(TenantRequiredMixin, View):
+class BankTransferNotifyView(RoleRequiredMixin, TenantRequiredMixin, View):
     """
     User clicks "I've paid" after a bank transfer.
     Creates an in-app notification log entry and returns a WhatsApp link.
+
+    Owner only — payment management is the owner's responsibility (mirrors
+    UpgradeRequestView and the can_change_plan gate on the billing page).
     """
+
+    allowed_roles = ["owner"]
 
     def post(self, request):
         import urllib.parse

@@ -2,7 +2,6 @@ import datetime
 import json
 
 import structlog
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404
 from django.shortcuts import render
 from django.views import View
@@ -10,7 +9,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.accounts.permissions import CanRecord, IsManagerOrAbove
 from apps.infrastructure.core.helpers import get_org_or_404
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .services import FinanceService
@@ -18,8 +19,10 @@ from .services import FinanceService
 logger = structlog.get_logger(__name__)
 
 
-class PLSummaryView(LoginRequiredMixin, View):
+class PLSummaryView(RoleRequiredMixin, View):
     """GET /finance/pl/<uuid:batch_pk>/"""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request, batch_pk):
         org = get_org_or_404(request)
@@ -31,8 +34,13 @@ class PLSummaryView(LoginRequiredMixin, View):
         return render(request, "finance/_pl_summary_card.html", {"summary": summary, "batch_pk": batch_pk})
 
 
-class SaleLogView(LoginRequiredMixin, View):
-    """GET+POST /finance/sales/<uuid:batch_pk>/log/"""
+class SaleLogView(RoleRequiredMixin, View):
+    """GET+POST /finance/sales/<uuid:batch_pk>/log/
+
+    Recording sales — every operational role except vet_advisor (read-only).
+    """
+
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def get(self, request, batch_pk):
         import datetime
@@ -115,8 +123,10 @@ class SaleLogView(LoginRequiredMixin, View):
         return response
 
 
-class SaleTableView(LoginRequiredMixin, View):
-    """GET /finance/sales/<uuid:batch_pk>/table/"""
+class SaleTableView(RoleRequiredMixin, View):
+    """GET /finance/sales/<uuid:batch_pk>/table/ — sales records are financial."""
+
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def get(self, request, batch_pk):
         org = get_org_or_404(request)
@@ -132,8 +142,10 @@ class SaleTableView(LoginRequiredMixin, View):
         return render(request, "finance/_sale_table.html", {"sales": sales, "batch_pk": batch_pk})
 
 
-class BreakEvenView(LoginRequiredMixin, View):
+class BreakEvenView(RoleRequiredMixin, View):
     """GET /finance/breakeven/<uuid:batch_pk>/"""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request, batch_pk):
         org = get_org_or_404(request)
@@ -145,8 +157,10 @@ class BreakEvenView(LoginRequiredMixin, View):
         return render(request, "finance/_break_even_widget.html", {"data": data, "batch_pk": batch_pk})
 
 
-class ROICalculatorView(LoginRequiredMixin, View):
+class ROICalculatorView(RoleRequiredMixin, View):
     """GET /finance/roi/<uuid:batch_pk>/"""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request, batch_pk):
         org = get_org_or_404(request)
@@ -158,8 +172,10 @@ class ROICalculatorView(LoginRequiredMixin, View):
         return render(request, "finance/_roi_calculator.html", {"data": data, "batch_pk": batch_pk})
 
 
-class ROIReportView(LoginRequiredMixin, View):
+class ROIReportView(RoleRequiredMixin, View):
     """GET /finance/roi/ — full-page FlockIQ value delivery report."""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request):
         from apps.farm.flocks.models import Batch
@@ -208,8 +224,10 @@ class ROIReportView(LoginRequiredMixin, View):
         })
 
 
-class ROIReportBatchView(LoginRequiredMixin, View):
+class ROIReportBatchView(RoleRequiredMixin, View):
     """GET /finance/roi/batch/<uuid:batch_pk>/ — HTMX partial for batch switching."""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request, batch_pk):
         from apps.farm.flocks.models import Batch
@@ -238,7 +256,7 @@ class ROIReportBatchView(LoginRequiredMixin, View):
 class FinanceSummaryAPIView(APIView):
     """GET /api/v1/finance/summary/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsManagerOrAbove]
 
     def get(self, request):
         org = get_org_or_404(request)
@@ -256,7 +274,7 @@ class FinanceSummaryAPIView(APIView):
 class SalesAPIView(APIView):
     """GET+POST /api/v1/finance/sales/"""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanRecord]
 
     def get(self, request):
         org = get_org_or_404(request)
@@ -318,8 +336,10 @@ class BreakEvenAPIView(APIView):
         return Response({"data": data})
 
 
-class CreditScoreDetailView(LoginRequiredMixin, View):
+class CreditScoreDetailView(RoleRequiredMixin, View):
     """GET /finance/credit-score/"""
+
+    allowed_roles = ["owner", "manager"]
 
     def get(self, request):
         import json
@@ -397,8 +417,10 @@ class CreditScoreDetailView(LoginRequiredMixin, View):
         })
 
 
-class CreditScorePDFView(LoginRequiredMixin, View):
+class CreditScorePDFView(RoleRequiredMixin, View):
     """GET /finance/credit-score/pdf/"""
+
+    allowed_roles = ["owner", "manager"]
 
     def get(self, request):
         from django.http import HttpResponse

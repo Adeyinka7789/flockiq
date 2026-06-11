@@ -9,7 +9,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.infrastructure.accounts.permissions import CanRecord
 from apps.infrastructure.core.helpers import get_org_or_404
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .services import FeedService
@@ -17,8 +19,13 @@ from .services import FeedService
 logger = structlog.get_logger(__name__)
 
 
-class FeedLogView(LoginRequiredMixin, View):
-    """GET/POST /production/feed/<batch_pk>/log/ → Modal form or log feed."""
+class FeedLogView(RoleRequiredMixin, View):
+    """GET/POST /production/feed/<batch_pk>/log/ → Modal form or log feed.
+
+    Recording production data — vet_advisor (read-only) is excluded.
+    """
+
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def get(self, request, batch_pk):
         from datetime import date
@@ -196,7 +203,7 @@ class FeedStockView(LoginRequiredMixin, View):
 
 
 class FeedLogAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanRecord]
 
     def get(self, request):
         from .models import FeedLog

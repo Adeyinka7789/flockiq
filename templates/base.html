@@ -572,6 +572,7 @@
           </svg>
           <span class="sb-text">Health</span>
         </a>
+        {% if request.user.role in 'owner,manager,supervisor' %}
         <a href="{% url 'analytics:analytics' %}"
            class="sb-item {% if url_name == 'analytics' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -580,6 +581,7 @@
           </svg>
           <span class="sb-text">AI Analytics</span>
         </a>
+        {% endif %}
         <a href="{% url 'weather:alerts' %}"
            class="sb-item {% if app_name == 'weather' and url_name == 'alerts' %}active{% endif %}">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
@@ -591,6 +593,7 @@
         </a>
 
         <!-- MARKET INTELLIGENCE -->
+        {% if request.user.role in 'owner,manager,supervisor' %}
         <div class="sb-group"><span class="sb-text sb-group-label">Market Intel</span></div>
         <a href="{% url 'market:feed_prices' %}"
            class="sb-item {% if app_name == 'market' and url_name == 'feed_prices' %}active{% endif %}">
@@ -610,9 +613,11 @@
           </svg>
           <span class="sb-text">Hatcheries</span>
         </a>
+        {% endif %}
 
         <!-- FINANCE -->
         <div class="sb-group"><span class="sb-text sb-group-label">Finance</span></div>
+        {% if request.user.role in 'owner,manager,supervisor,data_entry' %}
         <a href="{% url 'expenses:overview' %}"
            class="sb-item {% if app_name == 'expenses' and url_name == 'overview' %}active{% endif %}">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
@@ -622,6 +627,8 @@
           </svg>
           <span class="sb-text">Expenses</span>
         </a>
+        {% endif %}
+        {% if request.user.role in 'owner,manager,supervisor' %}
         <a href="{% url 'market:prices' %}"
            class="sb-item {% if app_name == 'market' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -630,6 +637,8 @@
           </svg>
           <span class="sb-text">Market</span>
         </a>
+        {% endif %}
+        {% if request.user.role in 'owner,manager,supervisor' %}
         <a href="{% url 'finance:roi_calculator' %}"
            class="sb-item {% if app_name == 'finance' and url_name == 'roi_calculator' %}active{% endif %}">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
@@ -639,6 +648,7 @@
           </svg>
           <span class="sb-text">ROI Report</span>
         </a>
+        {% endif %}
 
         <!-- SETTINGS -->
         <div class="sb-group"><span class="sb-text sb-group-label">Settings</span></div>
@@ -669,6 +679,7 @@
           {% endif %}
         </a>
         {% endwith %}
+        {% if request.user.role in 'owner,manager' %}
         <a href="{% url 'billing:billing_page' %}"
            class="sb-item {% if app_name == 'billing' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -677,6 +688,7 @@
           </svg>
           <span class="sb-text">Billing</span>
         </a>
+        {% endif %}
         <a href="{% url 'accounts:profile' %}"
            class="sb-item {% if app_name == 'accounts' and url_name == 'profile' %}active{% endif %}">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

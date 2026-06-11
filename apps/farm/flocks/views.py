@@ -2,6 +2,8 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
+from apps.infrastructure.accounts.permissions import CanRecord, IsSupervisorOrAbove
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -139,8 +141,10 @@ class BatchListView(TenantRequiredMixin, View):
         return render(request, "flocks/batch_list.html", context)
 
 
-class BatchCreateView(LoginRequiredMixin, View):
+class BatchCreateView(RoleRequiredMixin, View):
     """POST /farms/<uuid>/batches/create/ → Creates batch; returns toast + detail redirect."""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request, farm_pk):
         org = get_org_or_404(request)
@@ -488,8 +492,13 @@ class MortalityRecentView(LoginRequiredMixin, View):
         )
 
 
-class MortalityLogView(LoginRequiredMixin, View):
-    """GET /batches/<uuid>/mortality/ → modal form; POST → logs mortality and closes modal."""
+class MortalityLogView(RoleRequiredMixin, View):
+    """GET /batches/<uuid>/mortality/ → modal form; POST → logs mortality and closes modal.
+
+    Recording production data — vet_advisor (read-only) is excluded.
+    """
+
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def get(self, request, pk):
         from datetime import date
@@ -557,8 +566,13 @@ class MortalityLogView(LoginRequiredMixin, View):
         )
 
 
-class WeightRecordView(LoginRequiredMixin, View):
-    """POST /batches/<uuid>/weight/ → HTMX weight record submission."""
+class WeightRecordView(RoleRequiredMixin, View):
+    """POST /batches/<uuid>/weight/ → HTMX weight record submission.
+
+    Recording production data — vet_advisor (read-only) is excluded.
+    """
+
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def post(self, request, pk):
         form = WeightRecordForm(request.POST)
@@ -607,8 +621,10 @@ class WeightRecordView(LoginRequiredMixin, View):
         )
 
 
-class BatchCloseView(LoginRequiredMixin, View):
+class BatchCloseView(RoleRequiredMixin, View):
     """POST /batches/<uuid>/close/ → Closes batch, shows reconciliation result."""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request, pk):
         org = get_org_or_404(request)
@@ -757,7 +773,12 @@ class BatchListAPIView(APIView):
                              Triggers vaccination schedule generation automatically.
     """
 
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        # Reading the batch list is open to any authenticated tenant user;
+        # creating/mutating a batch requires supervisor or above.
+        if self.request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            return [IsAuthenticated(), IsSupervisorOrAbove()]
+        return [IsAuthenticated()]
 
     def get(self, request):
         org = getattr(request.user, "org", None)
@@ -828,7 +849,7 @@ class MortalityLogAPIView(APIView):
     Live-bird counts are decremented atomically and an audit log entry is written.
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanRecord]
 
     def post(self, request, pk):
         org = getattr(request.user, "org", None)

@@ -411,6 +411,7 @@ class TestBatchViews:
             password="testpass123",
             username="flockviewuser",
             org=org,
+            role='manager',
         )
         return org, user
 
@@ -704,6 +705,7 @@ class TestFlocksViewGets:
             password="testpass123",
             username=subdomain,
             org=org,
+            role='manager',
         )
         farm = _make_farm(org)
         house = _make_house(org, farm, capacity=500)

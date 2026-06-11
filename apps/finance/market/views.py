@@ -4,6 +4,7 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
@@ -39,8 +40,10 @@ def _build_seasonal_data():
     return seasonal_data
 
 
-class MarketPriceView(TenantRequiredMixin, View):
+class MarketPriceView(RoleRequiredMixin, TenantRequiredMixin, View):
     """GET /market/prices/ — full page market intelligence view."""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request):
         org = get_org_or_404(request)
@@ -129,8 +132,10 @@ class MinViablePriceView(LoginRequiredMixin, View):
 
 # ── Feed Price Intelligence ───────────────────────────────────────────────────────
 
-class FeedPricesView(LoginRequiredMixin, View):
+class FeedPricesView(RoleRequiredMixin, View):
     """GET /market/feed-prices/ → Aggregated crowdsourced feed price dashboard."""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request):
         import json as _json
@@ -189,8 +194,10 @@ class SubmitFeedPriceView(LoginRequiredMixin, View):
 
 # ── Hatchery Directory ────────────────────────────────────────────────────────────
 
-class HatcheryDirectoryView(LoginRequiredMixin, View):
+class HatcheryDirectoryView(RoleRequiredMixin, View):
     """GET /market/hatcheries/ → Hatcheries ranked by farmer reviews."""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request):
         state = request.GET.get("state", "")

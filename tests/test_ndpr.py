@@ -55,13 +55,13 @@ class TestDataExport:
         assert "farms" in data
         assert len(data["farms"]) == 1
 
-    def test_export_excludes_org_data_for_non_owner(self, client, non_owner_user):
+    def test_export_denied_for_non_owner(self, client, non_owner_user):
+        # Data export is owner-only (RBAC): the whole-org export is the owner's
+        # NDPR data-portability right. Non-owners are denied at the view level.
         client.force_login(non_owner_user)
         response = client.get(reverse("accounts:export_data"))
-        data = json.loads(response.content)
-        assert "user" in data
-        assert "organisation" not in data
-        assert "farms" not in data
+        assert response.status_code == 403
+        assert response["Content-Type"].startswith("text/html")
 
     def test_export_rate_limited_to_once_per_24h(self, client, tenant_user):
         client.force_login(tenant_user)

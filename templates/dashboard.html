@@ -197,6 +197,7 @@
       </svg>
       Vaccinations
     </a>
+    {% if request.user.role in 'owner,manager,supervisor' %}
     <a href="{% url 'market:prices' %}"
        class="flex items-center gap-2 px-4 py-2.5 bg-white
               border border-gray-200 rounded-xl text-sm font-medium
@@ -209,6 +210,8 @@
       </svg>
       Market Prices
     </a>
+    {% endif %}
+    {% if request.user.role in 'owner,manager' %}
     <a href="{% url 'billing:billing_page' %}"
        class="flex items-center gap-2 px-4 py-2.5 bg-white
               border border-gray-200 rounded-xl text-sm font-medium
@@ -221,9 +224,12 @@
       </svg>
       Billing
     </a>
+    {% endif %}
   </div>
 
   <!-- SECTION 2: AI Daily Brief + Farm Memory side by side -->
+  {# Insight cards are tailored to managerial/operational roles. #}
+  {% if request.user.role in 'owner,manager,supervisor' %}
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-6 mb-16 items-stretch">
 
     <!-- Card 1: AI Daily Brief — Blue left border -->
@@ -422,6 +428,7 @@
 
 
   </div>
+  {% endif %}
 
   <!-- 30-day trend charts -->
   <div class="mb-10" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:32px">

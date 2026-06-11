@@ -2,6 +2,7 @@ import json
 
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -134,11 +135,13 @@ class FarmListView(TenantRequiredMixin, View):
         return render(request, "farms/farm_list.html", context)
 
 
-class FarmCreateView(LoginRequiredMixin, View):
+class FarmCreateView(RoleRequiredMixin, View):
     """
     GET  /farms/create/  → Returns modal form fragment (HTMX only).
     POST /farms/create/  → Creates farm; returns card fragment + toast trigger.
     """
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request):
         form = FarmCreateForm()
@@ -317,8 +320,10 @@ class FarmDetailView(TenantRequiredMixin, View):
         return render(request, "farms/farm_detail.html", context)
 
 
-class HouseCreateView(LoginRequiredMixin, View):
+class HouseCreateView(RoleRequiredMixin, View):
     """POST /farms/<uuid>/houses/create/ → Creates a house; returns updated houses partial."""
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request, pk):
         form = HouseCreateForm()
