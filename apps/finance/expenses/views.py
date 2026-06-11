@@ -194,7 +194,9 @@ class ExpenseLogView(LoginRequiredMixin, View):
 
         org = get_org_or_404(request)
         with set_tenant_context(org):
-            batch = get_object_or_404(Batch, pk=batch_pk, org=org)
+            # select_related('farm') — the template reads batch.farm.name during
+            # rendering, outside set_tenant_context().
+            batch = get_object_or_404(Batch.objects.select_related("farm"), pk=batch_pk, org=org)
         return render(request, "expenses/_expense_log_form.html", {
             "batch": batch,
             "batch_pk": batch_pk,
@@ -423,7 +425,9 @@ class FinancePDFExportView(TenantRequiredMixin, View):
         from .models import ExpenseRecord
 
         with set_tenant_context(request.user.org):
-            batch = get_object_or_404(Batch, pk=batch_pk)
+            # select_related('farm') so batch.farm.name (read below, outside the
+            # RLS scope while building the PDF) does not trigger a lazy FK query.
+            batch = get_object_or_404(Batch.objects.select_related("farm"), pk=batch_pk)
             expenses = list(ExpenseRecord.objects.filter(batch=batch).order_by("-expense_date"))
             sales = list(SalesRecord.objects.filter(batch=batch).order_by("-sale_date"))
             total_revenue = sum(s.total_amount_kobo for s in sales) // 100

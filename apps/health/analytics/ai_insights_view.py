@@ -24,7 +24,9 @@ class AIInsightsDeepDiveView(TenantRequiredMixin, View):
         today = date.today()
 
         with set_tenant_context(org):
-            batch = get_object_or_404(Batch, pk=batch_pk, org=org)
+            # select_related('farm') — the template reads batch.farm.name during
+            # rendering, outside set_tenant_context().
+            batch = get_object_or_404(Batch.objects.select_related("farm"), pk=batch_pk, org=org)
 
             last_30 = today - timedelta(days=30)
 
@@ -73,10 +75,12 @@ class AIInsightsDeepDiveView(TenantRequiredMixin, View):
                 mortality_rate=round(mortality_rate, 2),
                 hen_day_pct=hen_day_pct)
 
-            forecasts = ForecastResult.objects.filter(
+            # Materialise the querysets the template iterates during rendering
+            # (outside set_tenant_context()).
+            forecasts = list(ForecastResult.objects.filter(
                 batch=batch,
                 forecast_date__gte=today,
-            ).order_by('forecast_date')[:14]
+            ).order_by('forecast_date')[:14])
 
             mort_trend = list(
                 MortalityLog.objects.filter(
@@ -84,15 +88,15 @@ class AIInsightsDeepDiveView(TenantRequiredMixin, View):
                     date__gte=today - timedelta(days=14),
                 ).order_by('date').values('date', 'count'))
 
-            recent_briefs = AIDailyBrief.objects.filter(
+            recent_briefs = list(AIDailyBrief.objects.filter(
                 org=org,
-            ).order_by('-brief_date')[:7]
+            ).order_by('-brief_date')[:7])
 
-            similar_batches = Batch.objects.filter(
+            similar_batches = list(Batch.objects.filter(
                 org=org,
                 bird_type=batch.bird_type,
                 status='closed',
-            ).exclude(pk=batch.pk).order_by('-placement_date')[:5]
+            ).exclude(pk=batch.pk).order_by('-placement_date')[:5])
 
             # Phase 2–4: Feed efficiency
             feed_svc = FeedEfficiencyService(org, batch)

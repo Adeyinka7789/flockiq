@@ -25,6 +25,12 @@ logger = structlog.get_logger(__name__)
 
 NO_TENANT_UUID = "00000000-0000-0000-0000-000000000000"
 _current_org = ContextVar("current_org", default=None)
+# True while execution is inside a set_tenant_context()/no_tenant_context() block,
+# i.e. inside a transaction that has applied the RLS GUC (Layer 2). bind_org()
+# deliberately leaves this False: it sets only the Layer-1 ContextVar without a
+# transaction/GUC. Used to tell a correctly-scoped query apart from a "straggler"
+# that is bound to an org but running outside any RLS GUC scope.
+_rls_active = ContextVar("rls_active", default=False)
 
 
 # ── Public accessors ────────────────────────────────────────────────────────
@@ -38,6 +44,16 @@ def get_current_org_id():
     """Returns str(org.id) for the current tenant, or None."""
     org = get_current_org()
     return str(org.id) if org else None
+
+
+def is_rls_scope_active():
+    """True when inside a set_tenant_context()/no_tenant_context() block.
+
+    False when only bind_org() is active (Layer-1 ContextVar set, but no
+    transaction/RLS GUC). Lets callers distinguish a properly-scoped query from
+    a straggler running outside any RLS GUC scope.
+    """
+    return _rls_active.get()
 
 
 # ── Context managers ────────────────────────────────────────────────────────
@@ -69,6 +85,7 @@ def set_tenant_context(org):
         org = Organization.objects.get(id=str(org))
 
     token = _current_org.set(org)
+    active_token = _rls_active.set(True)
 
     try:
         with transaction.atomic():
@@ -76,6 +93,7 @@ def set_tenant_context(org):
             yield org
     finally:
         # Restore previous context (supports nested set_tenant_context calls).
+        _rls_active.reset(active_token)
         _current_org.reset(token)
         # The DB session variable is cleared automatically when transaction.atomic()
         # commits or rolls back (is_local=TRUE). No explicit clear needed here.
@@ -95,11 +113,44 @@ def no_tenant_context():
     inside this block. Never query a TenantAwareModel here; you will get all rows.
     """
     token = _current_org.set(None)
+    active_token = _rls_active.set(True)
 
     try:
         with transaction.atomic():
             _set_pg_org_id(NO_TENANT_UUID)
             yield
+    finally:
+        _rls_active.reset(active_token)
+        _current_org.reset(token)
+
+
+@contextmanager
+def bind_org(org):
+    """
+    Bind the tenant ContextVar (Layer 1) WITHOUT opening a transaction or setting
+    the PostgreSQL RLS GUC (Layer 2).
+
+    Used by TenantMiddleware so a request is no longer wrapped in one long-lived
+    transaction. The old per-request set_tenant_context() held transaction.atomic()
+    open for the entire request — including external HTTP calls (Paystack, weather,
+    PDF) — which pinned a PgBouncer backend connection for the whole request.
+
+    bind_org() sets only the thread/context org so TenantAwareManager keeps filtering
+    by org for the whole request. Each view/task still opens its own short-lived
+    set_tenant_context() block around its actual DB work, which supplies the GUC
+    (Layer-2 RLS) inside a short transaction that is released before any external call.
+
+    Accepts an Organization instance, a UUID, or None.
+    """
+    from apps.infrastructure.tenants.models import Organization  # noqa: PLC0415
+
+    if org is not None and not isinstance(org, Organization):
+        # Organization has RLS disabled — safe to query without an active context.
+        org = Organization.objects.get(id=str(org))
+
+    token = _current_org.set(org)
+    try:
+        yield org
     finally:
         _current_org.reset(token)
 

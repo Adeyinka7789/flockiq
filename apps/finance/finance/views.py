@@ -42,7 +42,9 @@ class SaleLogView(LoginRequiredMixin, View):
 
         org = get_org_or_404(request)
         with set_tenant_context(org):
-            batch = get_object_or_404(Batch, pk=batch_pk, org=org)
+            # select_related('farm') — the template reads batch.farm.name during
+            # rendering, outside set_tenant_context().
+            batch = get_object_or_404(Batch.objects.select_related("farm"), pk=batch_pk, org=org)
         return render(request, "finance/_sale_log_form.html", {
             "batch": batch,
             "batch_pk": batch_pk,
@@ -120,9 +122,13 @@ class SaleTableView(LoginRequiredMixin, View):
         org = get_org_or_404(request)
         with set_tenant_context(org):
             from .models import SalesRecord
-            sales = SalesRecord.objects.filter(
-                batch_id=batch_pk, org=org
-            ).order_by("-sale_date")
+            # Materialise inside the RLS scope — the template iterates `sales`
+            # during rendering, which happens outside set_tenant_context().
+            sales = list(
+                SalesRecord.objects.filter(
+                    batch_id=batch_pk, org=org
+                ).order_by("-sale_date")
+            )
         return render(request, "finance/_sale_table.html", {"sales": sales, "batch_pk": batch_pk})
 
 

@@ -4,7 +4,7 @@ import structlog
 from django.conf import settings
 from django.http import Http404, HttpResponse
 
-from .rls import set_tenant_context
+from .rls import bind_org
 
 logger = structlog.get_logger(__name__)
 IMPERSONATION_MAX_SECONDS = getattr(settings, 'IMPERSONATION_MAX_SECONDS', 30 * 60)
@@ -104,10 +104,13 @@ class HtmxSessionExpiredMiddleware:
 class TenantMiddleware:
     """
     Resolves the active tenant from the request subdomain on every HTTP request.
-    Sets the RLS context for the entire request via set_tenant_context(), which:
-      - Sets thread-local current_org (used by TenantAwareManager)
-      - Executes SET LOCAL app.current_org_id inside transaction.atomic()
-        so PostgreSQL RLS policies are satisfied for the request's lifetime.
+    Binds the tenant for the request via bind_org(), which:
+      - Sets thread-local current_org (used by TenantAwareManager — Layer 1)
+      - Does NOT open a transaction or set the RLS GUC. Each view/task opens its
+        own short-lived set_tenant_context() block around its DB work, which
+        supplies the GUC (Layer 2) inside a short transaction that is released
+        before any external HTTP call. This avoids pinning a PgBouncer backend
+        connection for the whole request (Bug 4).
 
     Subdomain resolution:
         apetech.flockiq.com  → subdomain='apetech' → Organization(subdomain='apetech')
@@ -194,7 +197,7 @@ class TenantMiddleware:
                 kicked = self._kick_if_suspended(request, org)
                 if kicked is not None:
                     return kicked
-                with set_tenant_context(org):
+                with bind_org(org):
                     return self.get_response(request)
             return self.get_response(request)
 
@@ -222,12 +225,12 @@ class TenantMiddleware:
                 request.org = org
                 # Custom-domain requests are treated exactly like subdomain
                 # requests: re-verify the org is still active (handles a
-                # suspension that happened after this short-lived query) and set
-                # the RLS context for the request lifetime.
+                # suspension that happened after this short-lived query) and bind
+                # the tenant ContextVar for the request (Layer 1; views supply RLS).
                 kicked = self._kick_if_suspended(request, org)
                 if kicked is not None:
                     return kicked
-                with set_tenant_context(org):
+                with bind_org(org):
                     return self.get_response(request)
 
         parts = host.split(".")
@@ -251,7 +254,7 @@ class TenantMiddleware:
                 kicked = self._kick_if_suspended(request, org)
                 if kicked is not None:
                     return kicked
-                with set_tenant_context(org):
+                with bind_org(org):
                     return self.get_response(request)
             return self.get_response(request)
 
@@ -279,7 +282,7 @@ class TenantMiddleware:
 
         request.org = org
 
-        with set_tenant_context(org):
+        with bind_org(org):
             response = self.get_response(request)
 
         return response

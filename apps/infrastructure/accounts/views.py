@@ -815,9 +815,17 @@ def delete_account(request):
         logout(request)
         delete_organisation(org)  # clears all org data + team members + org
     else:
+        from apps.infrastructure.core.rls import set_tenant_context
         EmailService.send_account_deleted(user, None)
         logger.info("account_deleted", user_id=str(user.id), owner=False)
+        user_org = user.org
         logout(request)
-        user.delete()
+        # Delete inside the RLS scope so the delete collector's SELECTs against
+        # tenant tables (rows referencing this user) run with the GUC set.
+        if user_org is not None:
+            with set_tenant_context(user_org):
+                user.delete()
+        else:
+            user.delete()
 
     return redirect("/?deleted=1")

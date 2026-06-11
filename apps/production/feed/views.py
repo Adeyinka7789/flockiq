@@ -110,6 +110,9 @@ class FeedTableView(LoginRequiredMixin, View):
             if feed_type:
                 qs = qs.filter(feed_type=feed_type)
             page_obj = Paginator(qs, 20).get_page(page)
+            # Materialise inside the RLS scope — the template iterates page_obj
+            # (and reads log.recorded_by, preloaded above) during rendering.
+            page_obj.object_list = list(page_obj.object_list)
 
         # Preserve active filters across pagination links.
         filter_params = {

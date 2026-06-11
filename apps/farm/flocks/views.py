@@ -79,6 +79,10 @@ class BatchListView(TenantRequiredMixin, View):
             paginator = Paginator(batches, 10)
             page_num = request.GET.get("page", 1)
             page_obj = paginator.get_page(page_num)
+            # Materialise the page rows inside the RLS scope — the template
+            # iterates page_obj (and reads batch.farm, preloaded above) during
+            # rendering, which happens outside set_tenant_context().
+            page_obj.object_list = list(page_obj.object_list)
 
             active_batches = Batch.objects.filter(org=org, status="active")
 

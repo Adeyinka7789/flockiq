@@ -395,6 +395,19 @@ class BillingPageView(LoginRequiredMixin, View):
             from apps.infrastructure.core.credit_scoring import CreditScoringService
             credit_score = CreditScoringService.get_latest(org)
 
+            # PaymentRecord is tenant-scoped — load inside the RLS scope.
+            # select_related('plan') so last_payment.plan (read below) and each
+            # payment.plan are preloaded and need no query outside the block.
+            last_payment = PaymentRecord.objects.filter(
+                org=org, status='success'
+            ).select_related('plan').order_by('-created_at').first()
+
+            payments = list(
+                PaymentRecord.objects.filter(org=org)
+                .select_related('plan')
+                .order_by('-created_at')[:10]
+            )
+
         team_count = request.user.__class__.objects.filter(
             org=org, is_active=True
         ).count()
@@ -406,12 +419,8 @@ class BillingPageView(LoginRequiredMixin, View):
         farm_usage_pct = min(100, round(farm_count / max(max_farms, 1) * 100))
         team_usage_pct = min(100, round(team_count / max(max_team, 1) * 100))
 
-        # Next renewal date from last successful payment
+        # Next renewal date from last successful payment (loaded in RLS scope above)
         next_renewal = None
-        last_payment = PaymentRecord.objects.filter(
-            org=org, status='success'
-        ).order_by('-created_at').first()
-
         if last_payment and last_payment.plan:
             interval = last_payment.plan.billing_interval
             if interval == 'monthly':
@@ -423,12 +432,7 @@ class BillingPageView(LoginRequiredMixin, View):
 
         all_plans = BillingPlan.objects.filter(is_active=True).order_by('amount_kobo')
 
-        # Pre-compute amount_naira on each payment record
-        payments = list(
-            PaymentRecord.objects.filter(org=org)
-            .select_related('plan')
-            .order_by('-created_at')[:10]
-        )
+        # Pre-compute amount_naira on each payment record (loaded in RLS scope above)
         for payment in payments:
             payment.amount_naira = payment.amount_kobo // 100
 

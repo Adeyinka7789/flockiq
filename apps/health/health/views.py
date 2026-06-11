@@ -76,7 +76,9 @@ class VaccinationCalendarView(TenantRequiredMixin, View):
             ).count()
             total_scheduled = VaccinationSchedule.objects.filter(status="scheduled").count()
 
-            farms = Farm.objects.filter(is_active=True)
+            # Materialise — the template iterates `farms` (filter dropdown)
+            # during rendering, outside set_tenant_context().
+            farms = list(Farm.objects.filter(is_active=True))
 
             for v in vaccinations:
                 delta = (v.due_date - today).days
@@ -206,14 +208,16 @@ class VaccinationCompleteView(LoginRequiredMixin, View):
                     status=422,
                 )
 
-        vacc.urgency = "completed"
-        vacc.days_label = "Done"
+            vacc.urgency = "completed"
+            vacc.days_label = "Done"
 
-        response = render(
-            request,
-            "health/_vaccination_row.html",
-            {"vacc": vacc},
-        )
+            # Render inside the RLS scope — the template reads vacc.batch.farm
+            # and other lazy relations during rendering.
+            response = render(
+                request,
+                "health/_vaccination_row.html",
+                {"vacc": vacc},
+            )
         response["HX-Trigger"] = json.dumps(
             {"showToast": {"message": "Vaccination recorded.", "type": "success"}}
         )

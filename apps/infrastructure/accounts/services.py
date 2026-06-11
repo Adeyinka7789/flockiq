@@ -153,6 +153,8 @@ def delete_organisation(org) -> None:
                 raise RuntimeError(f"Could not delete org data — blocked models: {names}")
             pending = blocked
 
-    # Organization has RLS disabled and is now unreferenced — safe to delete.
-    org.delete()
-    logger.info("organisation_deleted", org_id=str(org.id))
+        # Organization has RLS disabled and is now unreferenced — safe to delete.
+        # Kept inside the RLS scope so the delete collector's SELECTs against
+        # tenant tables run with the GUC set.
+        org.delete()
+        logger.info("organisation_deleted", org_id=str(org.id))

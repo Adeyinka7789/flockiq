@@ -46,7 +46,9 @@ class MarketPriceView(TenantRequiredMixin, View):
         org = get_org_or_404(request)
         product_type = request.GET.get("product_type")
         with set_tenant_context(org):
-            prices = MarketService(org).get_current_prices(product_type=product_type)
+            # get_current_prices() returns a lazy sliced queryset — materialise it
+            # inside the RLS scope before the template iterates it during rendering.
+            prices = list(MarketService(org).get_current_prices(product_type=product_type))
         seasonal_data = _build_seasonal_data()
 
         seasonal_insight = None

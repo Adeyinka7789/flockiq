@@ -192,7 +192,9 @@ class TaskCompleteView(LoginRequiredMixin, View):
             except ValueError as exc:
                 raise Http404(str(exc))
 
-        response = render(request, "tasks/_task_row.html", {"task": task})
+            # Render inside the RLS scope — the template reads task.farm.name,
+            # task.batch.batch_name and task.completed_by (lazy relations).
+            response = render(request, "tasks/_task_row.html", {"task": task})
         response["HX-Trigger"] = json.dumps(
             {"showToast": {"message": "Task completed", "type": "success"}}
         )
