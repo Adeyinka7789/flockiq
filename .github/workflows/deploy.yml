@@ -66,12 +66,14 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install pip-audit bandit
-      - run: pip-audit -r requirements/production.txt
+      # Switched data collection source to OSV to bypass 503 PyPI server errors completely
+      - run: pip-audit --service osv -r requirements/production.txt
       - run: bandit -r apps/ -ll --exclude apps/*/tests/
 
   # ── Deploy (main branch push only, skipped if VPS secrets not set) ──────
   deploy:
-    needs: test
+    # Changed from 'needs: test' so your pipeline guards deployment if either tests OR security metrics drop
+    needs: [test, security]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
