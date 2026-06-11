@@ -221,13 +221,20 @@
         </svg>
         New House
       </button>
-      <a href="{% url 'flocks:list' %}" class="fd-btn-primary">
+      {% if request.user.role in 'owner,manager,supervisor' %}
+      <button
+        hx-get="{% url 'flocks:create_select' %}?farm_id={{ farm.pk }}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML"
+        @click="$dispatch('open-modal')"
+        class="fd-btn-primary">
         <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
              stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
         New Intake
-      </a>
+      </button>
+      {% endif %}
       {% if request.user.role == 'owner' %}
       <button class="fd-btn-secondary"
               hx-get="{% url 'farms:delete' farm.pk %}"
@@ -389,6 +396,19 @@
                 </div>
               </div>
             </div>
+            {% if request.user.role in 'owner,manager,supervisor' and house.active_batch_count == 0 %}
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9">
+              <button
+                hx-get="{% url 'flocks:create' farm.pk %}?house={{ house.pk }}"
+                hx-target="#modal-body"
+                hx-swap="innerHTML"
+                @click="$dispatch('open-modal')"
+                style="font-size:11px;font-weight:700;color:#336a28;background:#edfae8;
+                       border:none;border-radius:7px;padding:6px 12px;cursor:pointer">
+                + Place Batch
+              </button>
+            </div>
+            {% endif %}
             {% if request.user.role in 'owner,manager' %}
             <button hx-get="{% url 'farms:house_delete' farm.pk house.pk %}"
                     hx-target="#modal-body" hx-swap="innerHTML"

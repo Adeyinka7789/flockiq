@@ -31,8 +31,9 @@
             <td class="px-5 py-3 text-right">
               {% if house.current_occupancy == 0 and house.is_active %}
               <button hx-get="{% url 'flocks:create' farm_id %}?house={{ house.pk }}"
-                      hx-target="#modal-container"
+                      hx-target="#modal-body"
                       hx-swap="innerHTML"
+                      @click="$dispatch('open-modal')"
                       class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-white text-xs font-semibold"
                       style="background:#3d5a99">
                 + Add Batch

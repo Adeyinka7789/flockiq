@@ -142,6 +142,49 @@ class BatchListView(TenantRequiredMixin, View):
         return render(request, "flocks/batch_list.html", context)
 
 
+class BatchCreateSelectView(RoleRequiredMixin, View):
+    """GET /batches/create/ → Step 1 of batch creation: pick a farm + house.
+
+    Opened from the batch list ("New Batch Entry") and from a farm detail page
+    ("New Intake", which passes ?farm_id= to pre-filter to that farm). Renders
+    into #modal-body; selecting a house swaps in the batch create form.
+    """
+
+    allowed_roles = ["owner", "manager", "supervisor"]
+
+    def get(self, request):
+        from django.db.models import Count, Prefetch, Q
+
+        org = get_org_or_404(request)
+        farm_id = request.GET.get("farm_id")
+        with set_tenant_context(org):
+            from apps.farm.farms.models import Farm, House
+
+            # Annotate occupancy in-query (inside the tenant context) so the
+            # template can read it at render time without firing a fresh query
+            # that would run outside set_tenant_context() and return none().
+            houses_qs = (
+                House.objects.filter(is_active=True)
+                .annotate(
+                    active_batch_count=Count(
+                        "batches", filter=Q(batches__status="active")
+                    )
+                )
+                .order_by("name")
+            )
+            qs = Farm.objects.prefetch_related(
+                Prefetch("houses", queryset=houses_qs)
+            ).filter(is_active=True)
+            if farm_id:
+                qs = qs.filter(pk=farm_id)
+            farms = list(qs)
+        return render(
+            request,
+            "flocks/_batch_select_farm_house.html",
+            {"farms": farms, "farm_id": farm_id},
+        )
+
+
 class BatchCreateView(RoleRequiredMixin, View):
     """POST /farms/<uuid>/batches/create/ → Creates batch; returns toast + detail redirect."""
 

@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     BatchCloseAPIView,
     BatchCloseView,
+    BatchCreateSelectView,
     BatchCreateView,
     BatchDeleteView,
     BatchDetailAPIView,
@@ -46,6 +47,7 @@ urlpatterns = [
     path("batches/<uuid:pk>/metrics/", BatchMetricsCardView.as_view(), name="metrics"),
     path("batches/<uuid:pk>/export/pdf/", BatchPDFExportView.as_view(), name="export_pdf"),
     path("batches/<uuid:pk>/export/excel/", BatchExcelExportView.as_view(), name="export_excel"),
+    path("batches/create/", BatchCreateSelectView.as_view(), name="create_select"),
     path("farms/<uuid:farm_pk>/batches/create/", BatchCreateView.as_view(), name="create"),
     # DRF API
     path("api/v1/flocks/batches/", BatchListAPIView.as_view(), name="api_list"),

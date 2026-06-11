@@ -1,110 +1,208 @@
-<div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-     x-data
-     @keydown.escape.window="document.getElementById('modal-container').innerHTML = ''">
-  <div class="relative bg-white rounded-2xl shadow-xl w-full max-w-sm z-10
-              max-h-[90vh] overflow-y-auto p-6">
+<div id="batch-create-modal">
 
-    <div class="flex items-start justify-between mb-5">
+  <style>
+    /* Scoped to this modal so the rules don't leak to other #modal-body
+       content. Also hide base.html's default close X while this modal is
+       mounted — we render our own styled close button in the header. The
+       style element lives inside #modal-body, so it is removed automatically
+       when the modal closes (closeModal() clears modal-body innerHTML). */
+    #modal-container > div > button { display: none !important; }
+
+    #batch-create-modal .bcm-label {
+      display: block; font-size: 0.75rem; font-weight: 600;
+      color: #475569; margin-bottom: 0.375rem;
+      font-family: Inter, sans-serif;
+    }
+    #batch-create-modal .bcm-error {
+      font-size: 0.7rem; color: #dc2626; margin: 0.25rem 0 0;
+      font-family: Inter, sans-serif;
+    }
+    #batch-create-modal input:not([type=hidden]),
+    #batch-create-modal select,
+    #batch-create-modal textarea {
+      background-color: #f1f4fb !important;
+      border: none !important;
+      border-radius: 0.75rem !important;
+      padding: 0.75rem 1rem !important;
+      width: 100% !important;
+      font-size: 0.875rem !important;
+      color: #181c21 !important;
+      min-height: 3rem !important;
+      font-family: Inter, sans-serif !important;
+      outline: none !important;
+      box-sizing: border-box !important;
+      appearance: none !important;
+      -webkit-appearance: none !important;
+    }
+    #batch-create-modal textarea { min-height: 4.5rem !important; }
+    #batch-create-modal select {
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 1rem center !important;
+      background-size: 1rem 1rem !important;
+      padding-right: 2.5rem !important;
+    }
+    #batch-create-modal input:not([type=hidden]):focus,
+    #batch-create-modal select:focus,
+    #batch-create-modal textarea:focus {
+      background-color: #ffffff !important;
+      box-shadow: 0 0 0 2px rgba(35, 66, 128, 0.2) !important;
+    }
+  </style>
+
+  <!-- Modal header -->
+  <div style="padding: 1.5rem 1.5rem 0;">
+    <div style="display:flex; align-items:center;
+                justify-content:space-between; margin-bottom:1.25rem;">
       <div>
-        <h2 class="text-lg font-semibold text-gray-900">Add Batch</h2>
-        {% if preselected_house %}
-        <p class="text-sm text-gray-500 mt-0.5">Adding batch to: {{ preselected_house.name }}</p>
-        {% endif %}
+        <p style="font-size:0.65rem; font-weight:700;
+                  text-transform:uppercase; letter-spacing:0.08em;
+                  color:#336a28; margin:0 0 0.25rem;
+                  font-family:Inter,sans-serif;">
+          New Batch
+        </p>
+        <h2 style="font-family:Manrope,sans-serif;
+                   font-size:1.25rem; font-weight:800;
+                   color:#234280; margin:0; line-height:1.2;">
+          {% if preselected_house %}Place Batch in {{ preselected_house.name }}{% else %}Place New Batch{% endif %}
+        </h2>
       </div>
-      <button @click="document.getElementById('modal-container').innerHTML = ''"
-              class="text-gray-400 hover:text-gray-600 mt-0.5">
-        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      <button @click="$dispatch('close-modal')"
+              type="button"
+              aria-label="Close"
+              style="width:2rem; height:2rem; border-radius:50%;
+                     background:#f1f4fb; border:none; cursor:pointer;
+                     display:flex; align-items:center;
+                     justify-content:center; flex-shrink:0;">
+        <svg style="width:1rem; height:1rem; color:#64748b;"
+             fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
         </svg>
       </button>
     </div>
+  </div>
 
-    <form method="post"
-          action="{% url 'flocks:create' farm_pk %}"
+  <!-- Scrollable form body -->
+  <div style="padding: 0 1.5rem; max-height:65vh; overflow-y:auto;">
+    <form id="batch-create-form"
           hx-post="{% url 'flocks:create' farm_pk %}"
-          hx-target="#modal-container"
+          hx-target="#modal-body"
           hx-swap="innerHTML"
-      hx-indicator="#htmx-spinner">
+          hx-indicator="#htmx-spinner"
+          hx-disabled-elt="#batch-submit-btn">
       {% csrf_token %}
-      {% if form.non_field_errors %}
-      <div class="mb-3 p-3 bg-red-50 text-red-700 text-sm rounded-lg">
-        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+
+      <!-- House: hidden when preselected, otherwise a picker -->
+      {% if preselected_house %}
+      <input type="hidden" name="house_id" value="{{ preselected_house.pk }}">
+      {% else %}
+      <div style="margin-bottom:1rem;">
+        <label class="bcm-label">House</label>
+        {{ form.house_id }}
+        {% if form.house_id.errors %}
+        <p class="bcm-error">{{ form.house_id.errors.0 }}</p>
+        {% endif %}
       </div>
       {% endif %}
-      <div class="space-y-3">
+
+      <!-- SECTION 1: Batch basics -->
+      <div style="margin-bottom:1rem;">
+        <label class="bcm-label">Batch Name</label>
+        {{ form.batch_name }}
+        {% if form.batch_name.errors %}
+        <p class="bcm-error">{{ form.batch_name.errors.0 }}</p>
+        {% endif %}
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr;
+                  gap:0.75rem; margin-bottom:1rem;">
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">House</label>
-          {% if preselected_house %}
-          <input type="hidden" name="house_id" value="{{ preselected_house.pk }}">
-          <p class="text-sm text-gray-700 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
-            {{ preselected_house.name }}
-          </p>
-          {% else %}
-          {{ form.house_id }}
-          {% if form.house_id.errors %}<p class="text-xs text-red-600 mt-1">{{ form.house_id.errors.0 }}</p>{% endif %}
+          <label class="bcm-label">Bird Type</label>
+          {{ form.bird_type }}
+          {% if form.bird_type.errors %}
+          <p class="bcm-error">{{ form.bird_type.errors.0 }}</p>
           {% endif %}
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Batch Name</label>
-          {{ form.batch_name }}
-          {% if form.batch_name.errors %}<p class="text-xs text-red-600 mt-1">{{ form.batch_name.errors.0 }}</p>{% endif %}
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">Bird Type</label>
-            {{ form.bird_type }}
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">Breed</label>
-            {{ form.breed_name }}
-          </div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">Placement Date</label>
-            {{ form.placement_date }}
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-600 mb-1">Initial Count</label>
-            {{ form.initial_count }}
-            {% if form.initial_count.errors %}<p class="text-xs text-red-600 mt-1">{{ form.initial_count.errors.0 }}</p>{% endif %}
-          </div>
+          <label class="bcm-label">Breed</label>
+          {{ form.breed_name }}
+          {% if form.breed_name.errors %}
+          <p class="bcm-error">{{ form.breed_name.errors.0 }}</p>
+          {% endif %}
         </div>
       </div>
 
-      <!-- DOC Source (optional) -->
-      <div class="border-t border-gray-100 pt-4 mt-4">
-        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">DOC Source (optional)</p>
-        <p class="text-xs text-gray-400 mb-3">Track your supplier to help other farmers find quality DOCs in your area.</p>
-        <div class="mb-3">
-          <label class="block text-xs font-medium text-gray-600 mb-1">Hatchery</label>
-          {{ form.hatchery }}
-          {% if form.hatchery.errors %}<p class="text-xs text-red-600 mt-1">{{ form.hatchery.errors.0 }}</p>{% endif %}
-        </div>
-        <div class="mb-3">
-          <label class="block text-xs font-medium text-gray-600 mb-1">Or enter supplier name</label>
-          {{ form.doc_supplier_name }}
+      <div style="display:grid; grid-template-columns:1fr 1fr;
+                  gap:0.75rem; margin-bottom:1rem;">
+        <div>
+          <label class="bcm-label">Placement Date</label>
+          {{ form.placement_date }}
+          {% if form.placement_date.errors %}
+          <p class="bcm-error">{{ form.placement_date.errors.0 }}</p>
+          {% endif %}
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 mb-1">Price per DOC (₦)</label>
-          {{ form.doc_price_per_chick }}
+          <label class="bcm-label">Initial Count</label>
+          {{ form.initial_count }}
+          {% if form.initial_count.errors %}
+          <p class="bcm-error">{{ form.initial_count.errors.0 }}</p>
+          {% endif %}
         </div>
       </div>
 
-      <div class="mt-5 flex gap-3">
-        <button type="submit"
-                class="flex-1 py-2.5 text-white font-semibold text-sm rounded-xl"
-                style="background:#3d5a99"
-        hx-disabled-elt="this">
-          Place Batch
-        </button>
-        <button type="button"
-                onclick="document.getElementById('modal-container').innerHTML=''"
-                class="flex-1 py-2.5 bg-gray-100 text-gray-700 font-medium text-sm rounded-xl">
-          Cancel
-        </button>
+      {% if form.notes %}
+      <div style="margin-bottom:1rem;">
+        <label class="bcm-label">
+          Notes <span style="color:#94a3b8; font-weight:400">(optional)</span>
+        </label>
+        {{ form.notes }}
+        {% if form.notes.errors %}
+        <p class="bcm-error">{{ form.notes.errors.0 }}</p>
+        {% endif %}
       </div>
-    </form>
+      {% endif %}
 
+    </form>
   </div>
+
+  <!-- Sticky footer with submit -->
+  <div style="padding:1rem 1.5rem 1.5rem;
+              border-top:1px solid #f1f4fb;
+              background:white; border-radius:0 0 1.5rem 1.5rem;">
+    {% if form.non_field_errors %}
+    <div style="background:#fef2f2; border-radius:0.75rem;
+                padding:0.625rem 0.875rem; font-size:0.8125rem;
+                color:#dc2626; margin-bottom:0.75rem;
+                font-family:Inter,sans-serif;">
+      {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+    </div>
+    {% endif %}
+    <div style="display:flex; gap:0.625rem;">
+      <button type="button"
+              @click="$dispatch('close-modal')"
+              style="flex:1; padding:0.75rem; border-radius:0.75rem;
+                     background:#f1f4fb; color:#334155; border:none;
+                     font-size:0.875rem; font-weight:600;
+                     cursor:pointer; min-height:3rem;
+                     font-family:Inter,sans-serif;">
+        Cancel
+      </button>
+      <button type="submit"
+              id="batch-submit-btn"
+              form="batch-create-form"
+              style="flex:2; padding:0.75rem; border-radius:0.75rem;
+                     color:white; border:none;
+                     font-size:0.875rem; font-weight:700;
+                     cursor:pointer; min-height:3rem;
+                     font-family:Inter,sans-serif;
+                     background:linear-gradient(
+                       135deg, #234280 0%, #2d5099 100%
+                     );
+                     box-shadow:0px 4px 12px rgba(35,66,128,0.2);">
+        Place Batch
+      </button>
+    </div>
+  </div>
+
 </div>

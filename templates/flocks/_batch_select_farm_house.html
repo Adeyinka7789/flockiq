@@ -1,0 +1,58 @@
+<div style="padding:24px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+    <div style="width:40px;height:40px;border-radius:12px;
+                background:#edfae8;display:flex;align-items:center;
+                justify-content:center;flex-shrink:0">
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24"
+           stroke="#336a28" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 22V12h6v10"/>
+      </svg>
+    </div>
+    <div>
+      <h3 style="font-family:Manrope,sans-serif;font-weight:800;color:#1a2744;
+                 font-size:15px;margin-bottom:2px">Select Farm &amp; House</h3>
+      <p style="font-size:11px;color:#8a96a8">
+        Choose which house to place the new batch in.
+      </p>
+    </div>
+  </div>
+
+  <div style="margin-top:18px;display:flex;flex-direction:column;gap:16px">
+    {% if farm_id and farms|length == 1 %}
+      {# Pre-filtered to one farm (from "New Intake") — skip the farm header. #}
+      {% with farm=farms.0 %}
+      {% include "flocks/_house_select_buttons.html" with farm=farm only %}
+      {% endwith %}
+    {% else %}
+      {% for farm in farms %}
+      <div>
+        <p style="font-size:11px;font-weight:700;color:#8a96a8;
+                  text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">
+          {{ farm.name }}
+        </p>
+        {% include "flocks/_house_select_buttons.html" with farm=farm only %}
+      </div>
+      {% empty %}
+      <div style="text-align:center;padding:28px 0">
+        <p style="font-size:13px;color:#8a96a8;margin-bottom:10px">No farms yet.</p>
+        <a href="{% url 'farms:list' %}"
+           style="font-size:13px;color:#336a28;text-decoration:underline">
+          Create a farm first →
+        </a>
+      </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <div style="display:flex;margin-top:18px">
+    <button type="button"
+            @click="$dispatch('close-modal')"
+            style="flex:1;padding:11px;background:#f4f7fe;color:#4a5568;
+                   border:1.5px solid #e2e8f0;border-radius:10px;
+                   font-size:13px;font-weight:600;cursor:pointer">
+      Cancel
+    </button>
+  </div>
+</div>

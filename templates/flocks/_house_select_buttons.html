@@ -1,0 +1,50 @@
+{# Renders the selectable house buttons for one farm. Expects `farm` with #}
+{# prefetched `houses`. Clicking an available house swaps in the batch form. #}
+<div style="display:flex;flex-direction:column;gap:8px">
+  {% for house in farm.houses.all %}
+    {% if house.is_active and house.active_batch_count == 0 %}
+    <button
+      hx-get="{% url 'flocks:create' farm.pk %}?house={{ house.pk }}"
+      hx-target="#modal-body"
+      hx-swap="innerHTML"
+      hx-indicator="#htmx-spinner"
+      style="width:100%;display:flex;align-items:center;justify-content:space-between;
+             padding:12px 14px;background:white;border:1.5px solid #e2e8f0;
+             border-radius:12px;cursor:pointer;text-align:left;transition:all 0.15s"
+      onmouseover="this.style.borderColor='#86c66f';this.style.background='#f6fcf3'"
+      onmouseout="this.style.borderColor='#e2e8f0';this.style.background='white'">
+      <span>
+        <span style="display:block;font-size:13px;font-weight:700;color:#1a2744">
+          {{ house.name }}
+        </span>
+        <span style="display:block;font-size:11px;color:#8a96a8">
+          Capacity: {{ house.capacity|floatformat:0|default:"—" }} birds
+        </span>
+      </span>
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"
+           stroke="#cbd5e1" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+      </svg>
+    </button>
+    {% else %}
+    <div style="width:100%;display:flex;align-items:center;justify-content:space-between;
+                padding:12px 14px;background:#f8fafc;border:1.5px solid #f1f5f9;
+                border-radius:12px;opacity:0.7">
+      <span>
+        <span style="display:block;font-size:13px;font-weight:700;color:#94a3b8">
+          {{ house.name }}
+        </span>
+        <span style="display:block;font-size:11px;color:#b0bac9">
+          {% if not house.is_active %}Inactive{% else %}Occupied{% endif %}
+        </span>
+      </span>
+    </div>
+    {% endif %}
+  {% empty %}
+  <p style="font-size:12px;color:#b0bac9;padding:4px 2px">
+    No houses in this farm yet.
+    <a href="{% url 'farms:detail' farm.pk %}"
+       style="color:#336a28;text-decoration:underline">Add a house →</a>
+  </p>
+  {% endfor %}
+</div>
