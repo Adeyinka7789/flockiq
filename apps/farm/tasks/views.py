@@ -9,6 +9,7 @@ from django.views import View
 from django.utils import timezone
 
 from apps.infrastructure.core.helpers import get_org_or_404
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.rls import set_tenant_context
 from apps.infrastructure.core.views import TenantRequiredMixin
 
@@ -161,8 +162,14 @@ class TaskStatusView(TenantRequiredMixin, View):
         return response
 
 
-class TaskDeleteView(TenantRequiredMixin, View):
-    """POST /tasks/<pk>/delete/ — permanently remove a task."""
+class TaskDeleteView(RoleRequiredMixin, TenantRequiredMixin, View):
+    """POST /tasks/<pk>/delete/ — permanently remove a task.
+
+    Hard delete (FarmTask is ephemeral, not soft-delete-mixed). Restricted to
+    owner / manager / supervisor — data_entry and vet_advisor cannot delete.
+    """
+
+    allowed_roles = ["owner", "manager", "supervisor"]
 
     def post(self, request, pk):
         from apps.farm.tasks.models import FarmTask

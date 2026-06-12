@@ -8,6 +8,7 @@ from django.views import View
 
 from apps.infrastructure.core.delete_views import SoftDeleteView
 from apps.infrastructure.core.helpers import get_org_or_404
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .models import WaterLog
@@ -26,8 +27,13 @@ class WaterLogDeleteView(SoftDeleteView):
         return f"/batches/{obj.batch_id}/"
 
 
-class WaterLogView(LoginRequiredMixin, View):
-    """GET/POST /production/water/<batch_pk>/log/ → Modal form or log water."""
+class WaterLogView(RoleRequiredMixin, View):
+    """GET/POST /production/water/<batch_pk>/log/ → Modal form or log water.
+
+    Recording production data — vet_advisor (read-only) is excluded.
+    """
+
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def get(self, request, batch_pk):
         from datetime import date

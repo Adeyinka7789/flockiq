@@ -271,6 +271,126 @@ class TestBankTransferRBAC:
         assert response.status_code == 403
 
 
+# ── MEDIUM: production logging parity (vet_advisor blocked, data_entry allowed) ─
+
+class TestProductionLoggingRBAC:
+    """ProductionLogView / WaterLogView / WasteLogView gate writes the same way
+    as FeedLogView / MortalityLogView: owner, manager, supervisor, data_entry may
+    log; vet_advisor (read-only) is excluded.
+    """
+
+    def _egg_log(self, client, batch):
+        return client.post(
+            f"/production/eggs/{batch.pk}/log/",
+            {"record_date": date.today().isoformat(), "total_eggs": "100"},
+            HTTP_HX_REQUEST="true",
+        )
+
+    def _water_log(self, client, batch):
+        return client.post(
+            f"/production/water/{batch.pk}/log/",
+            {"record_date": date.today().isoformat(), "litres_consumed": "50"},
+            HTTP_HX_REQUEST="true",
+        )
+
+    def _waste_log(self, client, farm):
+        return client.post(
+            f"/production/waste/{farm.pk}/log/",
+            {
+                "record_date": date.today().isoformat(),
+                "waste_type": "litter",
+                "quantity_kg": "10",
+                "disposal_method": "composting",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+    # vet_advisor — blocked on all three
+    def test_vet_advisor_cannot_post_production(self, client, vet_advisor_user, test_batch):
+        client.force_login(vet_advisor_user)
+        assert self._egg_log(client, test_batch).status_code == 403
+
+    def test_vet_advisor_cannot_post_water(self, client, vet_advisor_user, test_batch):
+        client.force_login(vet_advisor_user)
+        assert self._water_log(client, test_batch).status_code == 403
+
+    def test_vet_advisor_cannot_post_waste(self, client, vet_advisor_user, test_farm):
+        client.force_login(vet_advisor_user)
+        assert self._waste_log(client, test_farm).status_code == 403
+
+    # data_entry — allowed on all three
+    def test_data_entry_can_post_production(self, client, data_entry_user, test_batch):
+        client.force_login(data_entry_user)
+        assert self._egg_log(client, test_batch).status_code == 200
+
+    def test_data_entry_can_post_water(self, client, data_entry_user, test_batch):
+        client.force_login(data_entry_user)
+        assert self._water_log(client, test_batch).status_code == 200
+
+    def test_data_entry_can_post_waste(self, client, data_entry_user, test_farm):
+        client.force_login(data_entry_user)
+        assert self._waste_log(client, test_farm).status_code == 200
+
+    # supervisor — allowed on all three
+    def test_supervisor_can_post_production(self, client, supervisor_user, test_batch):
+        client.force_login(supervisor_user)
+        assert self._egg_log(client, test_batch).status_code == 200
+
+    def test_supervisor_can_post_water(self, client, supervisor_user, test_batch):
+        client.force_login(supervisor_user)
+        assert self._water_log(client, test_batch).status_code == 200
+
+    def test_supervisor_can_post_waste(self, client, supervisor_user, test_farm):
+        client.force_login(supervisor_user)
+        assert self._waste_log(client, test_farm).status_code == 200
+
+
+# ── MEDIUM: task hard-delete (owner / manager / supervisor only) ──────────────
+
+class TestTaskDeleteRBAC:
+    """TaskDeleteView hard-deletes an ephemeral FarmTask — restricted to
+    owner / manager / supervisor. data_entry and vet_advisor cannot delete.
+    """
+
+    def _make_task(self, org, user):
+        from apps.farm.tasks.models import FarmTask
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        with set_tenant_context(org):
+            return FarmTask.objects.create(
+                org=org,
+                title="Vaccinate flock",
+                status="pending",
+                created_by=user,
+            )
+
+    def _delete(self, client, task):
+        return client.post(
+            f"/tasks/{task.pk}/delete/",
+            HTTP_HX_REQUEST="true",
+        )
+
+    def test_vet_advisor_cannot_delete_task(self, client, vet_advisor_user, test_org, tenant_user):
+        task = self._make_task(test_org, tenant_user)
+        client.force_login(vet_advisor_user)
+        assert self._delete(client, task).status_code == 403
+
+    def test_data_entry_cannot_delete_task(self, client, data_entry_user, test_org, tenant_user):
+        task = self._make_task(test_org, tenant_user)
+        client.force_login(data_entry_user)
+        assert self._delete(client, task).status_code == 403
+
+    def test_supervisor_can_delete_task(self, client, supervisor_user, test_org, tenant_user):
+        task = self._make_task(test_org, tenant_user)
+        client.force_login(supervisor_user)
+        assert self._delete(client, task).status_code == 204
+
+    def test_owner_can_delete_task(self, client, tenant_user, test_org):
+        task = self._make_task(test_org, tenant_user)
+        client.force_login(tenant_user)
+        assert self._delete(client, task).status_code == 204
+
+
 # ── NOTIFICATIONS: financial role floor ───────────────────────────────────────
 
 class TestNotificationFinancialFloor:

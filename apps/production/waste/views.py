@@ -7,6 +7,7 @@ from django.shortcuts import render
 from django.views import View
 
 from apps.infrastructure.core.helpers import get_org_or_404
+from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.rls import set_tenant_context
 
 from .services import WasteService
@@ -14,8 +15,13 @@ from .services import WasteService
 logger = structlog.get_logger(__name__)
 
 
-class WasteLogView(LoginRequiredMixin, View):
-    """POST /production/waste/<farm_pk>/log/ → Returns updated waste table."""
+class WasteLogView(RoleRequiredMixin, View):
+    """POST /production/waste/<farm_pk>/log/ → Returns updated waste table.
+
+    Recording production data — vet_advisor (read-only) is excluded.
+    """
+
+    allowed_roles = ["owner", "manager", "supervisor", "data_entry"]
 
     def post(self, request, farm_pk):
         from .forms import WasteLogForm
