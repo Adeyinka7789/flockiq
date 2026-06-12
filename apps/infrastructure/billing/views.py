@@ -337,7 +337,7 @@ class PaystackWebhookView(View):
 
     def _handle_invoice_payment_failed(self, data: dict):
         from apps.infrastructure.core.rls import set_tenant_context
-        from apps.infrastructure.notifications.models import NotificationLog
+        from apps.infrastructure.notifications.services import NotificationService
 
         org = self._resolve_org(data)
         if org is None:
@@ -353,8 +353,10 @@ class PaystackWebhookView(View):
         owner = org.users.filter(role="owner").first()
         if owner:
             with set_tenant_context(org):
-                NotificationLog.objects.create(
-                    org=org,
+                # payment_failed is account-critical: it bypasses the preference
+                # mute (ALWAYS_DELIVER_EVENT_TYPES) but still passes through the
+                # _should_receive RBAC floor via notify().
+                NotificationService(org).notify(
                     recipient=owner,
                     event_type="payment_failed",
                     title="Payment failed",
@@ -364,7 +366,6 @@ class PaystackWebhookView(View):
                         "page to keep your plan active."
                     ),
                     severity="warning",
-                    channel="in_app",
                     action_url="/billing/",
                 )
         logger.warning("webhook.invoice_payment_failed", org=str(org.id))
@@ -567,15 +568,14 @@ class BankTransferNotifyView(RoleRequiredMixin, TenantRequiredMixin, View):
         import urllib.parse
         from apps.infrastructure.core.config import PlatformConfig
         from apps.infrastructure.core.rls import set_tenant_context
-        from apps.infrastructure.notifications.models import NotificationLog
+        from apps.infrastructure.notifications.services import NotificationService
 
         org = request.user.org
         plan_tier = request.POST.get('plan_tier', '')
         amount = request.POST.get('amount', '')
 
         with set_tenant_context(org):
-            NotificationLog.objects.create(
-                org=org,
+            NotificationService(org).notify(
                 recipient=request.user,
                 event_type='billing_upgrade_request',
                 title='Bank Transfer Payment Claimed',
@@ -585,7 +585,6 @@ class BankTransferNotifyView(RoleRequiredMixin, TenantRequiredMixin, View):
                     f'(₦{amount}). Please verify and activate manually.'
                 ),
                 severity='warning',
-                channel='in_app',
             )
 
         config = PlatformConfig.get()

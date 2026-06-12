@@ -902,3 +902,136 @@ def test_get_notifications_returns_queryset():
         notifs = svc.get_notifications(user, limit=10)
 
     assert len(notifs) == 3
+
+
+# ---------------------------------------------------------------------------
+# 26. NotificationService.notify() — gated direct in-app notifications
+#
+# notify() is the sanctioned replacement for direct NotificationLog.objects
+# .create() at targeted call sites. It must apply the same _should_receive gate
+# (RBAC floor + preference mute + always-deliver floor) that send() applies.
+# ---------------------------------------------------------------------------
+
+import uuid as _uuid
+
+from apps.infrastructure.core.rls import set_tenant_context as _stc
+
+
+def _org():
+    return make_org(subdomain=f"notify-{_uuid.uuid4().hex[:6]}")
+
+
+def _logs(org, recipient):
+    from apps.infrastructure.notifications.models import NotificationLog
+    return NotificationLog.objects.filter(org=org, recipient=recipient)
+
+
+def test_notify_creates_log_for_allowed_recipient():
+    from apps.infrastructure.notifications.services import NotificationService
+    org = _org()
+    owner = make_user(org, role="owner")
+    with _stc(org):
+        log = NotificationService(org).notify(
+            recipient=owner,
+            event_type="billing_plan_activated",
+            title="Plan upgraded",
+            body="Your plan is active.",
+            severity="info",
+            action_url="/billing/",
+        )
+        assert log is not None
+        assert log.recipient_id == owner.id
+        assert log.channel == "in_app"
+        assert log.action_url == "/billing/"
+        assert _logs(org, owner).count() == 1
+
+
+def test_notify_returns_none_and_creates_nothing_when_muted():
+    """A muteable financial event must NOT be written for an owner who muted
+    the financial-reports category."""
+    from apps.infrastructure.notifications.services import NotificationService
+    org = _org()
+    owner = make_user(org, role="owner")
+    owner.notify_financial_reports = False
+    owner.save(update_fields=["notify_financial_reports"])
+    with _stc(org):
+        log = NotificationService(org).notify(
+            recipient=owner,
+            event_type="billing_plan_activated",
+            title="Plan upgraded",
+            body="Body",
+        )
+        assert log is None
+        assert _logs(org, owner).count() == 0
+
+
+def test_notify_respects_rbac_floor_for_financial_event():
+    """A financial event routed at a restricted recipient creates nothing."""
+    from apps.infrastructure.notifications.services import NotificationService
+    org = _org()
+    de = make_user(org, role="data_entry", email="de@x.com")
+    with _stc(org):
+        log = NotificationService(org).notify(
+            recipient=de,
+            event_type="payment_failed",
+            title="Payment failed",
+            body="Body",
+        )
+        assert log is None
+        assert _logs(org, de).count() == 0
+
+
+def test_notify_always_delivers_payment_failed_to_muted_owner():
+    """Account-critical events bypass the preference mute (but not RBAC)."""
+    from apps.infrastructure.notifications.services import NotificationService
+    org = _org()
+    owner = make_user(org, role="owner")
+    owner.notify_financial_reports = False
+    owner.save(update_fields=["notify_financial_reports"])
+    with _stc(org):
+        for event_type in ("payment_failed", "billing_expiry_reminder", "trial_expiry_reminder"):
+            log = NotificationService(org).notify(
+                recipient=owner,
+                event_type=event_type,
+                title="Account notice",
+                body="Body",
+            )
+            assert log is not None, f"{event_type} must always deliver to owner"
+        assert _logs(org, owner).count() == 3
+
+
+def test_notify_delivers_ai_anomaly_despite_all_mutes():
+    """ai_anomaly is uncategorised — reaches owner/manager regardless of prefs."""
+    from apps.infrastructure.notifications.services import NotificationService
+    org = _org()
+    owner = make_user(org, role="owner")
+    owner.notify_health_alerts = False
+    owner.notify_production_insights = False
+    owner.save(update_fields=["notify_health_alerts", "notify_production_insights"])
+    with _stc(org):
+        log = NotificationService(org).notify(
+            recipient=owner,
+            event_type="ai_anomaly",
+            title="Mortality anomaly",
+            body="Body",
+            batch_reference="batch-1",
+        )
+        assert log is not None
+        assert log.batch_reference == "batch-1"
+
+
+def test_notify_support_reply_reaches_data_entry_submitter():
+    """support_reply is not financial and not categorised — a data_entry user
+    who filed a ticket must still receive the reply."""
+    from apps.infrastructure.notifications.services import NotificationService
+    org = _org()
+    de = make_user(org, role="data_entry", email="de2@x.com")
+    with _stc(org):
+        log = NotificationService(org).notify(
+            recipient=de,
+            event_type="support_reply",
+            title="Ticket update",
+            body="Admin replied",
+        )
+        assert log is not None
+        assert _logs(org, de).count() == 1

@@ -71,7 +71,7 @@ def send_expiry_reminder_for_org(self, org_id: str, days_left: int):
 def _send_expiry_reminder(org, days_left: int) -> None:
     """Send one expiry reminder. Must run inside set_tenant_context(org)."""
     from apps.infrastructure.core.email_service import EmailService
-    from apps.infrastructure.notifications.models import NotificationLog
+    from apps.infrastructure.notifications.services import NotificationService
 
     owner = org.users.filter(role="owner").first()
     if not owner:
@@ -81,8 +81,9 @@ def _send_expiry_reminder(org, days_left: int) -> None:
 
     EmailService.send_expiry_reminder(owner, org, days_left)
 
-    NotificationLog.objects.create(
-        org=org,
+    # Account-critical: bypasses preference mute (ALWAYS_DELIVER_EVENT_TYPES)
+    # but still gated by the RBAC floor inside notify().
+    NotificationService(org).notify(
         recipient=owner,
         event_type="billing_expiry_reminder",
         title=f"Plan expires {urgency}",
@@ -91,7 +92,6 @@ def _send_expiry_reminder(org, days_left: int) -> None:
             f"Renew now to avoid interruption."
         ),
         severity="warning",
-        channel="in_app",
         action_url="/billing/",
     )
 
@@ -186,7 +186,7 @@ def send_trial_reminder_for_org(self, org_id: str, days_left: int):
 def _send_trial_expiry_reminder(org, days_left: int) -> None:
     """Send one trial expiry email + in-app notification. Runs inside set_tenant_context(org)."""
     from apps.infrastructure.core.email_service import EmailService
-    from apps.infrastructure.notifications.models import NotificationLog
+    from apps.infrastructure.notifications.services import NotificationService
 
     owner = org.users.filter(role="owner").first()
     if not owner:
@@ -201,8 +201,9 @@ def _send_trial_expiry_reminder(org, days_left: int) -> None:
         days_left=days_left,
     )
 
-    NotificationLog.objects.create(
-        org=org,
+    # Account-critical: bypasses preference mute (ALWAYS_DELIVER_EVENT_TYPES)
+    # but still gated by the RBAC floor inside notify().
+    NotificationService(org).notify(
         recipient=owner,
         event_type="trial_expiry_reminder",
         title=f"Your trial expires {urgency}",
@@ -211,7 +212,6 @@ def _send_trial_expiry_reminder(org, days_left: int) -> None:
             f"Upgrade now to keep access to all features."
         ),
         severity="warning" if days_left <= 3 else "info",
-        channel="in_app",
         action_url="/billing/",
     )
 

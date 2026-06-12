@@ -298,6 +298,7 @@ class DailyBriefService(BaseService):
 
     def _create_alert_notifications(self, alerts, today):
         from apps.infrastructure.notifications.models import NotificationLog
+        from apps.infrastructure.notifications.services import NotificationService
         from apps.infrastructure.accounts.models import CustomUser
 
         owner = CustomUser.tenant_objects.filter(
@@ -306,6 +307,7 @@ class DailyBriefService(BaseService):
         if not owner:
             return
 
+        svc = NotificationService(self.org)
         for alert in alerts:
             batch = alert.get("batch")
             if not batch:
@@ -318,16 +320,14 @@ class DailyBriefService(BaseService):
             ).exists()
             if not exists:
                 try:
-                    NotificationLog.objects.create(
-                        org=self.org,
+                    # Routed through notify() for the _should_receive gate.
+                    svc.notify(
                         recipient=owner,
                         event_type="ai_anomaly",
                         title=alert["title"],
                         body=alert["body"],
                         severity=alert["severity"],
-                        channel="in_app",
                         batch_reference=str(batch.pk),
-                        is_read=False,
                     )
                 except Exception as exc:
                     logger.warning("Failed to create alert notification", error=str(exc))

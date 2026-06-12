@@ -39,10 +39,9 @@ def on_plan_activated(sender, instance, created, **kwargs):
 
     try:
         from apps.infrastructure.core.rls import set_tenant_context
-        from apps.infrastructure.notifications.models import NotificationLog
+        from apps.infrastructure.notifications.services import NotificationService
         with set_tenant_context(instance):
-            NotificationLog.objects.create(
-                org=instance,
+            NotificationService(instance).notify(
                 recipient=owner,
                 event_type="plan_activated",
                 title="\U0001f389 Your plan is now active!",
@@ -51,8 +50,6 @@ def on_plan_activated(sender, instance, created, **kwargs):
                     f"Enjoy full access to FlockIQ."
                 ),
                 severity="info",
-                channel="in_app",
-                is_read=False,
             )
         logger.info("billing.plan_activated_notification_sent", org_id=str(instance.id))
     except Exception as exc:

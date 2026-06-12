@@ -272,10 +272,8 @@ class BillingService(BaseService):
         from django.contrib.auth import get_user_model
 
         from apps.infrastructure.core.email_service import EmailService
-        from apps.infrastructure.notifications.models import (
-            AdminNotification,
-            NotificationLog,
-        )
+        from apps.infrastructure.notifications.models import AdminNotification
+        from apps.infrastructure.notifications.services import NotificationService
 
         org = self.org
         action = "upgraded" if new_plan != previous_plan else "renewed"
@@ -292,8 +290,9 @@ class BillingService(BaseService):
                 activated_by=activated_by,
             )
 
-            NotificationLog.objects.create(
-                org=org,
+            # Routed through NotificationService.notify() so the _should_receive
+            # gate (RBAC floor + preference mute) is applied — never a raw create.
+            NotificationService(org).notify(
                 recipient=owner,
                 event_type="billing_plan_activated",
                 title=f"Plan {action} — {new_plan.title()}",
@@ -302,7 +301,6 @@ class BillingService(BaseService):
                     f"{expires.strftime('%B %d, %Y') if expires else '—'}."
                 ),
                 severity="info",
-                channel="in_app",
                 action_url="/billing/",
             )
 
@@ -535,10 +533,9 @@ class BillingService(BaseService):
         owner = self.org.users.filter(role="owner").first()
         if owner:
             from apps.infrastructure.core.rls import set_tenant_context
-            from apps.infrastructure.notifications.models import NotificationLog
+            from apps.infrastructure.notifications.services import NotificationService
             with set_tenant_context(self.org):
-                NotificationLog.objects.create(
-                    org=self.org,
+                NotificationService(self.org).notify(
                     recipient=owner,
                     event_type="billing_upgrade_request",
                     title="Upgrade Request Received",
@@ -547,8 +544,6 @@ class BillingService(BaseService):
                         f"Our team will activate your account within 24 hours."
                     ),
                     severity="info",
-                    channel="in_app",
-                    is_read=False,
                 )
 
     @transaction.atomic
@@ -558,7 +553,7 @@ class BillingService(BaseService):
         Does NOT charge or change the active plan — activate_plan() clears the
         pending flag and applies it when the next payment/renewal lands.
         """
-        from apps.infrastructure.notifications.models import NotificationLog
+        from apps.infrastructure.notifications.services import NotificationService
 
         org = self.org
         org.upgrade_pending = plan_tier
@@ -567,8 +562,7 @@ class BillingService(BaseService):
 
         owner = org.users.filter(role="owner").first()
         if owner:
-            NotificationLog.objects.create(
-                org=org,
+            NotificationService(org).notify(
                 recipient=owner,
                 event_type="billing_upgrade_scheduled",
                 title=f"Upgrade scheduled — {plan_tier.title()}",
@@ -577,7 +571,6 @@ class BillingService(BaseService):
                     f"at your next renewal."
                 ),
                 severity="info",
-                channel="in_app",
                 action_url="/billing/",
             )
 

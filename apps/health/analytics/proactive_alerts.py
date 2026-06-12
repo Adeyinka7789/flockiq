@@ -206,12 +206,14 @@ class ProactiveAlertEngine:
 
     def fire_alerts(self) -> int:
         from apps.infrastructure.notifications.models import NotificationLog
+        from apps.infrastructure.notifications.services import NotificationService
         from apps.infrastructure.accounts.models import CustomUser
         from apps.infrastructure.core.rls import set_tenant_context
 
         alerts = self.run_all_checks()
         fired = 0
         today = date.today()
+        svc = NotificationService(self.org)
 
         with set_tenant_context(self.org):
             owner = CustomUser.tenant_objects.filter(
@@ -235,18 +237,17 @@ class ProactiveAlertEngine:
                     if exists:
                         continue
 
-                    NotificationLog.objects.create(
-                        org=self.org,
+                    # Routed through notify() for the _should_receive gate.
+                    created = svc.notify(
                         recipient=owner,
                         event_type='ai_anomaly',
                         title=alert['title'],
                         body=alert['body'],
                         severity=alert['severity'],
-                        channel='in_app',
                         batch_reference=str(batch.pk),
-                        is_read=False,
                     )
-                    fired += 1
+                    if created is not None:
+                        fired += 1
             except Exception:
                 pass
 

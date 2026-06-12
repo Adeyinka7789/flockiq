@@ -42,6 +42,22 @@ def make_user(org, role="owner", email=None, password="pass1234"):
     )
 
 
+def local_noon():
+    """Noon today in the platform timezone (Africa/Lagos).
+
+    The billing reminder tasks compute days_left as a *calendar-date* delta off
+    ``timezone.localdate()`` (Lagos). Anchoring a fixture to ``timezone.now()``
+    (UTC) makes that delta off-by-one whenever the suite runs in the ~23:00 UTC
+    window, because Lagos (UTC+1) has already rolled to the next date. Anchoring
+    on the local calendar date keeps ``days_left`` exactly N for ``+ N days``.
+    """
+    import datetime
+    from django.utils import timezone
+    return timezone.make_aware(
+        datetime.datetime.combine(timezone.localdate(), datetime.time(12, 0))
+    )
+
+
 def make_plan(**kwargs):
     from apps.infrastructure.billing.models import BillingPlan
     defaults = {
@@ -559,11 +575,9 @@ def test_expiry_reminder_fires_at_7_3_1_days():
             subdomain=f"exp{days}",
             owner_email=f"exp{days}@test.com",
             plan_tier="monthly",
-            # Noon-normalised: reminder day math is calendar-date based, so the
-            # fixture must land on the same date regardless of when tests run.
-            plan_expires_at=timezone.now().replace(
-                hour=12, minute=0, second=0, microsecond=0
-            ) + timedelta(days=days),
+            # Calendar-date based: anchor on the local date (see local_noon)
+            # so day math is correct regardless of when tests run.
+            plan_expires_at=local_noon() + timedelta(days=days),
         )
         make_user(org, email=f"owner@exp{days}.com")
 
@@ -588,9 +602,7 @@ def test_expiry_reminder_does_not_fire_for_trial_orgs():
         subdomain="exptrial",
         owner_email="exptrial@test.com",
         plan_tier="trial",
-        plan_expires_at=timezone.now().replace(
-            hour=12, minute=0, second=0, microsecond=0
-        ) + timedelta(days=3),
+        plan_expires_at=local_noon() + timedelta(days=3),
     )
     make_user(org, email="owner@exptrial.com")
 
@@ -613,9 +625,7 @@ def test_expiry_reminder_skips_non_reminder_day():
         subdomain="exp5",
         owner_email="exp5@test.com",
         plan_tier="monthly",
-        plan_expires_at=timezone.now().replace(
-            hour=12, minute=0, second=0, microsecond=0
-        ) + timedelta(days=5),
+        plan_expires_at=local_noon() + timedelta(days=5),
     )
     make_user(org, email="owner@exp5.com")
 
@@ -643,9 +653,7 @@ def test_trial_reminder_7_days_sends_email_and_notification():
         subdomain="trial7",
         owner_email="trial7@test.com",
         plan_tier="trial",
-        trial_ends_at=timezone.now().replace(
-            hour=12, minute=0, second=0, microsecond=0
-        ) + timedelta(days=7),
+        trial_ends_at=local_noon() + timedelta(days=7),
     )
     owner = make_user(org, email="owner@trial7.com")
 
@@ -670,9 +678,7 @@ def test_trial_reminder_3_days_notification_is_warning():
         subdomain="trial3",
         owner_email="trial3@test.com",
         plan_tier="trial",
-        trial_ends_at=timezone.now().replace(
-            hour=12, minute=0, second=0, microsecond=0
-        ) + timedelta(days=3),
+        trial_ends_at=local_noon() + timedelta(days=3),
     )
     make_user(org, email="owner@trial3.com")
 
@@ -696,9 +702,7 @@ def test_trial_reminder_1_day_urgency_is_today():
         subdomain="trial1",
         owner_email="trial1@test.com",
         plan_tier="trial",
-        trial_ends_at=timezone.now().replace(
-            hour=12, minute=0, second=0, microsecond=0
-        ) + timedelta(days=1),
+        trial_ends_at=local_noon() + timedelta(days=1),
     )
     make_user(org, email="owner@trial1.com")
 
@@ -723,9 +727,7 @@ def test_trial_reminder_skips_non_reminder_day():
         subdomain="trial10",
         owner_email="trial10@test.com",
         plan_tier="trial",
-        trial_ends_at=timezone.now().replace(
-            hour=12, minute=0, second=0, microsecond=0
-        ) + timedelta(days=10),
+        trial_ends_at=local_noon() + timedelta(days=10),
     )
     make_user(org, email="owner@trial10.com")
 
@@ -753,9 +755,7 @@ def test_trial_reminder_ignores_paid_orgs():
         subdomain="paidnot",
         owner_email="paidnot@test.com",
         plan_tier="monthly",
-        trial_ends_at=timezone.now().replace(
-            hour=12, minute=0, second=0, microsecond=0
-        ) + timedelta(days=7),
+        trial_ends_at=local_noon() + timedelta(days=7),
     )
     make_user(org, email="owner@paidnot.com")
 
@@ -779,9 +779,7 @@ def test_trial_reminder_skips_expired_trial():
         subdomain="trial0",
         owner_email="trial0@test.com",
         plan_tier="trial",
-        trial_ends_at=timezone.now().replace(
-            hour=12, minute=0, second=0, microsecond=0
-        ),
+        trial_ends_at=local_noon(),
     )
     make_user(org, email="owner@trial0.com")
 
@@ -805,9 +803,7 @@ def test_trial_reminder_no_owner_does_not_error():
         subdomain="trialnoowner",
         owner_email="trialnoowner@test.com",
         plan_tier="trial",
-        trial_ends_at=timezone.now().replace(
-            hour=12, minute=0, second=0, microsecond=0
-        ) + timedelta(days=7),
+        trial_ends_at=local_noon() + timedelta(days=7),
     )
 
     send_trial_expiry_reminders()  # should not raise

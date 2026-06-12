@@ -193,7 +193,10 @@ class TestShouldReceive:
         user = _make_user(test_org, "owner", "mute-fin")
         user.notify_financial_reports = False
         user.save(update_fields=["notify_financial_reports"])
-        assert _should_receive(user, "payment_failed") is False
+        # An *informational* financial event is muteable by preference.
+        # (payment_failed / expiry reminders are NOT — see TestAlwaysDeliver.)
+        assert _should_receive(user, "billing_plan_activated") is False
+        assert _should_receive(user, "billing_upgrade_scheduled") is False
 
     def test_active_category_allows(self, test_org):
         from apps.infrastructure.notifications.services import _should_receive
@@ -214,3 +217,43 @@ class TestShouldReceive:
         from apps.infrastructure.notifications.services import _should_receive
         user = _make_user(test_org, "owner", "unmapped")
         assert _should_receive(user, "batch_closed") is True
+
+    def test_ai_anomaly_and_support_reply_always_allowed(self, test_org):
+        """ai_anomaly and support_reply are intentionally uncategorised: no
+        preference toggle maps to them, so they are never silently muted."""
+        from apps.infrastructure.notifications.services import _should_receive
+        owner = _make_user(test_org, "owner", "uncat-owner")
+        owner.notify_health_alerts = False
+        owner.notify_production_insights = False
+        owner.notify_system_updates = False
+        owner.notify_financial_reports = False
+        owner.save()
+        assert _should_receive(owner, "ai_anomaly") is True
+        assert _should_receive(owner, "support_reply") is True
+
+
+# ── _should_receive: account-critical events bypass the preference mute ────────
+
+class TestAlwaysDeliver:
+    """payment_failed and plan/trial expiry reminders bypass the personal
+    category mute (a muted owner must still hear that their account is at risk),
+    but they remain subject to the RBAC floor."""
+
+    ALWAYS = ["payment_failed", "billing_expiry_reminder", "trial_expiry_reminder"]
+
+    @pytest.mark.parametrize("event_type", ALWAYS)
+    def test_owner_cannot_mute_account_critical(self, test_org, event_type):
+        from apps.infrastructure.notifications.services import _should_receive
+        user = _make_user(test_org, "owner", f"crit-{event_type}")
+        user.notify_financial_reports = False
+        user.save(update_fields=["notify_financial_reports"])
+        assert _should_receive(user, event_type) is True
+
+    @pytest.mark.parametrize("event_type", ALWAYS)
+    @pytest.mark.parametrize("role", ["data_entry", "vet_advisor"])
+    def test_rbac_floor_still_blocks_restricted_roles(self, test_org, event_type, role):
+        """Always-deliver does NOT punch through the RBAC floor — these events
+        carry billing detail and still must not reach restricted roles."""
+        from apps.infrastructure.notifications.services import _should_receive
+        user = _make_user(test_org, role, f"floor-{role}-{event_type}")
+        assert _should_receive(user, event_type) is False

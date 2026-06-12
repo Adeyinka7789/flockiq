@@ -1140,7 +1140,7 @@ class SupportTicketReplyView(SuperAdminMixin, View):
         from django.conf import settings as django_settings
         from apps.infrastructure.core.email_service import EmailService
         from apps.infrastructure.notifications.models import (
-            SupportTicket, SupportTicketReply, NotificationLog,
+            SupportTicket, SupportTicketReply,
         )
         from apps.infrastructure.core.rls import set_tenant_context
 
@@ -1180,15 +1180,17 @@ class SupportTicketReplyView(SuperAdminMixin, View):
 
             # Write to NotificationLog (tenant-scoped) so the user's bell lights up.
             # AdminNotification is for superadmin-only; tenant users' bells read NotificationLog.
+            # Routed through notify() for the _should_receive gate. support_reply is
+            # intentionally uncategorised (no preference toggle and not financial),
+            # so it always reaches the ticket's submitter regardless of role/prefs.
+            from apps.infrastructure.notifications.services import NotificationService
             with set_tenant_context(ticket.org):
-                NotificationLog.objects.create(
-                    org=ticket.org,
+                NotificationService(ticket.org).notify(
+                    recipient=ticket.submitted_by,
                     event_type='support_reply',
                     title=f"Support ticket update — {ticket.subject}",
                     body=f"Admin replied: {reply.message[:200]}",
                     severity='info',
-                    channel='in_app',
-                    recipient=ticket.submitted_by,
                     action_url=reverse('notifications:support_ticket_detail', kwargs={'pk': ticket.pk}),
                 )
 

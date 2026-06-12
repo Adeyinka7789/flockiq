@@ -131,6 +131,11 @@ def _create_notification_log(event):
         return
 
     with set_tenant_context(org):
+        # NOTE: Direct create() is correct here — this is the outbox delivery
+        # mechanism itself. The OutboxEvent being materialised was produced by
+        # NotificationService.send(), which already applied the _should_receive
+        # gate (RBAC floor + preference mute) when selecting recipients. Routing
+        # this through notify() would double-filter an already-filtered event.
         NotificationLog.objects.create(
             org=org,
             event_type=event.event_type,

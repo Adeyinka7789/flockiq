@@ -22,14 +22,37 @@ FINANCIAL_EVENT_TYPES = {
     "billing_plan_activated",
     "billing_plan_expired",
     "plan_expired",
+    "plan_activated",
     "payment_failed",
     "payment_success",
+    # Billing notices routed through notify() (formerly direct NotificationLog
+    # creates). Membership here means the RBAC floor below applies so they can
+    # never reach data_entry / vet_advisor.
+    "billing_upgrade_request",
+    "billing_upgrade_scheduled",
+    "billing_expiry_reminder",
+    "trial_expiry_reminder",
     "theft_suspected",
     "sale_timing",
     "credit_score_updated",
 }
 
 RESTRICTED_ROLES = {"data_entry", "vet_advisor"}
+
+# ---------------------------------------------------------------------------
+# Account-critical events that bypass the *personal preference* mute.
+#
+# A farmer who toggles off "financial reports" must still be told when a
+# payment fails or their plan / trial is about to expire — otherwise an account
+# can silently lapse (real revenue + access risk). These events still respect
+# the RBAC floor above (they are in FINANCIAL_EVENT_TYPES, so data_entry /
+# vet_advisor are still excluded); they only bypass the category-mute layer.
+# ---------------------------------------------------------------------------
+ALWAYS_DELIVER_EVENT_TYPES = {
+    "payment_failed",
+    "billing_expiry_reminder",
+    "trial_expiry_reminder",
+}
 
 # ---------------------------------------------------------------------------
 # Category mapping for personal notification preferences.
@@ -68,17 +91,24 @@ SYSTEM_EVENT_TYPES = {
 def _should_receive(user, event_type: str) -> bool:
     """Decide whether a notification should reach a given user.
 
-    Two layers of gating, in order:
+    Three layers of gating, in order:
       1. RBAC floor — financial/sensitive events can never reach a restricted
-         role (data_entry / vet_advisor), regardless of personal preferences.
-      2. Personal category preferences — a user who has muted a category does
+         role (data_entry / vet_advisor), regardless of anything below.
+      2. Always-deliver floor — account-critical events (payment failure, plan/
+         trial expiry) bypass the personal category mute so an account cannot
+         silently lapse. They have already passed the RBAC floor above.
+      3. Personal category preferences — a user who has muted a category does
          not receive its events.
     """
-    # 1. RBAC floor (cannot be overridden by personal preferences).
+    # 1. RBAC floor (cannot be overridden by anything).
     if event_type in FINANCIAL_EVENT_TYPES and user.role in RESTRICTED_ROLES:
         return False
 
-    # 2. Personal category preferences.
+    # 2. Always-deliver floor — account-critical, not muteable by preference.
+    if event_type in ALWAYS_DELIVER_EVENT_TYPES:
+        return True
+
+    # 3. Personal category preferences.
     if event_type in HEALTH_EVENT_TYPES and not user.notify_health_alerts:
         return False
     if event_type in PRODUCTION_EVENT_TYPES and not user.notify_production_insights:
@@ -285,6 +315,59 @@ class NotificationService(BaseService):
         except KeyError:
             fallback = f"{event_type} event occurred"
             return event_type, fallback, ""
+
+    def notify(
+        self,
+        recipient,
+        event_type,
+        title,
+        body,
+        severity="info",
+        channel="in_app",
+        action_url="",
+        batch_reference="",
+        outbox_event_id=None,
+    ):
+        """Create a targeted in-app NotificationLog for a *specific* recipient,
+        gated by _should_receive() (RBAC floor + personal category preferences).
+
+        This is the sanctioned replacement for direct
+        NotificationLog.objects.create() calls that target a known recipient.
+
+        It is deliberately NOT the same as send(): send() is the AlertRule-driven
+        fan-out that derives recipients by role and writes OutboxEvent rows for
+        the delivery pipeline. notify() writes the in-app NotificationLog row
+        directly for one already-chosen user — but, unlike a raw create(), it
+        runs the same _should_receive() gate send() applies, so a restricted role
+        or a muted category is honoured.
+
+        Returns the created NotificationLog, or None if the recipient's role /
+        preferences filter the event out.
+
+        Must be called inside set_tenant_context(self.org) — NotificationLog is
+        RLS-protected, exactly as the previous direct create() calls required.
+        """
+        if not _should_receive(recipient, event_type):
+            self.logger.info(
+                "notification.suppressed",
+                event_type=event_type,
+                recipient_id=str(recipient.id),
+                role=recipient.role,
+            )
+            return None
+
+        return NotificationLog.objects.create(
+            org=self.org,
+            recipient=recipient,
+            event_type=event_type,
+            title=title,
+            body=body,
+            severity=severity,
+            channel=channel,
+            action_url=action_url,
+            batch_reference=batch_reference,
+            outbox_event_id=outbox_event_id,
+        )
 
     def mark_read(self, notification_log_id, user):
         updated = NotificationLog.objects.filter(
