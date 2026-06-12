@@ -15,6 +15,7 @@ Covers:
            every org inside one task
 """
 
+import datetime
 import uuid
 from datetime import timedelta
 from unittest.mock import patch
@@ -32,6 +33,29 @@ pytestmark = pytest.mark.django_db
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _lagos_today():
+    """Today's date in Africa/Lagos, regardless of the server/CI timezone.
+
+    CI's Postgres/Python may run in UTC. Near the UTC/Lagos day boundary,
+    timezone.now() in UTC vs Lagos can land on different calendar dates,
+    shifting days_left by ±1 — so anchor expiry math to Lagos "today".
+    """
+    return timezone.localtime(
+        timezone.now(), timezone.get_current_timezone()
+    ).date()
+
+
+def _lagos_expiry(days_from_today):
+    """A timezone-aware datetime exactly `days_from_today` calendar days from
+    Lagos "today", at 00:01 — earlier in the day than the beat run."""
+    expiry_date = _lagos_today() + datetime.timedelta(days=days_from_today)
+    return datetime.datetime.combine(
+        expiry_date,
+        datetime.time(hour=0, minute=1),
+        tzinfo=timezone.get_current_timezone(),
+    )
+
 
 def make_org(**kwargs):
     from apps.infrastructure.tenants.models import Organization
@@ -81,9 +105,7 @@ class TestReminderDayMath:
         # Expires 7 calendar days from today, but at 00:01 — earlier in the
         # day than the beat run, so (expiry - now).days truncates to 6 and the
         # old code never sent the 7-day reminder.
-        expiry = timezone.now().replace(
-            hour=0, minute=1, second=0, microsecond=0
-        ) + timedelta(days=7)
+        expiry = _lagos_expiry(7)
         org = make_org(plan_expires_at=expiry)
 
         from apps.infrastructure.billing import tasks
@@ -104,9 +126,7 @@ class TestReminderDayMath:
         assert str(org.id) not in dispatched_org_ids
 
     def test_trial_reminder_fires_on_exact_day_despite_time_of_day(self):
-        trial_end = timezone.now().replace(
-            hour=0, minute=1, second=0, microsecond=0
-        ) + timedelta(days=3)
+        trial_end = _lagos_expiry(3)
         org = make_org(
             plan_tier="trial",
             subscription_status="trial",
@@ -365,9 +385,7 @@ class TestFanOutTasks:
     def test_expiry_reminder_parent_does_not_send_inline(self):
         """The parent task must only dispatch — never touch EmailService."""
         org = make_org(
-            plan_expires_at=timezone.now().replace(
-                hour=0, minute=1, second=0, microsecond=0
-            ) + timedelta(days=1),
+            plan_expires_at=_lagos_expiry(1),
         )
 
         from apps.infrastructure.billing import tasks
