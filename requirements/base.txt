@@ -29,6 +29,11 @@ django-axes==6.5.*
 django-csp==3.8.*
 django-ratelimit==4.1.*
 cryptography==46.0.7
+# Required by BCryptSHA256PasswordHasher — production.py's PRIMARY password
+# hasher. Django raises on the first password hash/check if this is missing;
+# dev/test never exercise it (they use the default PBKDF2), so only
+# production breaks. Do not remove without changing PASSWORD_HASHERS.
+bcrypt>=4.1
 
 # Audit & Logging
 django-auditlog==3.0.*
