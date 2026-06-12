@@ -31,11 +31,63 @@ FINANCIAL_EVENT_TYPES = {
 
 RESTRICTED_ROLES = {"data_entry", "vet_advisor"}
 
+# ---------------------------------------------------------------------------
+# Category mapping for personal notification preferences.
+#
+# Each event type is grouped under the category toggle a user can mute on the
+# notification preferences page. Event names here must match the keys emitted
+# by NotificationService.send() callers (see MESSAGE_TEMPLATES) and the
+# domain-event vocabulary used across the apps.
+# ---------------------------------------------------------------------------
+HEALTH_EVENT_TYPES = {
+    "mortality_spike",
+    "mortality_alert",
+    "vaccination_due",
+    "vaccination_overdue",
+    "vaccination_reminder",
+    "disease_outbreak",
+    "health_alert",
+    "medication_withdrawal",
+}
+PRODUCTION_EVENT_TYPES = {
+    "production_drop",
+    "water_drop",
+    "feed_efficiency",
+    "harvest_timing",
+    "production_insight",
+    "farm_memory",
+    "weekly_summary",
+}
+SYSTEM_EVENT_TYPES = {
+    "system",
+    "platform_update",
+    "maintenance",
+}
+
 
 def _should_receive(user, event_type: str) -> bool:
-    """Return False if a financial notification would reach a restricted role."""
+    """Decide whether a notification should reach a given user.
+
+    Two layers of gating, in order:
+      1. RBAC floor — financial/sensitive events can never reach a restricted
+         role (data_entry / vet_advisor), regardless of personal preferences.
+      2. Personal category preferences — a user who has muted a category does
+         not receive its events.
+    """
+    # 1. RBAC floor (cannot be overridden by personal preferences).
     if event_type in FINANCIAL_EVENT_TYPES and user.role in RESTRICTED_ROLES:
         return False
+
+    # 2. Personal category preferences.
+    if event_type in HEALTH_EVENT_TYPES and not user.notify_health_alerts:
+        return False
+    if event_type in PRODUCTION_EVENT_TYPES and not user.notify_production_insights:
+        return False
+    if event_type in FINANCIAL_EVENT_TYPES and not user.notify_financial_reports:
+        return False
+    if event_type in SYSTEM_EVENT_TYPES and not user.notify_system_updates:
+        return False
+
     return True
 
 

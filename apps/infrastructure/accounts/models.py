@@ -87,6 +87,22 @@ class CustomUser(AbstractUser):
     email_verified = models.BooleanField(default=False)
     email_verification_token = models.UUIDField(default=uuid.uuid4, editable=False)
 
+    # Notification preferences
+    sms_alerts_enabled = models.BooleanField(default=True)
+    email_digest_frequency = models.CharField(
+        max_length=10,
+        choices=[
+            ("daily", "Daily Summary"),
+            ("weekly", "Weekly Insights"),
+            ("never", "Never"),
+        ],
+        default="weekly",
+    )
+    notify_health_alerts = models.BooleanField(default=True)
+    notify_production_insights = models.BooleanField(default=True)
+    notify_financial_reports = models.BooleanField(default=True)
+    notify_system_updates = models.BooleanField(default=True)
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
 
@@ -116,3 +132,13 @@ class CustomUser(AbstractUser):
     @property
     def full_name(self):
         return self.get_full_name() or self.email
+
+    def get_initials(self):
+        """Return up to two uppercase initials from the user's name or email."""
+        full = self.get_full_name().strip()
+        if full:
+            parts = full.split()
+            initials = parts[0][0] + (parts[-1][0] if len(parts) > 1 else "")
+        else:
+            initials = self.email[:1] if self.email else ""
+        return initials.upper()

@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+{% block title %}Notification Preferences{% endblock %}
+{% block breadcrumb %}Settings{% endblock %}
+
+{% block content %}
+<div style="max-width: 1100px; margin: 0 auto;">
+
+  <!-- Page header -->
+  <div style="margin-bottom: 2rem;">
+    <p style="font-size: 0.65rem; font-weight: 700;
+              text-transform: uppercase; letter-spacing: 0.08em;
+              color: #336a28; margin: 0 0 0.5rem;
+              font-family: Inter, sans-serif;">
+      Settings
+    </p>
+    <h1 style="font-family: Manrope, sans-serif;
+               font-size: 2rem; font-weight: 800;
+               color: #234280; margin: 0 0 0.5rem;
+               letter-spacing: -0.02em;">
+      Notification Preferences
+    </h1>
+    <p style="color: #64748b; font-size: 0.875rem;
+              max-width: 42rem; margin: 0;">
+      Manage how FlockIQ communicates with you and
+      choose which updates matter most to your role.
+    </p>
+  </div>
+
+  <!-- Account brief card -->
+  <div style="background: white; border-radius: 1.5rem;
+              padding: 1.5rem; margin-bottom: 1.5rem;
+              box-shadow: 0px 12px 32px rgba(35,66,128,0.06);
+              display: flex; align-items: center;
+              justify-content: space-between; gap: 1rem;
+              flex-wrap: wrap;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <div style="width: 3.5rem; height: 3.5rem;
+                  border-radius: 50%; background: #f1f4fb;
+                  display: flex; align-items: center;
+                  justify-content: center; font-size: 1.25rem;
+                  font-weight: 700; color: #234280;
+                  font-family: Manrope, sans-serif;">
+        {{ user.get_initials|default:"U" }}
+      </div>
+      <div>
+        <p style="font-family: Manrope, sans-serif;
+                  font-weight: 700; font-size: 1.0625rem;
+                  color: #234280; margin: 0;">
+          {{ user.get_full_name|default:user.email }}
+        </p>
+        <p style="font-size: 0.8125rem; color: #94a3b8;
+                  margin: 0.125rem 0 0;">
+          {{ user.email }}
+          {% if user.phone %}
+          · {{ user.phone }}
+          {% endif %}
+        </p>
+      </div>
+    </div>
+    <a href="{% url 'accounts:profile' %}"
+       style="padding: 0.625rem 1.25rem; border-radius: 9999px;
+              background: #f1f4fb; color: #234280;
+              font-size: 0.8125rem; font-weight: 700;
+              text-decoration: none; font-family: Inter, sans-serif;">
+      Edit Profile
+    </a>
+  </div>
+
+  <form method="post"
+        hx-post="{% url 'accounts:notification_preferences' %}"
+        hx-target="#save-status"
+        hx-swap="innerHTML">
+    {% csrf_token %}
+
+    <div class="prefs-grid" style="display: grid;
+                grid-template-columns: 1fr 2fr; gap: 1.5rem;">
+
+      <!-- Communication Channels card -->
+      <div style="background: #eef1f9; border-radius: 1.5rem;
+                  padding: 1.5rem;">
+        <h3 style="font-family: Manrope, sans-serif;
+                   font-weight: 800; font-size: 1.0625rem;
+                   color: #234280; margin: 0 0 1.25rem;
+                   display: flex; align-items: center; gap: 0.5rem;">
+          <svg class="w-5 h-5" style="flex-shrink:0;" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M8.111 16.404a5.5 5.5 0 017.778 0M5.288 12.222a9.5 9.5 0 0113.424 0M12 20h.01M3.515 8.04a13.5 13.5 0 0116.97 0"/>
+          </svg>
+          Communication Channels
+        </h3>
+
+        <!-- SMS toggle -->
+        <div style="margin-bottom: 1.5rem;">
+          <div style="display: flex; align-items: center;
+                      justify-content: space-between; margin-bottom: 0.375rem;">
+            <label style="font-family: Manrope, sans-serif;
+                          font-weight: 700; font-size: 0.875rem;
+                          color: #181c21;">
+              SMS Alerts
+            </label>
+            <label style="position: relative; display: inline-block;
+                          width: 2.5rem; height: 1.375rem;
+                          cursor: pointer;">
+              <input type="checkbox" name="sms_alerts"
+                     {% if user.sms_alerts_enabled %}checked{% endif %}
+                     style="opacity: 0; width: 0; height: 0;"
+                     onchange="this.nextElementSibling.style.background = this.checked ? '#336a28' : '#cbd5e1'; this.nextElementSibling.firstElementChild.style.transform = this.checked ? 'translateX(1.125rem)' : 'translateX(0.125rem)'">
+              <span style="position: absolute; inset: 0;
+                           border-radius: 9999px; transition: 0.2s;
+                           background: {% if user.sms_alerts_enabled %}#336a28{% else %}#cbd5e1{% endif %};">
+                <span style="position: absolute; top: 0.125rem;
+                             left: 0; width: 1.125rem; height: 1.125rem;
+                             border-radius: 50%; background: white;
+                             transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+                             transform: translateX({% if user.sms_alerts_enabled %}1.125rem{% else %}0.125rem{% endif %});">
+                </span>
+              </span>
+            </label>
+          </div>
+          <p style="font-size: 0.75rem; color: #64748b; margin: 0;
+                    line-height: 1.5;">
+            High-priority alerts via SMS for offline reliability.
+            <span style="color: #94a3b8; font-style: italic;">
+              WhatsApp alerts coming soon.
+            </span>
+          </p>
+        </div>
+
+        <!-- Email digest dropdown -->
+        <div>
+          <label style="display: block; font-family: Manrope, sans-serif;
+                        font-weight: 700; font-size: 0.875rem;
+                        color: #181c21; margin-bottom: 0.625rem;">
+            Email Digest
+          </label>
+          <select name="email_digest_frequency"
+                  style="width: 100%; background: white; border: none;
+                         border-radius: 0.75rem; padding: 0.75rem 1rem;
+                         font-size: 0.875rem; color: #181c21;
+                         min-height: 3rem; font-family: Inter, sans-serif;
+                         appearance: none; cursor: pointer;
+                         box-sizing: border-box;">
+            <option value="daily" {% if user.email_digest_frequency == 'daily' %}selected{% endif %}>
+              Daily Summary
+            </option>
+            <option value="weekly" {% if user.email_digest_frequency == 'weekly' %}selected{% endif %}>
+              Weekly Insights
+            </option>
+            <option value="never" {% if user.email_digest_frequency == 'never' %}selected{% endif %}>
+              Never (Mute All)
+            </option>
+          </select>
+          <p style="margin-top: 0.625rem; font-size: 0.75rem;
+                    color: #94a3b8; font-style: italic; line-height: 1.5;">
+            {% if user.email_digest_frequency == 'daily' %}
+            Aggregated reports delivered to your inbox every morning.
+            {% elif user.email_digest_frequency == 'weekly' %}
+            Aggregated reports delivered to your inbox every Monday.
+            {% else %}
+            You won't receive email digests.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <!-- Category Filters card -->
+      <div style="background: white; border-radius: 1.5rem;
+                  padding: 1.5rem;
+                  box-shadow: 0px 12px 32px rgba(35,66,128,0.06);">
+        <div style="display: flex; align-items: center;
+                    justify-content: space-between; margin-bottom: 1.25rem;">
+          <h3 style="font-family: Manrope, sans-serif;
+                     font-weight: 800; font-size: 1.0625rem;
+                     color: #234280; margin: 0;">
+            Category Filters
+          </h3>
+        </div>
+
+        <div class="prefs-categories" style="display: grid;
+                    grid-template-columns: 1fr 1fr; gap: 1rem;">
+
+          <!-- Health Alerts — all roles -->
+          <div style="background: #f8fafc; border-radius: 1rem;
+                      padding: 1.25rem;">
+            <div style="display: flex; justify-content: space-between;
+                        align-items: flex-start; margin-bottom: 0.75rem;">
+              <div style="width: 2.5rem; height: 2.5rem;
+                          border-radius: 0.75rem; background: #fce4e4;
+                          display: flex; align-items: center;
+                          justify-content: center;">
+                <svg class="w-5 h-5" style="color:#dc2626;" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                </svg>
+              </div>
+              <label style="display: flex; align-items: center; gap: 0.375rem;
+                            cursor: pointer;">
+                <span style="font-size: 0.625rem; font-weight: 700;
+                             text-transform: uppercase; letter-spacing: 0.05em;
+                             color: #94a3b8;">
+                  {% if user.notify_health_alerts %}Active{% else %}Muted{% endif %}
+                </span>
+                <input type="checkbox" name="notify_health_alerts"
+                       {% if user.notify_health_alerts %}checked{% endif %}
+                       style="width: 1.125rem; height: 1.125rem;
+                              accent-color: #336a28; cursor: pointer;">
+              </label>
+            </div>
+            <h4 style="font-family: Manrope, sans-serif; font-weight: 700;
+                       font-size: 0.9375rem; color: #234280; margin: 0 0 0.375rem;">
+              Health Alerts
+            </h4>
+            <p style="font-size: 0.75rem; color: #94a3b8; margin: 0;
+                      line-height: 1.5;">
+              Mortality spikes, vaccination reminders,
+              and outbreak alerts.
+            </p>
+          </div>
+
+          <!-- Production Insights — all roles -->
+          <div style="background: #f8fafc; border-radius: 1rem;
+                      padding: 1.25rem;">
+            <div style="display: flex; justify-content: space-between;
+                        align-items: flex-start; margin-bottom: 0.75rem;">
+              <div style="width: 2.5rem; height: 2.5rem;
+                          border-radius: 0.75rem; background: #dcfce7;
+                          display: flex; align-items: center;
+                          justify-content: center;">
+                <svg class="w-5 h-5" style="color:#16a34a;" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                </svg>
+              </div>
+              <label style="display: flex; align-items: center; gap: 0.375rem;
+                            cursor: pointer;">
+                <span style="font-size: 0.625rem; font-weight: 700;
+                             text-transform: uppercase; letter-spacing: 0.05em;
+                             color: #94a3b8;">
+                  {% if user.notify_production_insights %}Active{% else %}Muted{% endif %}
+                </span>
+                <input type="checkbox" name="notify_production_insights"
+                       {% if user.notify_production_insights %}checked{% endif %}
+                       style="width: 1.125rem; height: 1.125rem;
+                              accent-color: #336a28; cursor: pointer;">
+              </label>
+            </div>
+            <h4 style="font-family: Manrope, sans-serif; font-weight: 700;
+                       font-size: 0.9375rem; color: #234280; margin: 0 0 0.375rem;">
+              Production Insights
+            </h4>
+            <p style="font-size: 0.75rem; color: #94a3b8; margin: 0;
+                      line-height: 1.5;">
+              Feed conversion, water consumption, and
+              weight gain milestones.
+            </p>
+          </div>
+
+          {% if can_manage_financial %}
+          <!-- Financial Reports — owner/manager only -->
+          <div style="background: #f8fafc; border-radius: 1rem;
+                      padding: 1.25rem;">
+            <div style="display: flex; justify-content: space-between;
+                        align-items: flex-start; margin-bottom: 0.75rem;">
+              <div style="width: 2.5rem; height: 2.5rem;
+                          border-radius: 0.75rem; background: #ede9fe;
+                          display: flex; align-items: center;
+                          justify-content: center;">
+                <svg class="w-5 h-5" style="color:#7c3aed;" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+              </div>
+              <label style="display: flex; align-items: center; gap: 0.375rem;
+                            cursor: pointer;">
+                <span style="font-size: 0.625rem; font-weight: 700;
+                             text-transform: uppercase; letter-spacing: 0.05em;
+                             color: #94a3b8;">
+                  {% if user.notify_financial_reports %}Active{% else %}Muted{% endif %}
+                </span>
+                <input type="checkbox" name="notify_financial_reports"
+                       {% if user.notify_financial_reports %}checked{% endif %}
+                       style="width: 1.125rem; height: 1.125rem;
+                              accent-color: #336a28; cursor: pointer;">
+              </label>
+            </div>
+            <h4 style="font-family: Manrope, sans-serif; font-weight: 700;
+                       font-size: 0.9375rem; color: #234280; margin: 0 0 0.375rem;">
+              Financial Reports
+            </h4>
+            <p style="font-size: 0.75rem; color: #94a3b8; margin: 0;
+                      line-height: 1.5;">
+              Billing reminders, payment status, and
+              credit score updates.
+            </p>
+          </div>
+          {% endif %}
+
+          {% if can_manage_financial %}
+          <!-- System Updates — owner/manager only -->
+          <div style="background: #f8fafc; border-radius: 1rem;
+                      padding: 1.25rem;">
+            <div style="display: flex; justify-content: space-between;
+                        align-items: flex-start; margin-bottom: 0.75rem;">
+              <div style="width: 2.5rem; height: 2.5rem;
+                          border-radius: 0.75rem; background: #fef3c7;
+                          display: flex; align-items: center;
+                          justify-content: center;">
+                <svg class="w-5 h-5" style="color:#d97706;" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+              </div>
+              <label style="display: flex; align-items: center; gap: 0.375rem;
+                            cursor: pointer;">
+                <span style="font-size: 0.625rem; font-weight: 700;
+                             text-transform: uppercase; letter-spacing: 0.05em;
+                             color: #94a3b8;">
+                  {% if user.notify_system_updates %}Active{% else %}Muted{% endif %}
+                </span>
+                <input type="checkbox" name="notify_system_updates"
+                       {% if user.notify_system_updates %}checked{% endif %}
+                       style="width: 1.125rem; height: 1.125rem;
+                              accent-color: #336a28; cursor: pointer;">
+              </label>
+            </div>
+            <h4 style="font-family: Manrope, sans-serif; font-weight: 700;
+                       font-size: 0.9375rem; color: #234280; margin: 0 0 0.375rem;">
+              System Updates
+            </h4>
+            <p style="font-size: 0.75rem; color: #94a3b8; margin: 0;
+                      line-height: 1.5;">
+              Platform updates, maintenance windows,
+              and security notices.
+            </p>
+          </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer action bar -->
+    <div style="margin-top: 2rem; padding-top: 1.5rem;
+                border-top: 1px solid #f1f4fb;
+                display: flex; align-items: center;
+                justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+      <p style="font-size: 0.8125rem; color: #94a3b8; margin: 0;
+                display: flex; align-items: center; gap: 0.5rem;">
+        <svg class="w-4 h-4" style="color:#16a34a; flex-shrink:0;" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+        Changes apply immediately and sync across your devices.
+      </p>
+      <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <span id="save-status"></span>
+        <button type="submit"
+                style="padding: 0.75rem 2rem; border-radius: 9999px;
+                       color: white; border: none; font-weight: 700;
+                       font-size: 0.875rem; cursor: pointer;
+                       font-family: Inter, sans-serif;
+                       background: linear-gradient(135deg, #234280 0%, #2d5099 100%);
+                       box-shadow: 0px 4px 12px rgba(35,66,128,0.2);
+                       min-height: 3rem;">
+          Save Preferences
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<style>
+  @media (max-width: 768px) {
+    .prefs-grid { grid-template-columns: 1fr !important; }
+    .prefs-categories { grid-template-columns: 1fr !important; }
+  }
+</style>
+{% endblock %}

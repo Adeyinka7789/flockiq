@@ -9,6 +9,7 @@ from .views import (
     InviteUserView,
     LoginView,
     LogoutView,
+    NotificationPreferencesView,
     ProfilePageView,
     ReactivateUserView,
     ResendVerificationView,
@@ -36,6 +37,11 @@ urlpatterns = [
     path("api/v1/users/", UserListView.as_view(), name="user_list"),
     path("api/v1/users/create/", UserCreateView.as_view(), name="user_create"),
     path("profile/", ProfilePageView.as_view(), name="profile"),
+    path(
+        "settings/notifications/",
+        NotificationPreferencesView.as_view(),
+        name="notification_preferences",
+    ),
     path("profile/edit/", EditProfileView.as_view(), name="edit_profile"),
     path("profile/change-password/", WebChangePasswordView.as_view(), name="change_password"),
     # NDPR compliance

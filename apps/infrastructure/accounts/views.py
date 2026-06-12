@@ -4,6 +4,7 @@ import secrets
 import structlog
 from axes.decorators import axes_dispatch
 from django.conf import settings as django_settings
+from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -484,6 +485,53 @@ class ProfilePageView(LoginRequiredMixin, View):
 
     def get(self, request):
         return render(request, "accounts/profile.html")
+
+
+class NotificationPreferencesView(LoginRequiredMixin, View):
+    """GET/POST /settings/notifications/ — personal notification preferences."""
+
+    template_name = "accounts/notification_preferences.html"
+
+    def get(self, request):
+        return render(request, self.template_name, {
+            "user": request.user,
+            "can_manage_financial": request.user.role in ("owner", "manager"),
+        })
+
+    def post(self, request):
+        user = request.user
+        user.sms_alerts_enabled = request.POST.get("sms_alerts") == "on"
+        user.email_digest_frequency = request.POST.get(
+            "email_digest_frequency", "weekly"
+        )
+        user.notify_health_alerts = request.POST.get("notify_health_alerts") == "on"
+        user.notify_production_insights = (
+            request.POST.get("notify_production_insights") == "on"
+        )
+        # Financial reports and system updates are only editable by owner/manager;
+        # the fields are not rendered for other roles, so we must not let an absent
+        # checkbox silently flip them off.
+        if user.role in ("owner", "manager"):
+            user.notify_financial_reports = (
+                request.POST.get("notify_financial_reports") == "on"
+            )
+            user.notify_system_updates = (
+                request.POST.get("notify_system_updates") == "on"
+            )
+        user.save(update_fields=[
+            "sms_alerts_enabled",
+            "email_digest_frequency",
+            "notify_health_alerts",
+            "notify_production_insights",
+            "notify_financial_reports",
+            "notify_system_updates",
+        ])
+        logger.info("notification_prefs_updated", user_id=str(user.id))
+
+        if request.headers.get("HX-Request"):
+            return render(request, "accounts/_prefs_saved_toast.html")
+        messages.success(request, "Preferences saved.")
+        return redirect("accounts:notification_preferences")
 
 
 class EditProfileView(LoginRequiredMixin, View):
