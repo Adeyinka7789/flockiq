@@ -4,7 +4,6 @@ from datetime import date, timedelta
 import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg, Sum
-from django.http import Http404
 from django.shortcuts import get_object_or_404, render
 from django.views import View
 from rest_framework.permissions import IsAuthenticated

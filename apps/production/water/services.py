@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import structlog
 from django.db import transaction
-from django.db.models import Avg, Count
+from django.db.models import Avg
 
 from apps.infrastructure.core.services import BaseService
 

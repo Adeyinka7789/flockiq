@@ -4,8 +4,8 @@ import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
-from django.http import Http404, HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.http import Http404, HttpResponse
+from django.shortcuts import render
 from django.views import View
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -21,7 +21,6 @@ from .serializers import (
     FarmCreateSerializer,
     FarmSerializer,
     FarmSummarySerializer,
-    HouseCreateSerializer,
 )
 from .services import FarmService
 

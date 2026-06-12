@@ -6,7 +6,6 @@ import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import redirect, render
 from django.views import View
-from django.http import Http404
 
 logger = structlog.get_logger(__name__)
 

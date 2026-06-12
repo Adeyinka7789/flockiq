@@ -1,7 +1,5 @@
-import ipaddress
 import json
 import time
-from collections import Counter
 from datetime import date, datetime, timedelta
 
 import structlog
@@ -463,8 +461,8 @@ class SuperAdminAnalyticsView(SuperAdminMixin, View):
 
 class BillingControlView(SuperAdminMixin, View):
     def get(self, request):
-        from apps.infrastructure.billing.models import PaymentRecord, BillingPlan
-        from django.db.models import Sum, Count, Q
+        from apps.infrastructure.billing.models import PaymentRecord
+        from django.db.models import Sum, Q
         from datetime import date, timedelta
 
         today = date.today()
@@ -784,7 +782,6 @@ class SystemHealthView(SuperAdminMixin, View):
         from django_celery_results.models import TaskResult
         from django_celery_beat.models import PeriodicTask
         from datetime import date, timedelta
-        from django.db.models import Avg
 
         today = date.today()
 

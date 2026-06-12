@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import uuid
 
 import requests
 import structlog

@@ -1,5 +1,4 @@
 import datetime
-from decimal import Decimal
 
 import structlog
 from django.core.paginator import Paginator

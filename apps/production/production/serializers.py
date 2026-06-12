@@ -2,7 +2,7 @@ import datetime
 
 from rest_framework import serializers
 
-from .models import CrateInventory, EggProductionLog
+from .models import EggProductionLog
 
 
 class EggProductionLogSerializer(serializers.ModelSerializer):

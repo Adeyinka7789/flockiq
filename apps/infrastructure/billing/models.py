@@ -1,5 +1,3 @@
-import uuid
-
 from django.db import models
 
 from apps.infrastructure.core.models import TenantAwareModel

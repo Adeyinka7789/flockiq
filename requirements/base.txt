@@ -26,8 +26,6 @@ django-import-export==4.*
 
 # Security
 django-axes==6.5.*
-django-csp==3.8.*
-django-ratelimit==4.1.*
 cryptography==46.0.7
 # Required by BCryptSHA256PasswordHasher — production.py's PRIMARY password
 # hasher. Django raises on the first password hash/check if this is missing;
@@ -48,7 +46,6 @@ django-silk>=5.0.0
 
 # Storage
 Pillow==12.2.0
-django-storages==1.14.*
 whitenoise==6.7.*
 boto3>=1.34.0  # B2/S3 remote backup uploads
 
@@ -81,10 +78,3 @@ weasyprint>=60.0
 # Utilities
 python-decouple==3.8.*
 dj-database-url==2.2.*
-Faker==25.*
-factory-boy==3.3.*
-freezegun==1.5.*
-pytest==9.0.3
-pytest-django==4.8.*
-pytest-cov==5.*
-coverage==7.*

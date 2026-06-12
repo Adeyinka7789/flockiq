@@ -1,6 +1,5 @@
 import calendar as _cal
 import json
-import uuid
 from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
 

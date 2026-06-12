@@ -3,7 +3,6 @@ import datetime
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.utils import timezone
 
 from apps.infrastructure.core.managers import ActiveManager, AllObjectsManager
 from apps.infrastructure.core.models import SoftDeleteMixin, TenantAwareModel

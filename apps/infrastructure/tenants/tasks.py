@@ -1,7 +1,7 @@
 # NEW FILE: apps/farm/farms/tasks.py
 # Add these Celery tasks to handle async farm and house creation
 
-from celery import shared_task, current_app
+from celery import shared_task
 from django.db import IntegrityError
 import structlog
 

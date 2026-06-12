@@ -2,3 +2,16 @@
 django-debug-toolbar==4.4.*
 django-extensions==3.2.*
 ipython==8.*
+
+# Test stack — kept out of base.txt so the VPS doesn't install test-only deps.
+# NOTE: pytest==9.0.3 is exact-pinned (the rest use ranges). pytest-django 4.8.*
+# declares `pytest>=7.0.0`, so pytest 9 is allowed by its metadata; this exact
+# combination is the one exercised in CI. Treat it as known-working — don't bump
+# the pytest pin without re-running the suite.
+pytest==9.0.3
+pytest-django==4.8.*
+pytest-cov==5.*
+coverage==7.*
+Faker==25.*
+factory-boy==3.3.*
+freezegun==1.5.*

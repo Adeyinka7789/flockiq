@@ -67,7 +67,7 @@ class FinanceService(BaseService):
         return record
 
     def get_pl_summary(self, batch_id: str) -> dict:
-        from .models import SalesRecord, BatchFinancialSummary
+        from .models import SalesRecord
         from apps.finance.expenses.models import ExpenseRecord
         from apps.farm.flocks.models import Batch
 
@@ -232,7 +232,6 @@ class FinanceService(BaseService):
             if total_expenses_kobo else Decimal("0")
         )
 
-        from apps.finance.expenses.services import ExpenseService
         break_even = self.calculate_break_even(str(batch.id))
         break_even_quantity = break_even.get("break_even_quantity", 0)
 

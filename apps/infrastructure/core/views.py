@@ -4,7 +4,6 @@ from datetime import date, datetime, timedelta
 import structlog
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import redirect_to_login
 from django.core.cache import cache
 from django.db.models import Sum

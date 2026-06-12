@@ -5,7 +5,7 @@ import structlog
 from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
 from django.db.models import Q
-from django.http import Http404, HttpResponse
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views import View
 from rest_framework.permissions import IsAuthenticated
@@ -379,8 +379,6 @@ class OutbreakAlertView(TenantRequiredMixin, View):
     """GET /health/outbreaks/ — Lists active outbreak alerts."""
 
     def get(self, request):
-        from django.utils import timezone
-
         from .models import OutbreakAlert
 
         org = get_org_or_404(request)

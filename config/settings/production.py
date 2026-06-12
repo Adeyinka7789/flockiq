@@ -1,7 +1,6 @@
 from .base import *  # noqa: F401, F403
 import dj_database_url
 from decouple import config, Csv
-import os
 
 DEBUG = False
 

@@ -9,9 +9,6 @@ from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import render
 from django.views import View
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context

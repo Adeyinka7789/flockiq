@@ -399,8 +399,6 @@ class ForgotPasswordView(View):
         return render(request, "accounts/forgot_password.html")
 
     def post(self, request):
-        from django.conf import settings as django_settings
-
         email = request.POST.get("email", "").strip()
         try:
             user = CustomUser.objects.get(email=email)

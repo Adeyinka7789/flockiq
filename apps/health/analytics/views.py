@@ -2,7 +2,7 @@ import structlog
 import waffle
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import render
 from django.views import View
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -14,16 +14,11 @@ from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.rls import set_tenant_context
 from apps.infrastructure.core.views import TenantRequiredMixin
 
-from .models import AnomalyRecord
 from .serializers import (
     AnomalyRecordSerializer,
-    ForecastResultSerializer,
-    SaleTimingSerializer,
-    TheftFlagSerializer,
 )
 from .services import (
     AnomalyDetectionService,
-    DiagnosisEngine,
     ProphetForecastService,
     SaleTimingService,
     TheftDetectionService,

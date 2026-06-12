@@ -23,7 +23,7 @@ from apps.infrastructure.accounts.views import (
     WebLoginView,
     WebLogoutView,
 )
-from apps.infrastructure.core.views import DashboardView, SessionCheckView, custom_404, custom_500, user_manual_pdf
+from apps.infrastructure.core.views import DashboardView, SessionCheckView, user_manual_pdf
 from apps.infrastructure.core.search import GlobalSearchView
 from apps.infrastructure.superadmin import urls as superadmin_urls
 

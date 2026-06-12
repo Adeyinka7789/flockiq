@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 import structlog
 from django.db.models import Sum
-from django.http import Http404, HttpResponse
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.views import View
 from rest_framework.permissions import IsAuthenticated

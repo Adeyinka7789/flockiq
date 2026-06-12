@@ -14,7 +14,6 @@ ARCHITECTURE NOTE — why transaction.atomic() is required here:
     even if PgBouncer reuses the same backend connection.
 """
 
-import uuid as _uuid_module
 from contextvars import ContextVar
 from contextlib import contextmanager
 

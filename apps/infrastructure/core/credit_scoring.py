@@ -39,7 +39,6 @@ class CreditScoringService:
 
         from apps.farm.flocks.models import Batch, MortalityLog, WeightRecord
         from apps.finance.finance.models import BatchFinancialSummary, FarmCreditScore
-        from apps.infrastructure.billing.models import PaymentRecord
         from apps.production.feed.models import FeedLog
 
         all_closed = list(

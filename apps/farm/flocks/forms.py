@@ -2,7 +2,7 @@ import datetime
 
 from django import forms
 
-from apps.farm.flocks.models import Batch, MortalityLog, WeightRecord
+from apps.farm.flocks.models import Batch, MortalityLog
 
 _INPUT_CLASS = (
     "block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm "

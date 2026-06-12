@@ -2,7 +2,6 @@ import json
 
 import structlog
 from django.conf import settings
-from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse

@@ -151,7 +151,7 @@ class FarmMemoryService:
         return patterns
 
     def get_seasonal_patterns(self) -> list:
-        from apps.farm.flocks.models import Batch, MortalityLog
+        from apps.farm.flocks.models import Batch
         from apps.infrastructure.core.rls import set_tenant_context
 
         patterns = []
