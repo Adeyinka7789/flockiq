@@ -471,13 +471,29 @@ class TestBatchViews:
 
 class TestFlocksCeleryTasks:
 
-    def test_activate_cycle_subscription_stub_does_not_raise(self, db):
-        from apps.farm.flocks.tasks import activate_cycle_subscription
-        activate_cycle_subscription(org_id="fake-org", batch_id="fake-batch")
+    def test_mortality_log_save_dispatches_anomaly_check(self, db):
+        """Saving a MortalityLog should dispatch the real analytics anomaly
+        check, not a stub."""
+        from unittest.mock import patch
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.farm.flocks.services import BatchService
 
-    def test_deactivate_cycle_subscription_stub_does_not_raise(self, db):
-        from apps.farm.flocks.tasks import deactivate_cycle_subscription
-        deactivate_cycle_subscription(org_id="fake-org", batch_id="fake-batch")
+        org = _make_org("anomalydispatch1")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org):
+            batch = _make_batch(org, farm, house, initial_count=500)
+
+        with set_tenant_context(org), patch(
+            "apps.health.analytics.tasks.check_mortality_anomaly.delay"
+        ) as mock_check:
+            BatchService(org).log_mortality(batch_id=str(batch.id), count=5)
+
+        mock_check.assert_called_once()
+        _, kwargs = mock_check.call_args
+        assert kwargs["org_id"] == str(org.id)
+        assert kwargs["batch_id"] == str(batch.id)
 
     def test_create_batch_async_creates_batch(self, db):
         from apps.farm.flocks.tasks import create_batch_async
@@ -596,10 +612,11 @@ class TestFlocksSignalEdgeCases:
             BatchService(org).log_mortality(batch_id=str(batch.id), count=2)
 
     def test_mortality_anomaly_task_exception_swallowed(self, db):
-        """Lines 59-60: check_mortality_anomaly.delay() failure is swallowed."""
+        """check_mortality_anomaly.delay() failure on the real analytics task
+        is swallowed and never aborts the domain write."""
         from unittest.mock import patch
         from apps.infrastructure.core.rls import set_tenant_context
-        from apps.farm.flocks.tasks import check_mortality_anomaly
+        from apps.health.analytics.tasks import check_mortality_anomaly
 
         org = _make_org("sigedge4")
         farm = _make_farm(org)
@@ -613,81 +630,6 @@ class TestFlocksSignalEdgeCases:
         ):
             from apps.farm.flocks.services import BatchService
             BatchService(org).log_mortality(batch_id=str(batch.id), count=5)
-
-    def test_batch_signal_broiler_cycle_fires_subscription(self, db):
-        """Lines 75-80: broiler batch on cycle-tier org calls activate_cycle_subscription.delay."""
-        from unittest.mock import patch
-        from apps.infrastructure.tenants.models import Organization
-        from apps.infrastructure.core.rls import set_tenant_context
-        from apps.farm.flocks.tasks import activate_cycle_subscription
-        from apps.farm.flocks.models import Batch
-
-        org = Organization.objects.create(
-            name="Cycle Org", subdomain="cycleorg1", plan_tier="cycle"
-        )
-        farm = _make_farm(org)
-        house = _make_house(org, farm)
-
-        with set_tenant_context(org), patch.object(
-            activate_cycle_subscription, "delay"
-        ) as mock_delay:
-            Batch.objects.create(
-                org=org, farm=farm, house=house,
-                batch_name="Cycle Broiler",
-                bird_type="broiler",
-                placement_date=datetime.date.today(),
-                initial_count=500,
-                current_count=500,
-                status="active",
-            )
-
-        mock_delay.assert_called_once()
-
-    def test_batch_signal_broiler_cycle_delay_exception_swallowed(self, db):
-        """Lines 81-82: activate_cycle_subscription.delay() exception is swallowed."""
-        from unittest.mock import patch
-        from apps.infrastructure.tenants.models import Organization
-        from apps.infrastructure.core.rls import set_tenant_context
-        from apps.farm.flocks.tasks import activate_cycle_subscription
-        from apps.farm.flocks.models import Batch
-
-        org = Organization.objects.create(
-            name="Cycle Org 2", subdomain="cycleorg2", plan_tier="cycle"
-        )
-        farm = _make_farm(org)
-        house = _make_house(org, farm)
-
-        with set_tenant_context(org), patch.object(
-            activate_cycle_subscription, "delay", side_effect=Exception("Celery down")
-        ):
-            Batch.objects.create(
-                org=org, farm=farm, house=house,
-                batch_name="Cycle Broiler 2",
-                bird_type="broiler",
-                placement_date=datetime.date.today(),
-                initial_count=500,
-                current_count=500,
-                status="active",
-            )
-
-    def test_batch_close_deactivate_exception_swallowed(self, db):
-        """Lines 101-102: deactivate_cycle_subscription.delay() exception on close is swallowed."""
-        from unittest.mock import patch
-        from apps.infrastructure.core.rls import set_tenant_context
-        from apps.farm.flocks.tasks import deactivate_cycle_subscription
-
-        org = _make_org("sigedge7")
-        farm = _make_farm(org)
-        house = _make_house(org, farm)
-
-        with set_tenant_context(org):
-            batch = _make_batch(org, farm, house)
-
-        with set_tenant_context(org), patch.object(
-            deactivate_cycle_subscription, "delay", side_effect=Exception("Celery down")
-        ):
-            from apps.farm.flocks.services import BatchService
-            BatchService(org).close_batch(batch_id=str(batch.id))
 
 
 # ── flocks/views.py — easy GET branches ──────────────────────────────────────

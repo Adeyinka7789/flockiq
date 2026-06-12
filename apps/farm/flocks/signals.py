@@ -55,12 +55,12 @@ def on_mortality_log_saved(sender, instance, created, **kwargs):
             # Notification failure must never abort the domain write
             logger.exception("flocks.mortality_spike_notification_failed", batch_id=str(batch.pk))
 
-    # Fire ML anomaly stub task (fire-and-forget)
+    # Fire the real ML anomaly detection task (fire-and-forget)
     try:
-        from apps.farm.flocks.tasks import check_mortality_anomaly
+        from apps.health.analytics.tasks import check_mortality_anomaly
         check_mortality_anomaly.delay(
-            batch_id=str(instance.batch_id),
             org_id=str(instance.org_id),
+            batch_id=str(instance.batch_id),
         )
     except Exception:
         logger.warning("flocks.anomaly_task_enqueue_failed", batch_id=str(instance.batch_id))
@@ -68,6 +68,9 @@ def on_mortality_log_saved(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=_Batch, dispatch_uid="flocks.on_batch_saved")
 def on_batch_saved(sender, instance, created, **kwargs):
+    # Cycle billing is a Paystack-driven pricing tier the farmer selects manually
+    # on the billing page (activated via the Paystack webhook in billing/views.py),
+    # NOT tied to batch placement/closure. This handler only emits lifecycle logs.
     if created:
         logger.info(
             "flocks.batch_placed",
@@ -76,19 +79,6 @@ def on_batch_saved(sender, instance, created, **kwargs):
             bird_type=instance.bird_type,
             initial_count=instance.initial_count,
         )
-
-        if instance.bird_type == "broiler" and getattr(instance.org, "plan_tier", None) == "cycle":
-            try:
-                from apps.farm.flocks.tasks import activate_cycle_subscription
-                activate_cycle_subscription.delay(
-                    org_id=str(instance.org_id),
-                    batch_id=str(instance.pk),
-                )
-            except Exception:
-                logger.warning(
-                    "flocks.activate_subscription_failed",
-                    batch_id=str(instance.pk),
-                )
         return
 
     # Status changed to closed
@@ -98,14 +88,3 @@ def on_batch_saved(sender, instance, created, **kwargs):
             batch_id=str(instance.pk),
             batch_name=instance.batch_name,
         )
-        try:
-            from apps.farm.flocks.tasks import deactivate_cycle_subscription
-            deactivate_cycle_subscription.delay(
-                org_id=str(instance.org_id),
-                batch_id=str(instance.pk),
-            )
-        except Exception:
-            logger.warning(
-                "flocks.deactivate_subscription_failed",
-                batch_id=str(instance.pk),
-            )
