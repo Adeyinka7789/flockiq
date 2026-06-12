@@ -20,7 +20,7 @@
       <span class="vacc-name-text">{{ v.vaccine_name }}</span>
     </div>
   </td>
-  <td>
+  <td data-label="Batch">
     <div class="vacc-batch-id">
       <a href="{% url 'flocks:detail' v.batch.pk %}"
          style="color:#3d5a99;text-decoration:none;font-weight:600">
@@ -31,13 +31,13 @@
       {{ v.batch.bird_type|title }}
     </div>
   </td>
-  <td>
+  <td data-label="Farm">
     <div class="vacc-location">{{ v.batch.farm.name }}</div>
     <div style="font-size:11px;color:#8a96a8;margin-top:2px">
       Day {{ v.batch.cycle_day }}
     </div>
   </td>
-  <td>
+  <td data-label="Due">
     <div class="due-date-text {% if v.urgency == 'overdue' %}overdue{% endif %}">
       {{ v.due_date|date:"M d, Y" }}
     </div>
@@ -51,7 +51,7 @@
       </span>
     </div>
   </td>
-  <td>
+  <td data-label="Reminders">
     <div class="reminder-icons">
       <div class="reminder-icon active" title="SMS reminder set">
         <svg width="12" height="12" fill="none" viewBox="0 0 24 24"
@@ -69,10 +69,10 @@
       </div>
     </div>
   </td>
-  <td>
+  <td data-label="Status">
     <span class="status-pill {{ v.status }}">{{ v.status|title }}</span>
   </td>
-  <td>
+  <td data-label="">
     {% if v.status == 'scheduled' %}
     <button class="action-btn primary"
             hx-post="{% url 'health:complete' v.pk %}"

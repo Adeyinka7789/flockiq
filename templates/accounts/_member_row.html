@@ -17,7 +17,7 @@
     </div>
   </td>
   
-  <td class="px-6 py-4 whitespace-nowrap">
+  <td class="px-6 py-4 whitespace-nowrap" data-label="Role">
     {% if request.user.role == 'owner' and member != request.user and member.role != 'owner' %}
     <form hx-post="{% url 'accounts:team_role' member.pk %}"
           hx-target="#member-{{ member.pk }}"
@@ -38,8 +38,8 @@
     </span>
     {% endif %}
   </td>
-  
-  <td class="px-6 py-4 whitespace-nowrap">
+
+  <td class="px-6 py-4 whitespace-nowrap" data-label="Status">
     <span class="status-badge {% if member.is_active %}status-active{% else %}status-inactive{% endif %}">
       {% if member.is_active %}● Active{% else %}○ Inactive{% endif %}
     </span>

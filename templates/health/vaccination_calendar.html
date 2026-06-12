@@ -260,9 +260,72 @@
     color: #8a96a8; font-size: 13px;
   }
 
+  /* Prevent the table track from blowing out the grid (and the page) on narrow screens */
+  .vacc-layout > * { min-width: 0; }
+
   @media(max-width:900px){
     .vacc-layout{grid-template-columns:1fr}
     .vacc-metrics{grid-template-columns:1fr 1fr}
+  }
+
+  @media(max-width:768px){
+    /* FIX 1 — Filter tabs: 3-column grid (3 on top, rest below) */
+    .vacc-tabs{
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .vacc-tab{
+      justify-content: center;
+      white-space: nowrap;
+      padding: 8px 6px;
+      font-size: 11px;
+      min-width: 0;            /* allow the cell to shrink instead of overflowing */
+    }
+    .farm-filter{
+      grid-column: 1 / -1;     /* full-width row under the tabs */
+      margin-left: 0;
+      width: 100%;
+    }
+
+    /* FIX 2 — Convert the registry table into stacked cards */
+    .registry-card{ background: transparent; border: none; }
+    .registry-table thead{ display: none; }
+    .registry-table,
+    .registry-table tbody{ display: block; width: 100%; }
+    .registry-table tr{
+      display: block;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+    }
+    .registry-table tr:hover td{ background: transparent; }
+    .registry-table td{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 7px 0;
+      border: none;
+      text-align: right;
+    }
+    .registry-table td::before{
+      content: attr(data-label);
+      font-size: 10px; font-weight: 700; color: #8a96a8;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      text-align: left; flex-shrink: 0;
+    }
+    /* First cell = vaccine name + icon → behaves as the card title row */
+    .registry-table td:first-child{ justify-content: flex-start; padding-top: 0; }
+    .registry-table td:first-child::before{ display: none; }
+    /* Action button stretches full width at the bottom of the card */
+    .registry-table td:last-child::before{ display: none; }
+    .registry-table td:last-child .action-btn{ width: 100%; padding: 10px; }
+    /* Empty-state row keeps its centered block layout */
+    .registry-table td[colspan]{ display: block; text-align: center; padding: 0; }
+    .registry-table td[colspan]::before{ display: none; }
   }
 </style>
 

@@ -286,6 +286,37 @@
     .hc-layout { grid-template-columns: 1fr; }
     .hc-metrics { grid-template-columns: 1fr; }
   }
+
+  @media(max-width:640px){
+    /* Stack the header so the title gets the full width and stops
+       wrapping one word per line */
+    .hc-header{
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .hc-title{
+      font-size: 20px;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+    /* Buttons: two nav buttons side-by-side, Report Outbreak full-width below */
+    .hc-header-actions{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+    }
+    .hc-header-actions .hc-btn{
+      width: 100%;
+      justify-content: center;
+      font-size: 12px;
+      padding: 10px 8px;
+    }
+    .hc-header-actions .hc-btn.danger{
+      grid-column: 1 / -1;
+    }
+  }
 </style>
 
 <div class="hc-wrap">

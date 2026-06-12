@@ -555,6 +555,11 @@ class WebChangePasswordView(LoginRequiredMixin, View):
 _INVITABLE_ROLES = ("manager", "supervisor", "data_entry", "vet_advisor")
 
 
+def _role_choices():
+    """Role options offered by the team role picker (excludes owner)."""
+    return [c for c in CustomUser.ROLE_CHOICES if c[0] in _INVITABLE_ROLES]
+
+
 class TeamListView(LoginRequiredMixin, View):
     """GET /team/ — lists all org members."""
 
@@ -573,13 +578,15 @@ class TeamListView(LoginRequiredMixin, View):
                 | Q(email__icontains=q)
             )
         if "q" in request.GET and request.headers.get("HX-Request"):
-            return render(request, "accounts/_member_rows.html", {"users": users})
-        role_choices = [c for c in CustomUser.ROLE_CHOICES if c[0] in _INVITABLE_ROLES]
+            return render(request, "accounts/_member_rows.html", {
+                "users": users,
+                "role_choices": _role_choices(),
+            })
         return render(request, "accounts/team.html", {
             "users": users,
             "active_count": active_count,
             "unique_roles": unique_roles,
-            "role_choices": role_choices,
+            "role_choices": _role_choices(),
             "search_query": q,
         })
 
@@ -717,7 +724,10 @@ class ReactivateUserView(LoginRequiredMixin, View):
 
 def _member_row_response(request, member, toast=None, toast_type="success"):
     """Render the member row partial with an optional toast trigger."""
-    response = render(request, "accounts/_member_row.html", {"member": member})
+    response = render(request, "accounts/_member_row.html", {
+        "member": member,
+        "role_choices": _role_choices(),
+    })
     if toast:
         response["HX-Trigger"] = json.dumps({
             "showToast": {"message": toast, "type": toast_type},

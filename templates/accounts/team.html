@@ -128,6 +128,66 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
+
+  /* ── Mobile: turn the team table into stacked cards (under 768px) ── */
+  @media (max-width: 768px) {
+    /* Let the dropdown / card shadows breathe — drop the desktop frame */
+    .team-table-card {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      overflow: visible;
+    }
+    .team-table-wrapper { overflow: visible; }
+
+    .team-table thead { display: none; }
+    .team-table,
+    .team-table tbody,
+    .team-table tr,
+    .team-table td { display: block; width: 100%; }
+
+    .team-table tr {
+      background: #ffffff;
+      border: 1px solid rgba(229, 231, 235, 0.8);
+      border-radius: 1rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      box-shadow: 0 8px 24px rgba(35, 66, 128, 0.06);
+    }
+    .team-table td { padding: 0; border: none; }
+
+    /* Member identity = card header */
+    .team-table td:first-child { margin-bottom: 0.875rem; }
+
+    /* Role + Status become label/value rows */
+    .team-table td[data-label] {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.625rem 0;
+      border-top: 1px solid #f1f4fb;
+    }
+    .team-table td[data-label]::before {
+      content: attr(data-label);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #94a3b8;
+      flex-shrink: 0;
+    }
+
+    /* Actions span the full card width */
+    .team-table td:last-child { margin-top: 0.875rem; }
+    .team-table td:last-child .flex { display: block; }
+    .team-table td:last-child .action-btn { width: 100%; }
+
+    /* Empty-state cell keeps its centered block layout */
+    .team-table td[colspan]::before { display: none; }
+    .team-table td[colspan] { margin: 0; text-align: center; }
+  }
 </style>
 {% endblock %}
 
@@ -204,9 +264,9 @@
     </div>
   </div>
 
-  <div class="bg-surface-container-lowest rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden">
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse">
+  <div class="team-table-card bg-surface-container-lowest rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden">
+    <div class="team-table-wrapper overflow-x-auto">
+      <table class="team-table w-full text-left border-collapse">
         <thead>
           <tr class="bg-surface-container-low border-b border-gray-200/80 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/80">
             <th class="px-6 py-4.5">Team member</th>
