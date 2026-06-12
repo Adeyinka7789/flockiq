@@ -224,6 +224,9 @@ class SuperAdminTenantsView(SuperAdminMixin, View):
                 ('monthly', 'Monthly'), ('yearly', 'Yearly'),
             ],
         }
+
+        if request.headers.get('HX-Request'):
+            return render(request, 'superadmin/_tenant_table.html', context)
         return render(request, 'superadmin/tenants.html', context)
 
 
@@ -531,6 +534,9 @@ class BillingControlView(SuperAdminMixin, View):
             'status_filter': status_filter,
             'search_query': q,
         }
+
+        if request.headers.get('HX-Request'):
+            return render(request, 'superadmin/_billing_table.html', context)
         return render(request, 'superadmin/billing.html', context)
 
 
@@ -628,6 +634,10 @@ class ImpersonationView(SuperAdminMixin, View):
             'search_query': q,
             'role_filter': role_filter,
         }
+
+        if request.headers.get('HX-Request'):
+            return render(
+                request, 'superadmin/_impersonation_table.html', context)
         return render(request, 'superadmin/impersonation.html', context)
 
 

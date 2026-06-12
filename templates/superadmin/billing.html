@@ -273,76 +273,7 @@
     </div>
 
     <div id="bc-table">
-      <table class="bc-table">
-        <thead>
-          <tr>
-            <th>Account / Org</th>
-            <th>Current Plan</th>
-            <th>Billing Cycle</th>
-            <th>Next Invoice</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in org_list %}
-          {% with org=item.org %}
-          <tr>
-            <td>
-              <div style="display:flex;align-items:center;gap:10px">
-                <div style="width:34px;height:34px;border-radius:10px;
-                            background:#e8eef8;display:flex;align-items:center;
-                            justify-content:center;font-size:12px;font-weight:800;
-                            color:#3d5a99">
-                  {{ org.name|first|upper }}{{ org.name|slice:"1:2"|upper }}
-                </div>
-                <div>
-                  <div style="font-size:13px;font-weight:700;color:#1a2744">{{ org.name }}</div>
-                  <div style="font-size:11px;color:#8a96a8">ID: #{{ org.pk|stringformat:"s"|slice:":8"|upper }}</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              <span style="background:#f4f7fe;color:#3d5a99;padding:4px 10px;
-                           border-radius:8px;font-size:12px;font-weight:600">
-                {{ org.plan_tier|title }}
-              </span>
-            </td>
-            <td style="font-size:12px;color:#4a5568">
-              {% if item.last_payment and item.last_payment.plan %}
-                {{ item.last_payment.plan.get_billing_interval_display }}
-              {% else %}—{% endif %}
-            </td>
-            <td style="font-size:12px;color:#4a5568">
-              {% if item.next_invoice %}{{ item.next_invoice|date:"M d, Y" }}{% else %}—{% endif %}
-            </td>
-            <td>
-              <span class="bc-status {{ org.subscription_status|default:'active' }}">
-                <span class="bc-status-dot"></span>
-                {{ org.subscription_status|default:'Active'|title }}
-              </span>
-            </td>
-            <td>
-              <button class="bc-manage-btn"
-                      hx-get="{% url 'superadmin:billing_manage' org.pk %}"
-                      hx-target="#bc-panel-content"
-                      hx-swap="innerHTML"
-                      onclick="openBillingPanel()">
-                Manage Plan
-              </button>
-            </td>
-          </tr>
-          {% endwith %}
-          {% empty %}
-          <tr>
-            <td colspan="6"
-                style="text-align:center;padding:40px;color:#8a96a8;font-size:13px">
-              No accounts found.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      {% include "superadmin/_billing_table.html" %}
     </div>
   </div>
 </div>

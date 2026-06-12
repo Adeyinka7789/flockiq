@@ -1,0 +1,146 @@
+{% comment %}
+Inner content of #tenant-table. Rendered standalone for HX-Request
+(hx-target="#tenant-table", default innerHTML swap) and included by
+tenants.html for the full-page render.
+{% endcomment %}
+<table class="sa-table">
+  <thead>
+    <tr>
+      <th>Tenant Name</th>
+      <th>Plan</th>
+      <th>Custom Domain</th>
+      <th>Created</th>
+      <th>Active Birds</th>
+      <th>Status</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in org_list %}
+    {% with org=item.org %}
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:34px;height:34px;border-radius:10px;background:#e8eef8;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#3d5a99;flex-shrink:0">
+            {{ org.name|first|upper }}{{ org.name|slice:"1:2"|upper }}
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#1a2744">{{ org.name }}</div>
+            <div style="font-size:11px;color:#8a96a8">{{ org.owner_email }}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <span class="sa-plan-pill {{ org.plan_tier }}">{{ org.plan_tier|title }}</span>
+      </td>
+      <td>
+        {% if org.custom_domain %}
+        <div style="font-size:12px;font-weight:600;color:#1a2744">{{ org.custom_domain }}</div>
+        {% if org.custom_domain_verified %}
+        <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.05em">
+          <span style="width:5px;height:5px;border-radius:50%;background:#16a34a;display:inline-block"></span>
+          Verified
+        </span>
+        {% else %}
+        <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em">
+          <span style="width:5px;height:5px;border-radius:50%;background:#d97706;display:inline-block"></span>
+          Pending
+        </span>
+        {% endif %}
+        {% else %}
+        <span style="font-size:12px;color:#cbd5e1">—</span>
+        {% endif %}
+      </td>
+      <td style="font-size:12px;color:#8a96a8">{{ org.created_at|date:"M d, Y" }}</td>
+      <td style="font-weight:700;font-variant-numeric:tabular-nums">{{ item.active_birds }}</td>
+      <td>
+        {% if org.is_active and org.is_lapsed %}
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#dc2626">
+          <span style="width:6px;height:6px;border-radius:50%;background:#dc2626;display:inline-block"></span>
+          LAPSED
+        </span>
+        {% if org.plan_expires_at %}
+        <div style="font-size:11px;color:#b91c1c;margin-top:4px">
+          Expired {{ org.plan_expires_at|date:"M d, Y" }}
+        </div>
+        {% endif %}
+        {% elif org.is_active %}
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#16a34a">
+          <span style="width:6px;height:6px;border-radius:50%;background:#16a34a;display:inline-block"></span>
+          ACTIVE
+        </span>
+        {% else %}
+        <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#ef4444">
+          <span style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block"></span>
+          SUSPENDED
+        </span>
+        {% if org.suspension_reason %}
+        <div style="font-size:11px;color:#b91c1c;margin-top:4px;max-width:220px;line-height:1.4"
+             title="{{ org.suspension_reason }}">
+          {{ org.suspension_reason|truncatechars:70 }}
+        </div>
+        {% endif %}
+        {% endif %}
+      </td>
+      <td>
+        <div style="display:flex;gap:6px">
+          {% if org.is_active %}
+          <button class="sa-action-btn suspend"
+                  hx-get="{% url 'superadmin:suspend_modal' org.pk %}"
+                  hx-target="#modal-body"
+                  hx-swap="innerHTML">
+            Suspend
+          </button>
+          {% else %}
+          <button class="sa-action-btn activate"
+                  hx-post="{% url 'superadmin:tenant_action' org.pk %}"
+                  hx-vals='{"action":"activate"}'
+                  hx-swap="none">
+            Activate
+          </button>
+          {% endif %}
+          <a href="{% url 'superadmin:tenant_detail' org.pk %}"
+             class="sa-action-btn manage"
+             style="text-decoration:none;display:inline-flex;align-items:center">
+            View →
+          </a>
+        </div>
+      </td>
+    </tr>
+    {% endwith %}
+    {% empty %}
+    <tr>
+      <td colspan="7" style="text-align:center;padding:40px;color:#8a96a8;font-size:13px">
+        No tenants found.
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-top:1px solid #f1f5f9;font-size:12px;color:#4a5568">
+  <span>
+    Showing <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong>
+    of <strong>{{ total_count }}</strong> organizations
+  </span>
+  <div style="display:flex;gap:4px">
+    {% if page_obj.has_previous %}
+    <a href="?page={{ page_obj.previous_page_number }}&status={{ active_status }}&plan={{ active_plan }}&q={{ search_query }}"
+       style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;display:flex;align-items:center;justify-content:center;font-size:12px;color:#4a5568;text-decoration:none">←</a>
+    {% endif %}
+    {% for num in page_obj.paginator.page_range %}
+    {% if num == page_obj.number %}
+    <span style="width:30px;height:30px;border-radius:8px;background:#3d5a99;color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">{{ num }}</span>
+    {% elif num <= 3 or num >= page_obj.paginator.num_pages|add:"-2" %}
+    <a href="?page={{ num }}&status={{ active_status }}&plan={{ active_plan }}&q={{ search_query }}"
+       style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;display:flex;align-items:center;justify-content:center;font-size:12px;color:#4a5568;text-decoration:none">{{ num }}</a>
+    {% endif %}
+    {% endfor %}
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}&status={{ active_status }}&plan={{ active_plan }}&q={{ search_query }}"
+       style="width:30px;height:30px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;display:flex;align-items:center;justify-content:center;font-size:12px;color:#4a5568;text-decoration:none">→</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

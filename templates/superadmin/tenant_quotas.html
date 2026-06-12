@@ -134,6 +134,31 @@
     transition: transform 0.3s ease;
   }
   .tq-panel.open { transform: translateX(0); }
+
+  /* Mobile cards hidden on desktop */
+  .tq-clusters-cards { display: none; }
+
+  @media (max-width: 768px) {
+    .tq-stats {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .tq-health-pills { flex-wrap: wrap; }
+    .tq-stat.green-card .tq-stat-val {
+      font-size: 24px;
+      word-break: break-word;
+    }
+    .tq-header {
+      flex-direction: column;
+      gap: 14px;
+    }
+    .tq-header > div:last-child { width: 100%; }
+    .tq-header > div:last-child a { flex: 1; justify-content: center; }
+
+    /* table → cards */
+    .tq-clusters-table { display: none; }
+    .tq-clusters-cards { display: block; }
+  }
 </style>
 
 <div class="tq-wrap">
@@ -200,7 +225,7 @@
     <div class="tq-card-hd">
       <div class="tq-card-title">Active Managed Clusters</div>
     </div>
-    <table class="tq-table">
+    <table class="tq-table tq-clusters-table">
       <thead>
         <tr>
           <th>Tenant Name</th>
@@ -292,6 +317,77 @@
         {% endfor %}
       </tbody>
     </table>
+
+    <!-- Mobile cards -->
+    <div class="tq-clusters-cards" style="padding:12px">
+      {% for item in org_list %}
+      {% with org=item.org %}
+      <div style="border:1px solid #eef2f7;border-radius:12px;
+                  padding:14px;margin-bottom:12px;background:white">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <div style="width:40px;height:40px;border-radius:11px;
+                      background:#e8eef8;display:flex;align-items:center;
+                      justify-content:center;font-size:14px;font-weight:800;
+                      color:#3d5a99;flex-shrink:0">
+            {{ org.name|first|upper }}{{ org.name|slice:"1:2"|upper }}
+          </div>
+          <div style="min-width:0;flex:1">
+            <div style="font-size:14px;font-weight:700;color:#1a2744">
+              {{ org.name }}
+            </div>
+            <div style="font-size:11px;color:#8a96a8;overflow:hidden;
+                        text-overflow:ellipsis;white-space:nowrap">
+              {{ org.owner_email }}
+            </div>
+          </div>
+          <span class="tq-feature-pill {{ org.plan_tier }}" style="flex-shrink:0">
+            {{ org.plan_tier|title }}
+          </span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;
+                    gap:12px;margin-bottom:14px">
+          <div>
+            <div style="font-size:10px;color:#8a96a8;text-transform:uppercase;
+                        letter-spacing:0.05em;margin-bottom:4px">Users</div>
+            <div style="font-size:13px;font-weight:700;color:#1a2744">
+              {{ item.user_count }}/{{ org.max_users }}
+            </div>
+            <div class="tq-progress-bar" style="margin-top:5px">
+              <div class="tq-progress-fill
+                   {% if item.user_pct >= 90 %}red{% elif item.user_pct >= 70 %}amber{% else %}green{% endif %}"
+                   style="width:{{ item.user_pct }}%"></div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#8a96a8;text-transform:uppercase;
+                        letter-spacing:0.05em;margin-bottom:4px">Storage</div>
+            <div style="font-size:13px;font-weight:700;color:#1a2744">
+              1/{{ org.storage_quota_gb }}GB
+            </div>
+            <div class="tq-progress-bar" style="margin-top:5px">
+              <div class="tq-progress-fill
+                   {% if item.storage_pct >= 90 %}red{% elif item.storage_pct >= 70 %}amber{% else %}green{% endif %}"
+                   style="width:{{ item.storage_pct }}%"></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="tq-edit-btn" style="width:100%"
+                hx-get="{% url 'superadmin:quota_edit' org.pk %}"
+                hx-target="#tq-panel-content"
+                hx-swap="innerHTML"
+                onclick="openQuotaPanel()">
+          Edit Quotas
+        </button>
+      </div>
+      {% endwith %}
+      {% empty %}
+      <div style="text-align:center;padding:30px;color:#8a96a8;font-size:13px">
+        No active tenants found.
+      </div>
+      {% endfor %}
+    </div>
   </div>
 </div>
 

@@ -124,6 +124,26 @@
     font-size: 11px; color: rgba(255,255,255,0.5);
     line-height: 1.6;
   }
+
+  /* Mobile card lists hidden on desktop */
+  .imp-users-cards, .imp-sessions-cards { display: none; }
+
+  @media (max-width: 640px) {
+    .imp-filters { flex-direction: column; gap: 8px; }
+    .imp-filters > * { width: 100%; }
+    .imp-search { min-width: 0; }
+  }
+
+  @media (max-width: 768px) {
+    .imp-bottom { grid-template-columns: 1fr; }
+    .imp-shield-card { min-height: auto; }
+    .imp-compliance-links { flex-direction: column; }
+    .imp-compliance-link { width: 100%; text-align: center; }
+
+    /* tables → cards */
+    .imp-users-table, .imp-sessions-table { display: none; }
+    .imp-users-cards, .imp-sessions-cards { display: block; }
+  }
 </style>
 
 <div class="imp-wrap">
@@ -166,72 +186,7 @@
 
   <div class="imp-card">
     <div id="imp-table">
-      <table class="imp-table">
-        <thead>
-          <tr>
-            <th>User Name</th>
-            <th>Role</th>
-            <th>Tenant</th>
-            <th>Last Active</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for user in users %}
-          <tr>
-            <td>
-              <div style="display:flex;align-items:center;gap:12px">
-                <div class="imp-avatar"
-                     style="background:{% cycle '#3d5a99' '#16a34a' '#d97706' '#8b5cf6' '#dc2626' %}">
-                  {{ user.first_name|first|default:user.email|first|upper }}{{ user.last_name|first|default:""|upper }}
-                </div>
-                <div>
-                  <div style="font-size:13px;font-weight:700;color:#1a2744">
-                    {{ user.get_full_name|default:user.email }}
-                  </div>
-                  <div style="font-size:11px;color:#8a96a8">{{ user.email }}</div>
-                </div>
-              </div>
-            </td>
-            <td>
-              <span class="imp-role {{ user.role }}">{{ user.role|title }}</span>
-            </td>
-            <td>
-              {% if user.org %}
-              <span style="background:#e8eef8;color:#2d4578;padding:3px 10px;
-                           border-radius:20px;font-size:11px;font-weight:600">
-                {{ user.org.name|truncatechars:20 }}
-              </span>
-              {% else %}—{% endif %}
-            </td>
-            <td style="font-size:12px;color:#8a96a8">
-              {% if user.last_login %}{{ user.last_login|timesince }} ago
-              {% else %}Never{% endif %}
-            </td>
-            <td>
-              <form method="POST"
-                    action="{% url 'superadmin:impersonate_start' user.pk %}"
-                    style="display:inline">
-                {% csrf_token %}
-                <input type="hidden" name="reason" value="Support session">
-                <button type="submit" class="imp-btn"
-                        onclick="return confirm('Impersonate {{ user.email }}?\nThis action will be logged.')"
-        hx-disabled-elt="this">
-                  Impersonate
-                </button>
-              </form>
-            </td>
-          </tr>
-          {% empty %}
-          <tr>
-            <td colspan="5"
-                style="text-align:center;padding:40px;color:#8a96a8;font-size:13px">
-              No users found.
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      {% include "superadmin/_impersonation_table.html" %}
     </div>
   </div>
 
@@ -266,7 +221,7 @@
                 font-size:14px;font-weight:700;color:#1a2744">
       Recent Impersonation Sessions
     </div>
-    <table class="imp-table">
+    <table class="imp-table imp-sessions-table">
       <thead>
         <tr>
           <th>Admin</th>
@@ -299,6 +254,36 @@
         {% endfor %}
       </tbody>
     </table>
+
+    <!-- Mobile session cards -->
+    <div class="imp-sessions-cards" style="padding:12px">
+      {% for log in recent_logs %}
+      <div style="border:1px solid #eef2f7;border-radius:12px;
+                  padding:14px;margin-bottom:12px;background:white">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    gap:10px;margin-bottom:8px">
+          <div style="font-size:13px;font-weight:700;color:#1a2744;min-width:0;
+                      overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            {{ log.target_user.email|default:"—" }}
+          </div>
+          <span style="font-size:11px;flex-shrink:0;
+                       {% if log.duration_minutes %}color:#8a96a8{% else %}color:#16a34a;font-weight:700{% endif %}">
+            {% if log.duration_minutes %}{{ log.duration_minutes }}m{% else %}Active{% endif %}
+          </span>
+        </div>
+        <div style="font-size:12px;color:#4a5568;margin-bottom:4px">
+          by {{ log.impersonator.email|default:"—" }}
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    gap:8px;font-size:11px;color:#8a96a8">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            {{ log.target_org.name|default:"—" }}
+          </span>
+          <span style="flex-shrink:0">{{ log.started_at|timesince }} ago</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
   </div>
   {% endif %}
 

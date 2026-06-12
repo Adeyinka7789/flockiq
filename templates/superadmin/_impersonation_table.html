@@ -1,0 +1,129 @@
+{% comment %}
+Inner content of #imp-table. Rendered standalone for HX-Request
+(hx-target="#imp-table", default innerHTML swap) and included by
+impersonation.html for the full-page render.
+{% endcomment %}
+<table class="imp-table imp-users-table">
+  <thead>
+    <tr>
+      <th>User Name</th>
+      <th>Role</th>
+      <th>Tenant</th>
+      <th>Last Active</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user in users %}
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="imp-avatar"
+               style="background:{% cycle '#3d5a99' '#16a34a' '#d97706' '#8b5cf6' '#dc2626' %}">
+            {{ user.first_name|first|default:user.email|first|upper }}{{ user.last_name|first|default:""|upper }}
+          </div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#1a2744">
+              {{ user.get_full_name|default:user.email }}
+            </div>
+            <div style="font-size:11px;color:#8a96a8">{{ user.email }}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <span class="imp-role {{ user.role }}">{{ user.role|title }}</span>
+      </td>
+      <td>
+        {% if user.org %}
+        <span style="background:#e8eef8;color:#2d4578;padding:3px 10px;
+                     border-radius:20px;font-size:11px;font-weight:600">
+          {{ user.org.name|truncatechars:20 }}
+        </span>
+        {% else %}—{% endif %}
+      </td>
+      <td style="font-size:12px;color:#8a96a8">
+        {% if user.last_login %}{{ user.last_login|timesince }} ago
+        {% else %}Never{% endif %}
+      </td>
+      <td>
+        <form method="POST"
+              action="{% url 'superadmin:impersonate_start' user.pk %}"
+              style="display:inline">
+          {% csrf_token %}
+          <input type="hidden" name="reason" value="Support session">
+          <button type="submit" class="imp-btn"
+                  onclick="return confirm('Impersonate {{ user.email }}?\nThis action will be logged.')"
+  hx-disabled-elt="this">
+            Impersonate
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="5"
+          style="text-align:center;padding:40px;color:#8a96a8;font-size:13px">
+        No users found.
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<!-- Mobile user cards -->
+<div class="imp-users-cards" style="padding:12px">
+  {% for user in users %}
+  <div style="border:1px solid #eef2f7;border-radius:12px;
+              padding:14px;margin-bottom:12px;background:white">
+    <div style="display:flex;align-items:center;justify-content:space-between;
+                gap:10px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:11px;min-width:0">
+        <div class="imp-avatar"
+             style="background:{% cycle '#3d5a99' '#16a34a' '#d97706' '#8b5cf6' '#dc2626' %}">
+          {{ user.first_name|first|default:user.email|first|upper }}{{ user.last_name|first|default:""|upper }}
+        </div>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:700;color:#1a2744;
+                      overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            {{ user.get_full_name|default:user.email }}
+          </div>
+          <div style="font-size:11px;color:#8a96a8;overflow:hidden;
+                      text-overflow:ellipsis;white-space:nowrap">
+            {{ user.email }}
+          </div>
+        </div>
+      </div>
+      <span class="imp-role {{ user.role }}" style="flex-shrink:0">{{ user.role|title }}</span>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        {% if user.org %}
+        <span style="background:#e8eef8;color:#2d4578;padding:3px 10px;
+                     border-radius:20px;font-size:11px;font-weight:600">
+          {{ user.org.name|truncatechars:20 }}
+        </span>
+        {% else %}<span style="color:#8a96a8;font-size:12px">—</span>{% endif %}
+        <span style="font-size:11px;color:#8a96a8;margin-left:6px">
+          {% if user.last_login %}{{ user.last_login|timesince }} ago{% else %}Never{% endif %}
+        </span>
+      </div>
+      <form method="POST"
+            action="{% url 'superadmin:impersonate_start' user.pk %}"
+            style="flex-shrink:0">
+        {% csrf_token %}
+        <input type="hidden" name="reason" value="Support session">
+        <button type="submit" class="imp-btn"
+                onclick="return confirm('Impersonate {{ user.email }}?\nThis action will be logged.')"
+                hx-disabled-elt="this">
+          Impersonate
+        </button>
+      </form>
+    </div>
+  </div>
+  {% empty %}
+  <div style="text-align:center;padding:30px;color:#8a96a8;font-size:13px">
+    No users found.
+  </div>
+  {% endfor %}
+</div>
