@@ -21,14 +21,24 @@ from decimal import Decimal, ROUND_HALF_UP
 
 from django.utils import timezone
 
-# Documented standard broiler live-weight curve (grams of avg live weight by
-# cycle day). Cobb-500-class growth — same anchor points used elsewhere in the
-# app (flocks.views.COBB_500_STANDARD) with day 0 and a 56-day tail added so we
-# can interpolate at any age. Used only when no WeightRecord exists.
+# Reference broiler live-weight curve (grams of avg live weight by cycle day).
+# This is a Cobb-500-class growth *shape* — its day-42 anchor (2400 g) equals
+# Cobb 500's benchmark target_weight_day42_kg. For other breeds we keep this
+# realistic S-curve shape but scale it so day 42 lands on the breed's documented
+# target_weight_day42_kg (see _broiler_avg_weight_kg / _breed_weight_scale), so
+# e.g. a Noiler is valued on its own lighter curve rather than the heavier
+# Cobb-class default. Same anchor points used elsewhere in the app
+# (flocks.views.COBB_500_STANDARD) with day 0 and a 56-day tail added so we can
+# interpolate at any age. Used only when no WeightRecord exists.
 _BROILER_WEIGHT_CURVE_G = {
     0: 42, 7: 170, 14: 400, 21: 780, 28: 1260,
     35: 1800, 42: 2400, 49: 2950, 56: 3300,
 }
+
+# Day-42 weight (kg) of the reference curve above. A breed's growth curve is the
+# reference shape scaled by (breed target_weight_day42_kg / this value), so the
+# reference breed (Cobb 500, target 2.4) scales by 1.0 and is unchanged.
+_REFERENCE_DAY42_WEIGHT_KG = _BROILER_WEIGHT_CURVE_G[42] / 1000  # 2.4
 
 _TWOPLACES = Decimal("0.01")
 
@@ -38,21 +48,25 @@ def _money(value) -> Decimal:
     return Decimal(value).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
 
-def _interpolate_broiler_weight_g(day: int) -> int:
-    """Linear-interpolate avg broiler live weight (grams) for a given cycle day."""
+def _interpolate_broiler_weight_g(day: int, scale: float = 1.0) -> int:
+    """Avg broiler live weight (grams) for a given cycle day.
+
+    Linear-interpolates the reference curve and multiplies by ``scale`` — the
+    breed's size factor relative to the reference (Cobb-class) curve.
+    """
     days = sorted(_BROILER_WEIGHT_CURVE_G.keys())
     if day <= days[0]:
-        return _BROILER_WEIGHT_CURVE_G[days[0]]
+        return int(_BROILER_WEIGHT_CURVE_G[days[0]] * scale)
     if day >= days[-1]:
-        return _BROILER_WEIGHT_CURVE_G[days[-1]]
+        return int(_BROILER_WEIGHT_CURVE_G[days[-1]] * scale)
     for i, d in enumerate(days):
         if day <= d:
             prev_d = days[i - 1]
             ratio = (day - prev_d) / (d - prev_d)
             lo = _BROILER_WEIGHT_CURVE_G[prev_d]
             hi = _BROILER_WEIGHT_CURVE_G[d]
-            return int(lo + ratio * (hi - lo))
-    return _BROILER_WEIGHT_CURVE_G[days[-1]]
+            return int((lo + ratio * (hi - lo)) * scale)
+    return int(_BROILER_WEIGHT_CURVE_G[days[-1]] * scale)
 
 
 class FlockValuationService:
@@ -225,7 +239,12 @@ class FlockValuationService:
         Returns (avg_weight_kg: Decimal, source: 'actual'|'estimated').
 
         Uses the most recent WeightRecord for the batch when present; otherwise
-        interpolates the documented broiler growth curve at the current age.
+        interpolates a *breed-specific* growth curve at the current age — the
+        documented reference shape scaled to the batch breed's benchmark
+        target_weight_day42_kg (see _breed_weight_scale), so e.g. a Noiler is
+        valued on its own lighter curve rather than the heavier Cobb-class
+        default. Unrecognised breed names fall through get_benchmark() to
+        default_broiler.
         """
         from apps.infrastructure.core.rls import set_tenant_context
 
@@ -244,8 +263,24 @@ class FlockValuationService:
             pass
 
         day = max(0, self.batch.cycle_day or 0)
-        grams = _interpolate_broiler_weight_g(day)
+        grams = _interpolate_broiler_weight_g(day, self._breed_weight_scale())
         return (Decimal(grams) / Decimal(1000)), "estimated"
+
+    def _breed_weight_scale(self) -> float:
+        """Size factor for this batch's breed relative to the reference curve.
+
+        Derived from the breed benchmark's target_weight_day42_kg via
+        get_benchmark(), which normalises aliases and falls back to
+        default_broiler for unrecognised breeds. Returns 1.0 (reference /
+        Cobb-class) when the resolved benchmark has no documented day-42 target.
+        """
+        from apps.health.analytics.breed_benchmarks import get_benchmark
+
+        benchmark = get_benchmark(getattr(self.batch, "breed_name", None), "broiler")
+        target_day42 = benchmark.get("target_weight_day42_kg")
+        if not target_day42:
+            return 1.0
+        return float(target_day42) / _REFERENCE_DAY42_WEIGHT_KG
 
     def _broiler_market_price(self):
         """

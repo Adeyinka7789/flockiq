@@ -208,6 +208,84 @@ class TestBroilerValuation:
         assert result["confidence"] == "low"
 
 
+# ── Service: breed-specific estimated weight ────────────────────────────────────
+
+class TestBroilerBreedAwareWeight:
+    """The estimated (no-WeightRecord) broiler weight curve must be breed-aware:
+    scaled to each breed's benchmark target_weight_day42_kg rather than always
+    using the heavy Cobb-class curve. Day 42 is used because it is a curve anchor
+    and the benchmark day-42 targets divide it cleanly."""
+
+    def test_cobb_uses_cobb_specific_curve(self):
+        # Cobb 500's target_weight_day42_kg (2.4) equals the reference curve's
+        # day-42 anchor, so the scale is 1.0 and day 42 → exactly 2.40 kg.
+        from apps.infrastructure.core.valuation import FlockValuationService
+        org = _make_org("val-breed-cobb")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+        batch = _make_batch(
+            org, farm, house, bird_type="broiler",
+            breed_name="Cobb 500", days_old=42,
+        )
+
+        result = FlockValuationService(batch).estimate_value()
+        assert result["weight_source"] == "estimated"
+        assert result["avg_weight_kg"] == Decimal("2.40")
+
+    def test_noiler_uses_lighter_breed_specific_curve(self):
+        # Noiler's target_weight_day42_kg is 1.6 → scale 1.6/2.4 → day 42 = 1.60 kg,
+        # markedly lighter than Cobb at the same age (the bug being fixed).
+        from apps.infrastructure.core.valuation import FlockValuationService
+        org = _make_org("val-breed-noiler")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+        cobb = _make_batch(
+            org, farm, house, bird_type="broiler",
+            breed_name="Cobb 500", days_old=42, current=480,
+        )
+        noiler = _make_batch(
+            org, farm, house, bird_type="broiler",
+            breed_name="Noiler", days_old=42, current=480,
+        )
+
+        cobb_result = FlockValuationService(cobb).estimate_value()
+        noiler_result = FlockValuationService(noiler).estimate_value()
+
+        assert noiler_result["avg_weight_kg"] == Decimal("1.60")
+        # Same age and count, lighter breed → lower estimated weight and value.
+        assert noiler_result["avg_weight_kg"] < cobb_result["avg_weight_kg"]
+        assert noiler_result["estimated_value_naira"] < cobb_result["estimated_value_naira"]
+
+    def test_unknown_breed_falls_back_to_default_broiler_curve(self):
+        # An unrecognised breed name resolves via get_benchmark() to
+        # default_broiler (target 2.2), NOT a hardcoded Cobb-only curve (2.4).
+        from apps.infrastructure.core.valuation import FlockValuationService
+        org = _make_org("val-breed-unknown")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+        batch = _make_batch(
+            org, farm, house, bird_type="broiler",
+            breed_name="Marshall", days_old=42,
+        )
+
+        result = FlockValuationService(batch).estimate_value()
+        # default_broiler day-42 target (2.2) → distinct from the old Cobb 2.4.
+        assert result["avg_weight_kg"] == Decimal("2.20")
+
+    def test_blank_breed_falls_back_to_default_broiler_curve(self):
+        from apps.infrastructure.core.valuation import FlockValuationService
+        org = _make_org("val-breed-blank")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+        batch = _make_batch(
+            org, farm, house, bird_type="broiler",
+            breed_name="", days_old=42,
+        )
+
+        result = FlockValuationService(batch).estimate_value()
+        assert result["avg_weight_kg"] == Decimal("2.20")
+
+
 # ── Service: layer ─────────────────────────────────────────────────────────────
 
 class TestLayerValuation:
