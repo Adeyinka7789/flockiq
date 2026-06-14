@@ -26,6 +26,7 @@
 
   <!-- Filters -->
   <form method="get" class="flex flex-wrap gap-3 mb-6">
+    {% if is_nigeria %}
     <select name="state"
             onchange="this.form.submit()"
             style="padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;
@@ -35,6 +36,7 @@
       <option value="{{ val }}" {% if active_state == val %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
+    {% endif %}
     <select name="bird_type"
             onchange="this.form.submit()"
             style="padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;
@@ -197,12 +199,23 @@
   <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;
               padding:48px 24px;text-align:center">
     <div style="font-size:32px;margin-bottom:12px">🐣</div>
+    {% if is_nigeria %}
     <h3 style="font-size:15px;font-weight:700;color:#1a2744;margin-bottom:6px">
       No hatcheries found
     </h3>
     <p style="font-size:13px;color:#8a96a8;margin:0 auto 16px;max-width:320px">
       Try removing filters, or suggest a hatchery you know to start building the directory.
     </p>
+    {% else %}
+    <h3 style="font-size:15px;font-weight:700;color:#1a2744;margin-bottom:6px">
+      No hatcheries listed yet for {{ org_country }}
+    </h3>
+    <p style="font-size:13px;color:#8a96a8;margin:0 auto 16px;max-width:340px">
+      This directory is most useful where the FlockIQ community has shared local
+      data — check back as more farmers in your region join, or suggest a hatchery
+      you know to start building it.
+    </p>
+    {% endif %}
   </div>
   {% endif %}
 

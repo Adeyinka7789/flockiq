@@ -40,14 +40,22 @@
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div>
-        <label style="{{ label_style }}">State</label>
+        <label style="{{ label_style }}">State{% if not is_nigeria %} / Region{% endif %}</label>
+        {% if is_nigeria %}
         <select name="state" required style="{{ field_style }}"
                 onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'">
           <option value="">Select state…</option>
           {% for val, label in form.fields.state.choices %}
-          <option value="{{ val }}">{{ label }}</option>
+          <option value="{{ val }}" {% if form.state.value == val %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
+        {% else %}
+        <input type="text" name="state" required maxlength="100"
+               value="{{ form.state.value|default:'' }}"
+               placeholder="e.g. Greater Accra"
+               style="{{ field_style }}"
+               onfocus="this.style.borderColor='#3d5a99'" onblur="this.style.borderColor='#e2e8f0'">
+        {% endif %}
         {% if form.state.errors %}<p style="color:#dc2626;font-size:11px;margin-top:4px">{{ form.state.errors.0 }}</p>{% endif %}
       </div>
       <div>

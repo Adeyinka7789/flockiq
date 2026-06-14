@@ -300,6 +300,7 @@ class SignupView(View):
                     owner_name=owner_name,
                     owner_email=email,
                     owner_phone=phone,
+                    country=country or "Nigeria",
                     plan_tier="trial",
                     subscription_status="trial",
                     trial_ends_at=timezone.now() + timedelta(days=14),

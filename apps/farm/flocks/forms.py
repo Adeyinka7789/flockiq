@@ -58,11 +58,14 @@ class BatchCreateForm(forms.Form):
         }),
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, country="Nigeria", **kwargs):
         super().__init__(*args, **kwargs)
         from apps.finance.market.models import Hatchery
+        # Only offer hatcheries in the org's own country (community data is
+        # country-scoped — see market country-scoping work).
         self.fields["hatchery"].queryset = (
-            Hatchery.objects.filter(is_verified=True).order_by("state", "name")
+            Hatchery.objects.filter(is_verified=True, country=country)
+            .order_by("state", "name")
         )
 
     def clean_placement_date(self):

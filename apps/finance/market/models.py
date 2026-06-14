@@ -3,6 +3,7 @@ import datetime
 from django.conf import settings
 from django.db import models
 
+from apps.infrastructure.accounts.constants import COUNTRY_CHOICES
 from apps.infrastructure.core.models import TenantAwareModel
 
 
@@ -20,6 +21,11 @@ class MarketPrice(TenantAwareModel):
     price_per_unit_kobo = models.IntegerField()
     unit = models.CharField(max_length=50)
     market_name = models.CharField(max_length=200)
+    country = models.CharField(
+        max_length=50,
+        choices=COUNTRY_CHOICES,
+        default="Nigeria",
+    )
     region = models.CharField(max_length=100, default="Lagos")
     recorded_by = models.ForeignKey(
         "accounts.CustomUser",
@@ -117,6 +123,11 @@ class FeedPriceReport(models.Model):
         max_digits=10, decimal_places=2,
         help_text="Price in Naira for a 25kg bag",
     )
+    country = models.CharField(
+        max_length=50,
+        choices=COUNTRY_CHOICES,
+        default="Nigeria",
+    )
     state = models.CharField(max_length=100)
     lga = models.CharField(max_length=100, blank=True, help_text="Local Government Area")
     reported_date = models.DateField(auto_now_add=True)
@@ -136,6 +147,11 @@ class Hatchery(models.Model):
     """Directory of DOC suppliers — curated and farmer-suggested."""
 
     name = models.CharField(max_length=200)
+    country = models.CharField(
+        max_length=50,
+        choices=COUNTRY_CHOICES,
+        default="Nigeria",
+    )
     state = models.CharField(max_length=100)
     lga = models.CharField(max_length=100, blank=True)
     address = models.TextField(blank=True)

@@ -66,6 +66,8 @@ class MarketPriceView(RoleRequiredMixin, TenantRequiredMixin, View):
             "seasonal_data": seasonal_data,
             "seasonal_insight": seasonal_insight,
             "placement_recommendation": placement_recommendation,
+            "is_nigeria": org.country == "Nigeria",
+            "org_country": org.country,
         })
 
 
@@ -136,19 +138,24 @@ class FeedPricesView(RoleRequiredMixin, View):
 
     def get(self, request):
         import json as _json
+        org = get_org_or_404(request)
         feed_type = request.GET.get("feed_type", "")
         state = request.GET.get("state", "")
         data = FeedPriceService.get_current_prices(
             feed_type=feed_type or None,
             state=state or None,
+            country=org.country,
         )
-        form = FeedPriceSubmitForm()
+        is_nigeria = org.country == "Nigeria"
+        form = FeedPriceSubmitForm(country=org.country)
         return render(request, "market/feed_prices.html", {
             "data": data,
             "trend_json": _json.dumps(data["trend"]),
             "form": form,
             "feed_types": FeedPriceReport.FeedType.choices,
             "nigerian_states": NIGERIAN_STATE_CHOICES,
+            "is_nigeria": is_nigeria,
+            "org_country": org.country,
             "active_feed_type": feed_type,
             "active_state": state,
         })
@@ -158,12 +165,15 @@ class SubmitFeedPriceView(LoginRequiredMixin, View):
     """POST /market/feed-prices/submit/ → HTMX fragment on success or rate-limit."""
 
     def post(self, request):
-        form = FeedPriceSubmitForm(request.POST)
+        org = get_org_or_404(request)
+        form = FeedPriceSubmitForm(request.POST, country=org.country)
         if not form.is_valid():
-            return render(request, "market/_feed_price_form.html", {"form": form}, status=422)
+            return render(request, "market/_feed_price_form.html", {
+                "form": form,
+                "is_nigeria": org.country == "Nigeria",
+            }, status=422)
 
         cd = form.cleaned_data
-        org = get_org_or_404(request)
         try:
             FeedPriceService.submit_price(
                 user=request.user,
@@ -197,25 +207,29 @@ class HatcheryDirectoryView(RoleRequiredMixin, View):
     allowed_roles = ["owner", "manager", "supervisor"]
 
     def get(self, request):
+        org = get_org_or_404(request)
         state = request.GET.get("state", "")
         bird_type = request.GET.get("bird_type", "")
         hatcheries = HatcheryService.get_top_hatcheries(
             state=state or None,
             bird_type=bird_type or None,
+            country=org.country,
         )
         # Also include hatcheries with zero reviews so directory isn't empty
         from django.db.models import Avg, Count
         hatcheries_no_reviews = list(
-            Hatchery.objects.filter(is_verified=True)
+            Hatchery.objects.filter(is_verified=True, country=org.country)
             .annotate(avg_rating=Avg("reviews__overall_rating"), review_count=Count("reviews"))
             .filter(review_count=0)
             .order_by("state", "name")[:40]
         )
-        suggest_form = SuggestHatcheryForm()
+        suggest_form = SuggestHatcheryForm(country=org.country)
         return render(request, "market/hatcheries.html", {
             "hatcheries": hatcheries,
             "hatcheries_no_reviews": hatcheries_no_reviews,
             "nigerian_states": NIGERIAN_STATE_CHOICES,
+            "is_nigeria": org.country == "Nigeria",
+            "org_country": org.country,
             "active_state": state,
             "active_bird_type": bird_type,
             "suggest_form": suggest_form,
@@ -385,16 +399,23 @@ class SuggestHatcheryView(LoginRequiredMixin, View):
     """POST /market/hatcheries/suggest/ → Farmer-submitted hatchery (pending verification)."""
 
     def get(self, request):
-        form = SuggestHatcheryForm()
-        return render(request, "market/_suggest_hatchery_modal.html", {"form": form})
+        org = get_org_or_404(request)
+        form = SuggestHatcheryForm(country=org.country)
+        return render(request, "market/_suggest_hatchery_modal.html", {
+            "form": form,
+            "is_nigeria": org.country == "Nigeria",
+        })
 
     def post(self, request):
-        form = SuggestHatcheryForm(request.POST)
+        org = get_org_or_404(request)
+        form = SuggestHatcheryForm(request.POST, country=org.country)
         if not form.is_valid():
-            return render(request, "market/_suggest_hatchery_modal.html", {"form": form}, status=422)
+            return render(request, "market/_suggest_hatchery_modal.html", {
+                "form": form,
+                "is_nigeria": org.country == "Nigeria",
+            }, status=422)
 
         cd = form.cleaned_data
-        org = get_org_or_404(request)
         HatcheryService.suggest_hatchery(
             user=request.user,
             org=org,

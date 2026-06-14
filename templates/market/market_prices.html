@@ -148,10 +148,21 @@
                  2 0 01-2-2z"/>
       </svg>
     </div>
+    {% if is_nigeria %}
     <h3 class="font-semibold mb-1" style="color:#1a2744">No prices recorded yet</h3>
     <p class="text-sm text-gray-400 mb-5">
       Record current market prices to track trends and plan sales
     </p>
+    {% else %}
+    <h3 class="font-semibold mb-1" style="color:#1a2744">
+      No market data available yet for {{ org_country }}
+    </h3>
+    <p class="text-sm text-gray-400 mb-5 max-w-sm mx-auto">
+      This feature is most useful where the FlockIQ community has shared local
+      data — check back as more farmers in your region join, or record your own
+      prices below.
+    </p>
+    {% endif %}
     {% if request.user.role in 'owner,manager' %}
     <button hx-get="{% url 'market:record_price' %}"
             hx-target="#modal-body"

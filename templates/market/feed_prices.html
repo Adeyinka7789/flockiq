@@ -12,7 +12,7 @@
     <div>
       <h1 class="text-xl font-bold" style="color:#1a2744">Feed Price Intelligence</h1>
       <p class="text-sm text-gray-500 mt-0.5">
-        Crowdsourced from FlockIQ farmers across Nigeria. Updated daily.
+        Crowdsourced from FlockIQ farmers across {{ org_country|default:"Nigeria" }}. Updated daily.
       </p>
     </div>
     <div class="flex gap-2 text-sm">
@@ -35,6 +35,7 @@
       <option value="{{ val }}" {% if active_feed_type == val %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
+    {% if is_nigeria %}
     <select name="state"
             onchange="this.form.submit()"
             style="padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;
@@ -44,6 +45,7 @@
       <option value="{{ val }}" {% if active_state == val %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
+    {% endif %}
     {% if active_feed_type or active_state %}
     <a href="{% url 'market:feed_prices' %}"
        style="padding:9px 14px;border:1.5px solid #e2e8f0;border-radius:10px;
@@ -214,12 +216,23 @@
       <div style="background:white;border-radius:14px;border:1.5px solid #e2e8f0;
                   padding:48px 24px;text-align:center">
         <div style="font-size:32px;margin-bottom:12px">📊</div>
+        {% if is_nigeria %}
         <h3 style="font-size:15px;font-weight:700;color:#1a2744;margin-bottom:6px">
           No price reports yet
         </h3>
         <p style="font-size:13px;color:#8a96a8;max-width:300px;margin:0 auto">
           Be the first to report feed prices in your area. Your data helps all farmers.
         </p>
+        {% else %}
+        <h3 style="font-size:15px;font-weight:700;color:#1a2744;margin-bottom:6px">
+          No feed price data available yet for {{ org_country }}
+        </h3>
+        <p style="font-size:13px;color:#8a96a8;max-width:340px;margin:0 auto">
+          This feature is most useful where the FlockIQ community has shared local
+          data — check back as more farmers in your region join. You can be the
+          first by reporting a price.
+        </p>
+        {% endif %}
       </div>
       {% endif %}
     </div>

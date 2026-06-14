@@ -7,6 +7,7 @@ tenants.html for the full-page render.
   <thead>
     <tr>
       <th>Tenant Name</th>
+      <th>Country</th>
       <th>Plan</th>
       <th>Custom Domain</th>
       <th>Created</th>
@@ -30,6 +31,7 @@ tenants.html for the full-page render.
           </div>
         </div>
       </td>
+      <td style="font-size:12px;color:#4a5568">{{ org.country }}</td>
       <td>
         <span class="sa-plan-pill {{ org.plan_tier }}">{{ org.plan_tier|title }}</span>
       </td>
@@ -110,7 +112,7 @@ tenants.html for the full-page render.
     {% endwith %}
     {% empty %}
     <tr>
-      <td colspan="7" style="text-align:center;padding:40px;color:#8a96a8;font-size:13px">
+      <td colspan="8" style="text-align:center;padding:40px;color:#8a96a8;font-size:13px">
         No tenants found.
       </td>
     </tr>

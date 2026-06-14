@@ -2,6 +2,8 @@ import uuid
 
 from django.db import models
 
+from apps.infrastructure.accounts.constants import COUNTRY_CHOICES
+
 
 class Organization(models.Model):
     """
@@ -117,6 +119,15 @@ class Organization(models.Model):
     owner_name = models.CharField(max_length=200, blank=True)
     owner_phone = models.CharField(max_length=20, blank=True)
     owner_email = models.EmailField(blank=True)
+
+    # Locale — drives country-scoping of community market data (market prices,
+    # hatcheries, feed price reports). Copied from the owner's CustomUser.country
+    # at signup. See accounts.constants.COUNTRY_CHOICES.
+    country = models.CharField(
+        max_length=50,
+        choices=COUNTRY_CHOICES,
+        default="Nigeria",
+    )
 
     # Per-org configuration stored as JSONB.
     # Expected keys: currency, timezone, sms_alerts_enabled,

@@ -3,6 +3,17 @@ from django import forms
 from .models import FeedPriceReport, NIGERIAN_STATE_CHOICES
 
 
+def _apply_country_state_field(form, country):
+    """Swap the `state` field to free text for non-Nigerian orgs.
+
+    Nigeria keeps the validated dropdown (NIGERIAN_STATE_CHOICES); every other
+    country gets a plain text input — we don't maintain per-country state
+    catalogues, and country-level scoping is sufficient (see plan, Step 4).
+    """
+    if country and country != "Nigeria":
+        form.fields["state"] = forms.CharField(max_length=100)
+
+
 class FeedPriceSubmitForm(forms.Form):
     feed_type = forms.ChoiceField(choices=FeedPriceReport.FeedType.choices)
     brand = forms.ChoiceField(choices=FeedPriceReport.Brand.choices)
@@ -15,6 +26,10 @@ class FeedPriceSubmitForm(forms.Form):
     )
     state = forms.ChoiceField(choices=NIGERIAN_STATE_CHOICES)
     lga = forms.CharField(required=False, max_length=100)
+
+    def __init__(self, *args, country="Nigeria", **kwargs):
+        super().__init__(*args, **kwargs)
+        _apply_country_state_field(self, country)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -56,3 +71,7 @@ class SuggestHatcheryForm(forms.Form):
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
+
+    def __init__(self, *args, country="Nigeria", **kwargs):
+        super().__init__(*args, **kwargs)
+        _apply_country_state_field(self, country)

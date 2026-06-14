@@ -14,7 +14,10 @@ class MarketService(BaseService):
     def get_current_prices(self, product_type: str = None):
         from .models import MarketPrice
 
-        qs = MarketPrice.objects.filter(org=self.org).order_by("-date")
+        qs = (
+            MarketPrice.objects.filter(org=self.org, country=self.org.country)
+            .order_by("-date")
+        )
         if product_type:
             qs = qs.filter(product_type=product_type)
         return qs[:20]
@@ -45,7 +48,7 @@ class MarketService(BaseService):
         recommended_price_kobo = int(min_price_kobo * 1.2)
 
         latest_market = (
-            MarketPrice.objects.filter(org=self.org)
+            MarketPrice.objects.filter(org=self.org, country=self.org.country)
             .order_by("-date")
             .first()
         )
@@ -123,6 +126,7 @@ class MarketService(BaseService):
         market_name: str,
         region: str = "Lagos",
         recorded_by=None,
+        country: str = None,
     ):
         from .models import MarketPrice
 
@@ -135,6 +139,7 @@ class MarketService(BaseService):
                 market_name=market_name,
                 region=region,
                 recorded_by=recorded_by,
+                country=country or self.org.country,
             )
 
         self.logger.info(
@@ -150,13 +155,16 @@ class MarketService(BaseService):
 class FeedPriceService:
 
     @staticmethod
-    def get_current_prices(feed_type=None, state=None, days=30) -> dict:
-        """Returns aggregated price data for the last N days. Never returns individual submissions."""
+    def get_current_prices(feed_type=None, state=None, days=30, country="Nigeria") -> dict:
+        """Returns aggregated price data for the last N days, scoped to one country.
+
+        Never returns individual submissions.
+        """
         from django.utils import timezone
         from .models import FeedPriceReport
 
         cutoff = timezone.now().date() - datetime.timedelta(days=days)
-        qs = FeedPriceReport.objects.filter(reported_date__gte=cutoff)
+        qs = FeedPriceReport.objects.filter(reported_date__gte=cutoff, country=country)
         if feed_type:
             qs = qs.filter(feed_type=feed_type)
         if state:
@@ -185,7 +193,10 @@ class FeedPriceService:
         for i in range(8, 0, -1):
             week_start = datetime.date.today() - datetime.timedelta(weeks=i)
             week_end = week_start + datetime.timedelta(weeks=1)
-            filter_kwargs = {"reported_date__range": [week_start, week_end]}
+            filter_kwargs = {
+                "reported_date__range": [week_start, week_end],
+                "country": country,
+            }
             if feed_type:
                 filter_kwargs["feed_type"] = feed_type
             week_avg = FeedPriceReport.objects.filter(**filter_kwargs).aggregate(
@@ -223,6 +234,7 @@ class FeedPriceService:
             brand=brand,
             brand_other=brand_other,
             price_per_25kg_bag=price,
+            country=org.country if org else "Nigeria",
             state=state,
             lga=lga,
         )
@@ -233,10 +245,10 @@ class FeedPriceService:
 class HatcheryService:
 
     @staticmethod
-    def get_top_hatcheries(state=None, bird_type=None, limit=20) -> list:
+    def get_top_hatcheries(state=None, bird_type=None, limit=20, country="Nigeria") -> list:
         from .models import Hatchery
 
-        qs = Hatchery.objects.annotate(
+        qs = Hatchery.objects.filter(country=country).annotate(
             avg_rating=Avg("reviews__overall_rating"),
             review_count=Count("reviews"),
             avg_survival=Avg("reviews__survival_rate_pct"),
@@ -288,6 +300,7 @@ class HatcheryService:
 
         return Hatchery.objects.create(
             name=name,
+            country=org.country if org else "Nigeria",
             state=state,
             lga=lga,
             address=address,

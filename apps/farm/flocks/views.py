@@ -208,7 +208,7 @@ class BatchCreateView(RoleRequiredMixin, View):
                 initial["house_id"] = house_id
             except (House.DoesNotExist, Exception):
                 pass
-        form = BatchCreateForm(initial=initial)
+        form = BatchCreateForm(initial=initial, country=org.country)
         return render(request, "flocks/_batch_create_modal.html", {
             "form": form,
             "farm_pk": farm_pk,
@@ -216,8 +216,8 @@ class BatchCreateView(RoleRequiredMixin, View):
         })
 
     def post(self, request, farm_pk):
-        form = BatchCreateForm(request.POST)
         org = get_org_or_404(request)
+        form = BatchCreateForm(request.POST, country=org.country)
         is_htmx = request.headers.get("HX-Request") == "true"
 
         from apps.infrastructure.core.helpers import write_blocked_response

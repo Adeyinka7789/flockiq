@@ -12,9 +12,11 @@ pytestmark = pytest.mark.django_db
 
 # ── Helpers ──────────────────────────────────────────────────────────────────────
 
-def _make_org(subdomain):
+def _make_org(subdomain, country="Nigeria"):
     from apps.infrastructure.tenants.models import Organization
-    return Organization.objects.create(name="Market Org", subdomain=subdomain)
+    return Organization.objects.create(
+        name="Market Org", subdomain=subdomain, country=country,
+    )
 
 
 def _make_farm(org):
@@ -150,6 +152,176 @@ class TestMinimumViablePrice:
 
         expected_recommended = int(result["min_price_kobo"] * 1.2)
         assert result["recommended_price_kobo"] == expected_recommended
+
+
+class TestMarketPriceCountryScoping:
+    """MarketPrice is tenant-scoped AND country-scoped: an org only sees price
+    rows recorded for its own country."""
+
+    def test_record_market_price_stamps_org_country(self):
+        org = _make_org("mkt_ctry_stamp", country="Ghana")
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.finance.market.services import MarketService
+        with set_tenant_context(org):
+            price = MarketService(org).record_market_price(
+                product_type="eggs",
+                price_per_unit_kobo=120000,
+                unit="per crate",
+                market_name="Accra Market",
+            )
+        assert price.country == "Ghana"
+
+    def test_org_only_sees_own_country_prices(self):
+        """A row recorded under a different country is filtered out."""
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.finance.market.models import MarketPrice
+        from apps.finance.market.services import MarketService
+
+        org = _make_org("mkt_ctry_filter", country="Nigeria")
+        with set_tenant_context(org):
+            # One Nigerian row (matches org) + one stray Ghana row (same org).
+            MarketService(org).record_market_price(
+                product_type="eggs", price_per_unit_kobo=120000,
+                unit="per crate", market_name="Lagos Market",
+            )
+            MarketPrice.objects.create(
+                org=org, product_type="eggs", price_per_unit_kobo=99000,
+                unit="per crate", market_name="Accra Market", country="Ghana",
+            )
+            prices = list(MarketService(org).get_current_prices())
+
+        assert len(prices) == 1
+        assert all(p.country == "Nigeria" for p in prices)
+
+    def test_non_nigerian_org_with_no_data_sees_empty(self):
+        org = _make_org("mkt_empty_gh", country="Ghana")
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.finance.market.services import MarketService
+        with set_tenant_context(org):
+            prices = list(MarketService(org).get_current_prices())
+        assert prices == []
+
+
+class TestFeedPriceCountryScoping:
+
+    def _submit(self, org, state, price=8500, country=None):
+        from apps.finance.market.services import FeedPriceService
+        from apps.infrastructure.accounts.models import CustomUser
+        user = CustomUser.objects.create_user(
+            username=f"u-{org.subdomain}-{state}",
+            email=f"{org.subdomain}-{state}@x.com",
+            password="x", org=org, role="owner",
+        )
+        # Clear the per-feed-type/day rate-limit cache between submissions.
+        from django.core.cache import cache
+        cache.clear()
+        return FeedPriceService.submit_price(
+            user=user, org=org, feed_type="broiler_starter",
+            brand="topfeeds", price=price, state=state,
+        )
+
+    def test_submit_stamps_org_country(self):
+        org = _make_org("feed_stamp_gh", country="Ghana")
+        report = self._submit(org, state="Greater Accra")
+        assert report.country == "Ghana"
+
+    def test_feed_prices_scoped_by_country(self):
+        from apps.finance.market.services import FeedPriceService
+
+        ng_org = _make_org("feed_ng", country="Nigeria")
+        gh_org = _make_org("feed_gh", country="Ghana")
+        self._submit(ng_org, state="Lagos", price=8000)
+        self._submit(gh_org, state="Greater Accra", price=9000)
+
+        ng_data = FeedPriceService.get_current_prices(country="Nigeria")
+        gh_data = FeedPriceService.get_current_prices(country="Ghana")
+
+        assert ng_data["national"]["count"] == 1
+        assert gh_data["national"]["count"] == 1
+        ng_states = {r["state"] for r in ng_data["by_state"]}
+        gh_states = {r["state"] for r in gh_data["by_state"]}
+        assert ng_states == {"Lagos"}
+        assert gh_states == {"Greater Accra"}
+
+    def test_non_nigerian_org_no_data_empty(self):
+        from apps.finance.market.services import FeedPriceService
+
+        ng_org = _make_org("feed_ng_only", country="Nigeria")
+        self._submit(ng_org, state="Lagos")
+
+        gh_data = FeedPriceService.get_current_prices(country="Ghana")
+        assert gh_data["national"]["count"] == 0
+        assert gh_data["by_state"] == []
+
+
+class TestHatcheryCountryScoping:
+
+    def _make_hatchery(self, name, state, country):
+        from apps.finance.market.models import Hatchery
+        return Hatchery.objects.create(
+            name=name, state=state, country=country, is_verified=True,
+            bird_types=["broiler"],
+        )
+
+    def test_get_top_hatcheries_scoped_by_country(self):
+        from apps.finance.market.services import HatcheryService
+
+        self._make_hatchery("Lagos Hatchery", "Lagos", "Nigeria")
+        self._make_hatchery("Accra Hatchery", "Greater Accra", "Ghana")
+
+        ng = HatcheryService.get_top_hatcheries(country="Nigeria")
+        gh = HatcheryService.get_top_hatcheries(country="Ghana")
+
+        assert {h.name for h in ng} == {"Lagos Hatchery"}
+        assert {h.name for h in gh} == {"Accra Hatchery"}
+
+    def test_suggest_hatchery_stamps_org_country(self):
+        from apps.finance.market.services import HatcheryService
+        org = _make_org("hatch_suggest_gh", country="Ghana")
+        h = HatcheryService.suggest_hatchery(
+            user=None, org=org, name="New GH Hatchery", state="Ashanti",
+        )
+        assert h.country == "Ghana"
+
+
+class TestStateFieldValidation:
+    """Nigerian orgs validate state against NIGERIAN_STATES; other countries
+    accept free text."""
+
+    def test_nigeria_rejects_unknown_state(self):
+        from apps.finance.market.forms import FeedPriceSubmitForm
+        form = FeedPriceSubmitForm(
+            data={
+                "feed_type": "broiler_starter", "brand": "topfeeds",
+                "price_per_25kg_bag": "8500", "state": "Greater Accra",
+            },
+            country="Nigeria",
+        )
+        assert not form.is_valid()
+        assert "state" in form.errors
+
+    def test_nigeria_accepts_valid_state(self):
+        from apps.finance.market.forms import FeedPriceSubmitForm
+        form = FeedPriceSubmitForm(
+            data={
+                "feed_type": "broiler_starter", "brand": "topfeeds",
+                "price_per_25kg_bag": "8500", "state": "Lagos",
+            },
+            country="Nigeria",
+        )
+        assert form.is_valid(), form.errors
+
+    def test_non_nigeria_accepts_free_text_state(self):
+        from apps.finance.market.forms import FeedPriceSubmitForm
+        form = FeedPriceSubmitForm(
+            data={
+                "feed_type": "broiler_starter", "brand": "topfeeds",
+                "price_per_25kg_bag": "8500", "state": "Greater Accra",
+            },
+            country="Ghana",
+        )
+        assert form.is_valid(), form.errors
+        assert form.cleaned_data["state"] == "Greater Accra"
 
 
 class TestSeasonalForecast:
