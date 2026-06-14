@@ -191,7 +191,9 @@ class TenantMiddleware:
         if host in self.DEV_HOSTS or host.startswith("192.168."):
             org = None
             if getattr(request, "user", None) and request.user.is_authenticated:
-                org = getattr(request.user, "org", None)
+                # Fall back to impersonator org if actively impersonating
+                active_user = getattr(request, "impersonator", None) or request.user
+                org = getattr(active_user, "org", None)
             request.org = org
             if org:
                 kicked = self._kick_if_suspended(request, org)
@@ -245,7 +247,9 @@ class TenantMiddleware:
             # JWT-authenticated routes — org comes from the token claim
             org = None
             if hasattr(request, "user") and request.user.is_authenticated:
-                org = getattr(request.user, "org", None)
+                # Fall back to impersonator org if actively impersonating
+                active_user = getattr(request, "impersonator", None) or request.user
+                org = getattr(active_user, "org", None)
             request.org = org
             if org:
                 # Re-verify org is still active — the session-cached user.org

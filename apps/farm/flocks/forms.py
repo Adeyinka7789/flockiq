@@ -135,3 +135,40 @@ class BatchCloseForm(forms.Form):
         label="Closing Notes",
         widget=forms.Textarea(attrs={"rows": 3}),
     )
+
+
+class LossDocumentationForm(forms.Form):
+    CAUSE_CHOICES = [
+        ("disease", "Disease"),
+        ("heat_stress", "Heat Stress"),
+        ("accident", "Accident / Equipment Failure"),
+        ("predator", "Predator Attack"),
+        ("other", "Other"),
+    ]
+    cause_of_death = forms.ChoiceField(
+        choices=CAUSE_CHOICES,
+        widget=forms.RadioSelect,
+        label="Cause of Death",
+    )
+    incident_date = forms.DateField(
+        label="Incident Date",
+        widget=forms.DateInput(attrs={"type": "date"}),
+        initial=datetime.date.today,
+    )
+    birds_affected = forms.IntegerField(
+        min_value=1,
+        label="Birds Affected",
+        widget=forms.NumberInput(attrs={"inputmode": "numeric"}),
+    )
+    additional_notes = forms.CharField(
+        required=False,
+        label="Additional Notes",
+        widget=forms.Textarea(attrs={"rows": 3}),
+        help_text="Veterinary findings, lab results, or other relevant details.",
+    )
+
+    def clean_incident_date(self):
+        value = self.cleaned_data.get("incident_date")
+        if value and value > datetime.date.today():
+            raise forms.ValidationError("Incident date cannot be in the future.")
+        return value

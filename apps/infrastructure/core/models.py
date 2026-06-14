@@ -98,3 +98,22 @@ class TenantAwareModel(UUIDModel, TimeStampedModel):
 
     class Meta:
         abstract = True
+    
+    def save(self, *args, **kwargs):
+        """
+        Automates tenant enforcement on save blocks.
+        Extracts the active thread-local organization from Layer 1 contextvars.
+        """
+        from .rls import get_current_org
+
+        # If org hasn't been manually assigned, pull it directly from the active runtime context
+        if not hasattr(self, "org") or self.org_id is None:
+            active_org = get_current_org()
+            if active_org is None:
+                raise RuntimeError(
+                    f"Cannot save {self.__class__.__name__}: No active tenant context found. "
+                    "Wrap your operation inside an authorized view lifecycle or set_tenant_context()."
+                )
+            self.org = active_org
+
+        super().save(*args, **kwargs)

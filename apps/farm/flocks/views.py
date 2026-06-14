@@ -23,7 +23,13 @@ from .exceptions import (
     HouseOccupiedError,
     MortalityExceedsLiveBirdsError,
 )
-from .forms import BatchCloseForm, BatchCreateForm, MortalityLogForm, WeightRecordForm
+from .forms import (
+    BatchCloseForm,
+    BatchCreateForm,
+    LossDocumentationForm,
+    MortalityLogForm,
+    WeightRecordForm,
+)
 from apps.farm.farms.models import House
 from .models import Batch, MortalityLog, WeightRecord
 from .serializers import (
@@ -440,6 +446,13 @@ class BatchDetailView(TenantRequiredMixin, View):
             from apps.finance.market.models import HatcheryReview
             has_hatchery_review = HatcheryReview.objects.filter(batch=batch).exists()
 
+        # Estimated flock value — active batches only. Closed batches have real
+        # sale data, so an estimate would be noise there.
+        valuation = None
+        if batch.status == "active":
+            from apps.infrastructure.core.valuation import FlockValuationService
+            valuation = FlockValuationService(batch).estimate_value()
+
         context = {
             "batch": batch,
             "mortality_form": MortalityLogForm(),
@@ -453,6 +466,7 @@ class BatchDetailView(TenantRequiredMixin, View):
             "anomaly_result": anomaly_result,
             "theft_result": theft_result,
             "has_hatchery_review": has_hatchery_review,
+            "valuation": valuation,
             "symptom_choices": [
                 ("respiratory", "Respiratory distress / coughing"),
                 ("sudden_death", "Sudden unexplained death"),
@@ -740,6 +754,77 @@ class BatchMetricsCardView(LoginRequiredMixin, View):
                 raise Http404("Batch not found.")
 
         return render(request, "flocks/_batch_metrics_cards.html", data)
+
+
+class LossDocumentationReportView(RoleRequiredMixin, View):
+    """
+    GET  /batches/<uuid>/loss-report/ → cause-of-death form modal.
+    POST /batches/<uuid>/loss-report/ → generate and return the loss report PDF.
+
+    Insurance supporting documentation — owner/manager/supervisor only.
+    """
+
+    allowed_roles = ["owner", "manager", "supervisor"]
+
+    def get(self, request, pk):
+        org = get_org_or_404(request)
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch, id=pk)
+        form = LossDocumentationForm(
+            initial={"birds_affected": batch.initial_count - batch.current_count or None}
+        )
+        return render(
+            request,
+            "flocks/_loss_report_form_modal.html",
+            {"form": form, "batch": batch},
+        )
+
+    def post(self, request, pk):
+        org = get_org_or_404(request)
+        form = LossDocumentationForm(request.POST)
+
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch, id=pk)
+
+            if not form.is_valid():
+                return render(
+                    request,
+                    "flocks/_loss_report_form_modal.html",
+                    {"form": form, "batch": batch},
+                    status=422,
+                )
+
+            from apps.health.health.models import VaccinationSchedule
+            from apps.infrastructure.core.valuation import FlockValuationService
+            from apps.production.feed.models import FeedLog
+
+            mortality_logs = list(
+                MortalityLog.objects.filter(batch=batch).order_by("date")
+            )
+            feed_logs = list(
+                FeedLog.objects.filter(batch=batch).order_by("record_date")
+            )
+            vaccinations = list(
+                VaccinationSchedule.objects.filter(batch=batch).order_by("due_date")
+            )
+            valuation = FlockValuationService(batch).estimate_value()
+
+        from apps.infrastructure.core.exports import generate_loss_documentation_pdf
+        pdf_bytes = generate_loss_documentation_pdf(
+            batch=batch,
+            loss_details=form.cleaned_data,
+            mortality_logs=mortality_logs,
+            feed_logs=feed_logs,
+            vaccinations=vaccinations,
+            valuation=valuation,
+        )
+
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="Loss_Report_{batch.batch_name}_'
+            f'{form.cleaned_data["incident_date"]}.pdf"'
+        )
+        return response
 
 
 # ── Export views ────────────────────────────────────────────────────────────────

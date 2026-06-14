@@ -127,6 +127,49 @@
       {% include "partials/_skeleton_metric_cards.html" %}
     </div>
 
+    <!-- Estimated flock value (active batches only) -->
+    {% if valuation %}
+    <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;
+                padding:18px 20px;margin-top:16px;display:flex;align-items:center;
+                justify-content:space-between;flex-wrap:wrap;gap:16px">
+      <div>
+        <p style="font-size:10px;font-weight:700;text-transform:uppercase;
+                  letter-spacing:0.06em;color:#8a96a8;margin:0 0 6px">
+          Estimated Flock Value
+        </p>
+        <p style="font-size:28px;font-weight:800;color:#1a2744;margin:0;
+                  font-variant-numeric:tabular-nums">
+          ₦{{ valuation.estimated_value_naira|floatformat:0 }}
+        </p>
+        <p style="font-size:12px;color:#8a96a8;margin:6px 0 0">
+          {{ valuation.current_count }} birds ·
+          ₦{{ valuation.price_per_unit|floatformat:0 }}/{{ valuation.unit }}
+          {% if valuation.confidence == 'low' %}
+          · <span style="color:#d97706;font-weight:600">Estimate based on general market rates</span>
+          {% endif %}
+        </p>
+      </div>
+      {% if request.user.role in 'owner,manager,supervisor' %}
+      <button hx-get="{% url 'flocks:loss_report' batch.pk %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML"
+              @click="$dispatch('open-modal')"
+              style="display:inline-flex;align-items:center;gap:8px;
+                     padding:10px 18px;border-radius:10px;background:#f4f7fe;
+                     color:#3d5a99;font-size:13px;font-weight:600;border:none;
+                     cursor:pointer;transition:background 0.15s;flex-shrink:0"
+              onmouseover="this.style.background='#e8eef8'"
+              onmouseout="this.style.background='#f4f7fe'">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        Generate Loss Report
+      </button>
+      {% endif %}
+    </div>
+    {% endif %}
+
     <!-- Exit Optimizer (broiler only) -->
     {% if plan_features.exit_optimizer %}
     {% if exit_analysis %}

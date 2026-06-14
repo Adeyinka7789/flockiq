@@ -251,36 +251,37 @@ class DashboardView(TemplateView):
                 except Exception:
                     pass
 
-        farm_baseline = None
-        if org and active_batches:
-            try:
-                from apps.health.analytics.farm_baseline_service import (
-                    FarmBaselineService,
-                )
-                primary = active_batches[0]
-                farm_baseline = FarmBaselineService(org).get_baseline_or_benchmark(
-                    primary.bird_type, getattr(primary, "breed_name", "") or ""
-                )
-            except Exception:
+                # --- Analytics and AI Services (Moved safely inside RLS Context) ---
                 farm_baseline = None
+                if active_batches:
+                    try:
+                        from apps.health.analytics.farm_baseline_service import (
+                            FarmBaselineService,
+                        )
+                        primary = active_batches[0]
+                        farm_baseline = FarmBaselineService(org).get_baseline_or_benchmark(
+                            primary.bird_type, getattr(primary, "breed_name", "") or ""
+                        )
+                    except Exception:
+                        farm_baseline = None
 
-        daily_brief = {}
-        today_brief = None
-        has_patterns = False
-        if org:
-            try:
-                from apps.health.analytics.daily_brief import DailyBriefService
-                daily_brief = DailyBriefService(org).get_cached()
-            except Exception:
-                pass
-            try:
-                from apps.health.analytics.models import AIDailyBrief
-                today_brief = AIDailyBrief.objects.filter(
-                    org=org, brief_date=today).first()
-                has_patterns = bool(
-                    today_brief and today_brief.patterns_detected)
-            except Exception:
-                pass
+                daily_brief = {}
+                today_brief = None
+                has_patterns = False
+                try:
+                    from apps.health.analytics.daily_brief import DailyBriefService
+                    daily_brief = DailyBriefService(org).get_cached()
+                except Exception:
+                    pass
+
+                try:
+                    from apps.health.analytics.models import AIDailyBrief
+                    today_brief = AIDailyBrief.objects.filter(
+                        org=org, brief_date=today).first()
+                    has_patterns = bool(
+                        today_brief and today_brief.patterns_detected)
+                except Exception:
+                    pass
 
         hour = datetime.now().hour
         if hour < 12:
