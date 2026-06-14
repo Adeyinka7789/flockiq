@@ -827,6 +827,84 @@ class LossDocumentationReportView(RoleRequiredMixin, View):
         return response
 
 
+class ValuationOverrideView(RoleRequiredMixin, View):
+    """GET → confirmed-price modal; POST → set or clear the batch valuation override.
+
+    The override is the highest-priority input to FlockValuationService (beats
+    market data and the admin fallback). Owner/manager only — supervisors and
+    data-entry users cannot set a flock's confirmed sale value.
+    """
+
+    allowed_roles = ["owner", "manager"]
+
+    def get(self, request, pk):
+        org = get_org_or_404(request)
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch, id=pk)
+        return render(
+            request, "flocks/_valuation_override_modal.html", {"batch": batch}
+        )
+
+    def post(self, request, pk):
+        from decimal import Decimal, InvalidOperation
+        from django.utils import timezone
+
+        org = get_org_or_404(request)
+
+        from apps.infrastructure.core.helpers import write_blocked_response
+        blocked = write_blocked_response(request, org)
+        if blocked is not None:
+            return blocked
+
+        with set_tenant_context(org):
+            batch = get_object_or_404(Batch, id=pk)
+            action = request.POST.get("action", "save")
+
+            if action == "clear":
+                batch.valuation_override_per_unit = None
+                batch.valuation_override_unit = None
+                batch.valuation_override_set_by = None
+                batch.valuation_override_set_at = None
+                batch.save()
+                msg = "Confirmed price cleared — reverted to market pricing."
+            else:
+                raw = request.POST.get("price", "").strip()
+                unit = request.POST.get("unit", "")
+                error = None
+                price = None
+                try:
+                    price = Decimal(raw)
+                except (InvalidOperation, ValueError):
+                    error = "Enter a valid price."
+                if error is None and price <= 0:
+                    error = "Enter a price greater than zero."
+                if error is None and unit not in ("kg", "bird"):
+                    error = "Choose a unit (per kg or per bird)."
+
+                if error:
+                    return render(
+                        request,
+                        "flocks/_valuation_override_modal.html",
+                        {"batch": batch, "error": error},
+                        status=422,
+                    )
+
+                batch.valuation_override_per_unit = price
+                batch.valuation_override_unit = unit
+                batch.valuation_override_set_by = request.user
+                batch.valuation_override_set_at = timezone.now()
+                batch.save()
+                msg = "Confirmed price saved."
+
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = json.dumps({
+            "showToast": {"message": msg, "type": "success"},
+            "close-modal": True,
+        })
+        response["HX-Refresh"] = "true"
+        return response
+
+
 # ── Export views ────────────────────────────────────────────────────────────────
 
 class BatchPDFExportView(LoginRequiredMixin, View):

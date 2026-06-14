@@ -1135,6 +1135,63 @@ class DeletedRecordsView(SuperAdminMixin, View):
         return response
 
 
+class ValuationSettingsView(SuperAdminMixin, View):
+    """Superadmin-editable platform fallback valuation prices.
+
+    Backs FlockValuationService priority 3 (admin fallback) — the figures used
+    when a batch has no farmer override and the org has no MarketPrice data.
+    """
+
+    def get(self, request):
+        from apps.infrastructure.billing.models import ValuationSettings
+        return render(request, 'superadmin/valuation_settings.html', {
+            'valuation_settings': ValuationSettings.get_current(),
+        })
+
+    def post(self, request):
+        from decimal import Decimal, InvalidOperation
+        from apps.infrastructure.billing.models import ValuationSettings
+
+        row = ValuationSettings.get_current()
+        fields = (
+            'broiler_price_per_kg',
+            'layer_point_of_lay_price',
+            'generic_per_bird_price',
+        )
+
+        errors, cleaned = {}, {}
+        for field in fields:
+            raw = request.POST.get(field, '').strip()
+            try:
+                value = Decimal(raw)
+            except (InvalidOperation, ValueError):
+                errors[field] = 'Enter a valid number.'
+                continue
+            if value <= 0:
+                errors[field] = 'Price must be greater than zero.'
+            else:
+                cleaned[field] = value
+
+        if errors:
+            return render(request, 'superadmin/valuation_settings.html', {
+                'valuation_settings': row,
+                'errors': errors,
+                'submitted': request.POST,
+            }, status=422)
+
+        for field, value in cleaned.items():
+            setattr(row, field, value)
+        row.updated_by = request.user
+        row.save()
+        logger.info('superadmin.valuation_settings_updated',
+                    updated_by=str(request.user.pk))
+
+        return render(request, 'superadmin/valuation_settings.html', {
+            'valuation_settings': row,
+            'saved': True,
+        })
+
+
 class SupportTicketReplyView(SuperAdminMixin, View):
     def post(self, request, pk):
         from django.conf import settings as django_settings

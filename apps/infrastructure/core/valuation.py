@@ -7,26 +7,19 @@ Report (insurance supporting evidence). It is deliberately conservative and
 self-documents its confidence so nobody mistakes it for a guaranteed value.
 
 ──────────────────────────────────────────────────────────────────────────────
-HARDCODED PRICE ASSUMPTIONS — REVIEW PERIODICALLY
-All of the constants below are *fallback* estimates used only when no real
-MarketPrice data exists for the org. They were set in June 2026 against typical
-Nigerian market rates. Update them as the market moves — a future maintainer
-should treat these as "best guess", not gospel. When a fallback is used the
-returned ``confidence`` drops to 'low' and ``price_source`` is 'fallback'.
+PRICE PRIORITY (highest to lowest)
+  1. Farmer's per-batch override (Batch.valuation_override_*) — confidence='high'.
+  2. Real MarketPrice data (per-kg, then per-bird) — confidence medium/high.
+  3. Admin-configured fallback (billing.ValuationSettings) — confidence='low'.
+The admin fallback replaces what used to be hardcoded module constants; the
+ValuationSettings row is seeded with the documented June 2026 Nigerian-market
+estimates and is editable by superadmin. When a fallback is used the returned
+``confidence`` drops to 'low' and ``price_source`` is 'fallback'.
 ──────────────────────────────────────────────────────────────────────────────
 """
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.utils import timezone
-
-# ── Fallback price assumptions (Naira) — set June 2026, see module docstring ──
-# Live broiler weight price. Aligned with BroilerExitOptimizer's default of
-# ₦1,850/kg (apps/health/analytics/exit_optimizer.py) so the two features agree.
-FALLBACK_BROILER_PRICE_PER_KG = Decimal("1850")
-# Point-of-lay pullet value. Nigerian POL pullets typically ₦2,500–₦3,500 (2026).
-FALLBACK_POINT_OF_LAY_PER_BIRD = Decimal("2800")
-# Generic per-bird value for unknown/other bird types — intentionally low.
-FALLBACK_PER_BIRD = Decimal("2000")
 
 # Documented standard broiler live-weight curve (grams of avg live weight by
 # cycle day). Cobb-500-class growth — same anchor points used elsewhere in the
@@ -81,6 +74,21 @@ class FlockValuationService:
 
     def __init__(self, batch):
         self.batch = batch
+        self._settings = None
+
+    # ── Settings accessor ────────────────────────────────────────────────────
+
+    def _fallback_settings(self):
+        """Admin-configured fallback prices (billing.ValuationSettings singleton).
+
+        Cached per service instance. get_current() always returns a row —
+        recreating it with seeded defaults if it is somehow missing — so the
+        emergency hardcoded-default path is the model field defaults themselves.
+        """
+        if self._settings is None:
+            from apps.infrastructure.billing.models import ValuationSettings
+            self._settings = ValuationSettings.get_current()
+        return self._settings
 
     # ── Public API ──────────────────────────────────────────────────────────
 
@@ -89,23 +97,64 @@ class FlockValuationService:
         Returns a dict:
           {
             'estimated_value_naira': Decimal,
-            'valuation_method': str,   # 'weight_based' | 'point_of_lay' |
+            'valuation_method': str,   # 'farmer_override' | 'weight_based' |
+                                       # 'point_of_lay' | 'per_bird_market' |
                                        # 'fallback_per_bird'
             'price_per_unit': Decimal,
             'unit': str,               # 'kg' or 'bird'
             'current_count': int,
             'as_of': datetime,
             'confidence': str,         # 'high' | 'medium' | 'low'
-            'price_source': str,       # 'market' | 'fallback'
+            'price_source': str,       # 'override' | 'market' | 'fallback'
             'notes': str,              # human-readable caveat, may be ''
           }
         """
+        # Priority 1: farmer's confirmed per-batch override.
+        if self.batch.valuation_override_per_unit is not None:
+            return self._override_estimate()
+
+        # Priority 2 (market) / 3 (admin fallback) handled per bird type.
         bird_type = getattr(self.batch, "bird_type", None)
         if bird_type == "broiler":
             return self._estimate_broiler_value()
         if bird_type == "layer":
             return self._estimate_layer_value()
         return self._fallback_estimate()
+
+    # ── Farmer override ──────────────────────────────────────────────────────
+
+    def _override_estimate(self) -> dict:
+        """Use the farmer's confirmed price — highest confidence, beats market."""
+        override = self.batch.valuation_override_per_unit
+        unit = self.batch.valuation_override_unit or "bird"
+        count = self.batch.current_count or 0
+
+        if unit == "kg":
+            avg_weight_kg, weight_source = self._broiler_avg_weight_kg()
+            total = Decimal(count) * avg_weight_kg * override
+            notes = "Valued at your confirmed price per kg of live weight."
+        else:  # 'bird'
+            avg_weight_kg, weight_source = None, None
+            total = Decimal(count) * override
+            notes = "Valued at your confirmed price per bird."
+
+        result = {
+            "estimated_value_naira": _money(total),
+            "valuation_method": "farmer_override",
+            "price_per_unit": _money(override),
+            "unit": unit,
+            "current_count": count,
+            "as_of": timezone.now(),
+            "confidence": "high",
+            "price_source": "override",
+            "notes": notes,
+            "override_set_by": self.batch.valuation_override_set_by,
+            "override_set_at": self.batch.valuation_override_set_at,
+        }
+        if unit == "kg":
+            result["avg_weight_kg"] = avg_weight_kg.quantize(_TWOPLACES)
+            result["weight_source"] = weight_source
+        return result
 
     # ── Broiler ───────────────────────────────────────────────────────────────
 
@@ -240,7 +289,7 @@ class FlockValuationService:
         except Exception:
             pass
 
-        return FALLBACK_BROILER_PRICE_PER_KG, "kg", "fallback"
+        return self._fallback_settings().broiler_price_per_kg, "kg", "fallback"
 
     # ── Layer ─────────────────────────────────────────────────────────────────
 
@@ -263,7 +312,7 @@ class FlockValuationService:
         point_of_lay_day = lay_start_week * 7
 
         count = self.batch.current_count or 0
-        price_per_bird = FALLBACK_POINT_OF_LAY_PER_BIRD
+        price_per_bird = self._fallback_settings().layer_point_of_lay_price
         total = Decimal(count) * price_per_bird
 
         cycle_day = self.batch.cycle_day or 0
@@ -299,7 +348,7 @@ class FlockValuationService:
     def _fallback_estimate(self) -> dict:
         """Unknown/other bird types — flat per-bird estimate, low confidence."""
         count = self.batch.current_count or 0
-        price_per_bird = FALLBACK_PER_BIRD
+        price_per_bird = self._fallback_settings().generic_per_bird_price
         total = Decimal(count) * price_per_bird
         return {
             "estimated_value_naira": _money(total),

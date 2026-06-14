@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.conf import settings
 from django.db import models
 
 from apps.infrastructure.core.models import TenantAwareModel
@@ -106,6 +109,61 @@ class PaymentRecord(TenantAwareModel):
 
     def __str__(self):
         return f"Payment({self.reference}, {self.status})"
+
+
+class ValuationSettings(models.Model):
+    """
+    Platform-wide fallback valuation parameters, configurable by superadmin.
+    Used by FlockValuationService when no farmer override and no real
+    MarketPrice data exist for a batch.
+
+    Singleton — there is only ever one row (pk=1), mirroring the global,
+    not-tenant-scoped pattern of BillingPlan. RLS DISABLED — any tenant reads
+    it, only superadmin writes it. The field defaults are the documented June
+    2026 Nigerian-market estimates and double as the emergency fallback if the
+    row is somehow missing (get_current() recreates it on demand).
+    """
+
+    broiler_price_per_kg = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        default=Decimal("1850.00"),
+        help_text="Fallback ₦/kg for live broiler weight when no market data exists.",
+    )
+    layer_point_of_lay_price = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        default=Decimal("2800.00"),
+        help_text="Fallback ₦/bird for point-of-lay pullets when no market data exists.",
+    )
+    generic_per_bird_price = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        default=Decimal("2000.00"),
+        help_text="Fallback ₦/bird for unrecognized bird types.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="+",
+    )
+
+    class Meta:
+        db_table = "billing_valuationsettings"
+        verbose_name = "Valuation Settings"
+        verbose_name_plural = "Valuation Settings"
+
+    def __str__(self):
+        return "Valuation Settings"
+
+    @classmethod
+    def get_current(cls):
+        """Get (or create with seeded defaults) the singleton settings row."""
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  # enforce singleton
+        super().save(*args, **kwargs)
 
 
 class PaystackWebhookLog(models.Model):

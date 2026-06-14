@@ -1,5 +1,6 @@
 import datetime
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -71,6 +72,38 @@ class Batch(SoftDeleteMixin, TenantAwareModel):
         max_length=200,
         blank=True,
         help_text="Hatchery name if not in directory",
+    )
+
+    # ── Valuation override ─────────────────────────────────────────────────────
+    # Optional farmer-confirmed price that takes priority over market data and
+    # the admin fallback in FlockValuationService (e.g. a signed buyer contract).
+    valuation_override_per_unit = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=(
+            "Optional: override the estimated value per kg (broiler) or per "
+            "bird (layer/other) for this batch — e.g. if you have a confirmed "
+            "buyer price."
+        ),
+    )
+    valuation_override_unit = models.CharField(
+        max_length=10,
+        choices=[("kg", "Per kg"), ("bird", "Per bird")],
+        null=True,
+        blank=True,
+    )
+    valuation_override_set_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    valuation_override_set_at = models.DateTimeField(
+        null=True,
+        blank=True,
     )
 
     class Meta:

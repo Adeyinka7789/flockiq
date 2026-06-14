@@ -19,6 +19,7 @@ from .views import (
     MortalityLogDeleteView,
     MortalityLogView,
     MortalityRecentView,
+    ValuationOverrideView,
     WeightRecordDeleteView,
     WeightRecordView,
 )
@@ -47,6 +48,7 @@ urlpatterns = [
     path("batches/<uuid:pk>/exit-optimizer/", ExitOptimizerPartialView.as_view(), name="exit_optimizer_partial"),
     path("batches/<uuid:pk>/metrics/", BatchMetricsCardView.as_view(), name="metrics"),
     path("batches/<uuid:pk>/loss-report/", LossDocumentationReportView.as_view(), name="loss_report"),
+    path("batches/<uuid:pk>/valuation-override/", ValuationOverrideView.as_view(), name="valuation_override"),
     path("batches/<uuid:pk>/export/pdf/", BatchPDFExportView.as_view(), name="export_pdf"),
     path("batches/<uuid:pk>/export/excel/", BatchExcelExportView.as_view(), name="export_excel"),
     path("batches/create/", BatchCreateSelectView.as_view(), name="create_select"),

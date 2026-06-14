@@ -24,6 +24,7 @@ urlpatterns = [
     path('superadmin/impersonate/<uuid:user_pk>/start/', views.ImpersonateStartView.as_view(), name='impersonate_start'),
     path('superadmin/impersonate/stop/', views.ImpersonateStopView.as_view(), name='impersonate_stop'),
     path('superadmin/system-health/', views.SystemHealthView.as_view(), name='system_health'),
+    path('superadmin/valuation-settings/', views.ValuationSettingsView.as_view(), name='valuation_settings'),
     path('superadmin/support-tickets/', views.SupportTicketsView.as_view(), name='support_tickets'),
     path('superadmin/support-tickets/<int:pk>/', views.SupportTicketDetailView.as_view(), name='support_ticket_detail'),
     path('superadmin/support-tickets/<int:pk>/reply/', views.SupportTicketReplyView.as_view(), name='support_ticket_reply'),
