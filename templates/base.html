@@ -1116,6 +1116,11 @@
     </div>
   </div>
 
+  <!-- Role-aware staff onboarding tour (once per non-owner staff member) -->
+  {% if not request.user.is_superuser and request.user.role != 'owner' and not request.user.has_seen_staff_onboarding %}
+    {% include "accounts/_staff_onboarding_modal.html" %}
+  {% endif %}
+
   <!-- Django messages → Alpine toast bridge -->
   {% if messages %}
   <script id="django-messages-data" type="application/json">

@@ -769,6 +769,15 @@ class ReactivateUserView(LoginRequiredMixin, View):
         return _member_row_response(request, member, toast="User reactivated.")
 
 
+class DismissStaffOnboardingView(LoginRequiredMixin, View):
+    """POST — marks the staff onboarding tour as seen so it never shows again."""
+
+    def post(self, request):
+        request.user.has_seen_staff_onboarding = True
+        request.user.save(update_fields=["has_seen_staff_onboarding"])
+        return HttpResponse(status=204)
+
+
 def _member_row_response(request, member, toast=None, toast_type="success"):
     """Render the member row partial with an optional toast trigger."""
     response = render(request, "accounts/_member_row.html", {

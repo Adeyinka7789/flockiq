@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     ChangePasswordView,
     DeactivateUserView,
+    DismissStaffOnboardingView,
     EditProfileView,
     EditUserRoleView,
     ForgotPasswordView,
@@ -58,4 +59,10 @@ urlpatterns = [
     path("team/<uuid:pk>/role/", EditUserRoleView.as_view(), name="team_role"),
     path("team/<uuid:pk>/deactivate/", DeactivateUserView.as_view(), name="team_deactivate"),
     path("team/<uuid:pk>/reactivate/", ReactivateUserView.as_view(), name="team_reactivate"),
+    # Staff onboarding tour
+    path(
+        "onboarding/staff/dismiss/",
+        DismissStaffOnboardingView.as_view(),
+        name="dismiss_staff_onboarding",
+    ),
 ]

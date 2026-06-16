@@ -1,0 +1,247 @@
+{% comment %}
+Role-aware staff onboarding tour — 3 steps, single template.
+Shown once to non-owner staff (manager, supervisor, data_entry, vet_advisor).
+Content is driven by request.user.role via if/elif blocks. Alpine.js drives the
+step transitions; dismissOnboarding() POSTs to mark the tour as seen.
+{% endcomment %}
+<div class="fixed inset-0 z-[200] flex items-center justify-center p-4"
+     style="background: rgba(26,39,68,0.4); backdrop-filter: blur(4px);"
+     x-data="{
+       step: 1,
+       visible: true,
+       dismissOnboarding() {
+         this.visible = false;
+         htmx.ajax('POST', '{% url "accounts:dismiss_staff_onboarding" %}', {
+           headers: {
+             'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''
+           },
+           swap: 'none'
+         });
+       }
+     }"
+     x-show="visible"
+     x-transition
+     x-cloak>
+
+  {# ---------------------------------------------------------------- STEP 1 #}
+  <div x-show="step === 1"
+       x-transition
+       class="w-full max-w-[420px]"
+       style="background:white; border-radius:1.5rem; overflow:hidden;
+              box-shadow:0px 12px 32px rgba(35,66,128,0.12);">
+    <div style="display:flex; justify-content:space-between; align-items:center;
+                padding:1rem 1.5rem; background:#f1f4fb80;">
+      <span style="font-size:0.6875rem; font-family:Manrope; font-weight:700;
+                   text-transform:uppercase; letter-spacing:0.1em; color:#3d5a99;">
+        FlockIQ Tour — Step 1 of 3
+      </span>
+      <button @click="dismissOnboarding()"
+              style="color:#94a3b8; background:none; border:none; cursor:pointer;
+                     font-size:1.25rem;">✕</button>
+    </div>
+
+    <div style="padding:2.5rem 2rem 3rem; text-align:center;">
+      <div style="font-size:2rem; margin-bottom:1.5rem;">👋</div>
+      <h3 style="font-family:Manrope; font-size:1.5rem; font-weight:700;
+                 color:#1a2744; margin:0 0 1rem; letter-spacing:-0.02em;">
+        Welcome to the Team!
+      </h3>
+      <p style="font-family:Inter; color:#4a5568; line-height:1.6; margin:0;">
+        {% if request.user.role == 'manager' %}
+          Your farm manager has added you as a
+          <strong style="color:#234280;">Manager</strong>.
+          You oversee farm performance, finances, and the team.
+        {% elif request.user.role == 'supervisor' %}
+          Your farm manager has added you as a
+          <strong style="color:#234280;">Supervisor</strong>.
+          You run day-to-day operations across the farm.
+        {% elif request.user.role == 'data_entry' %}
+          Your farm manager has added you as a
+          <strong style="color:#234280;">Data Entry Clerk</strong>.
+          Your daily logs keep the farm's intelligence alive.
+        {% elif request.user.role == 'vet_advisor' %}
+          Your farm manager has added you as a
+          <strong style="color:#234280;">Vet Advisor</strong>.
+          You protect flock health across all active batches.
+        {% endif %}
+      </p>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center;
+                padding:1.25rem 2rem; background:rgba(241,244,251,0.3);">
+      <button @click="dismissOnboarding()"
+              style="color:#8a96a8; font-family:Inter; font-size:0.875rem;
+                     background:none; border:none; cursor:pointer;">
+        Skip Tour
+      </button>
+      <button @click="step = 2"
+              style="background:#3d5a99; color:white; padding:0.75rem 2rem;
+                     border-radius:9999px; font-family:Manrope; font-weight:700;
+                     font-size:0.875rem; border:none; cursor:pointer;">
+        Next →
+      </button>
+    </div>
+
+    <div style="display:flex; gap:0.375rem; padding:0 2rem 1.5rem;">
+      <span style="flex:1; height:4px; border-radius:9999px; background:#234280;"></span>
+      <span style="flex:1; height:4px; border-radius:9999px; background:#e2e8f0;"></span>
+      <span style="flex:1; height:4px; border-radius:9999px; background:#e2e8f0;"></span>
+    </div>
+  </div>
+
+  {# ---------------------------------------------------------------- STEP 2 #}
+  <div x-show="step === 2"
+       x-transition
+       class="w-full max-w-[520px]"
+       style="background:white; border-radius:1.5rem; overflow:hidden;
+              box-shadow:0px 12px 32px rgba(35,66,128,0.12);">
+    <div style="padding:2rem 2rem 0;">
+      <p style="font-size:0.75rem; font-family:Manrope; font-weight:700;
+                text-transform:uppercase; letter-spacing:0.08em; color:#234280;
+                margin:0 0 0.25rem;">
+        Step 2 of 3
+      </p>
+      <h1 style="font-family:Manrope; font-weight:800; font-size:1.5rem;
+                 color:#181c21; margin:0;">
+        FlockIQ Tour
+      </h1>
+    </div>
+
+    <div style="padding:1.5rem 2rem 2rem;">
+      <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+        <span style="font-size:2rem;">📍</span>
+        <h3 style="font-family:Manrope; font-weight:600; font-size:1.25rem;
+                   color:#181c21; margin:0;">
+          Your Workspace
+        </h3>
+      </div>
+
+      <div style="background:#f4f7fe; border-radius:0.75rem; padding:1.5rem;
+                  display:flex; flex-direction:column; gap:1.25rem;">
+        {% if request.user.role == 'manager' %}
+          {% include "accounts/_onboarding_row.html" with label="Farm & Batch Overview" text="Monitor all active flocks and cycle progress" icon="chart" %}
+          {% include "accounts/_onboarding_row.html" with label="Finance" text="P&L reports, expenses, and farm credit score" icon="money" %}
+          {% include "accounts/_onboarding_row.html" with label="Team" text="Manage staff roles and access" icon="users" %}
+        {% elif request.user.role == 'supervisor' %}
+          {% include "accounts/_onboarding_row.html" with label="Batches" text="Track cycle day, bird count, and batch status" icon="clipboard" %}
+          {% include "accounts/_onboarding_row.html" with label="Production Logs" text="Feed, water, egg production, and waste records" icon="egg" %}
+          {% include "accounts/_onboarding_row.html" with label="Tasks" text="Your assigned tasks and team task board" icon="check" %}
+        {% elif request.user.role == 'data_entry' %}
+          {% include "accounts/_onboarding_row.html" with label="Daily Logs" text="Feed, water, egg production, and mortality — log every day, even zeros" icon="clipboard" %}
+          {% include "accounts/_onboarding_row.html" with label="Tasks" text="Check what's been assigned to you" icon="check" %}
+          {% include "accounts/_onboarding_row.html" with label="Batch Overview" text="See the flock you're responsible for logging" icon="egg" %}
+        {% elif request.user.role == 'vet_advisor' %}
+          {% include "accounts/_onboarding_row.html" with label="Health Command Center" text="Your main dashboard for flock health" icon="heart" %}
+          {% include "accounts/_onboarding_row.html" with label="Vaccination Calendar" text="Due dates, schedules, and compliance status" icon="calendar" %}
+          {% include "accounts/_onboarding_row.html" with label="Outbreak Alerts" text="Active disease warnings across all batches" icon="alert" %}
+        {% endif %}
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center;
+                padding:1.25rem 2rem; background:rgba(241,244,251,0.3);">
+      <button @click="step = 1"
+              style="color:#3d5a99; font-family:Manrope; font-weight:700;
+                     font-size:0.875rem; padding:0.75rem 1.75rem;
+                     border-radius:9999px; background:none;
+                     border:1px solid #cbd5e1; cursor:pointer;">
+        ← Back
+      </button>
+      <button @click="step = 3"
+              style="background:#3d5a99; color:white; padding:0.75rem 2rem;
+                     border-radius:9999px; font-family:Manrope; font-weight:700;
+                     font-size:0.875rem; border:none; cursor:pointer;">
+        Next →
+      </button>
+    </div>
+
+    <div style="display:flex; gap:0.375rem; padding:0 2rem 1.5rem;">
+      <span style="flex:1; height:4px; border-radius:9999px; background:#234280;"></span>
+      <span style="flex:1; height:4px; border-radius:9999px; background:#234280;"></span>
+      <span style="flex:1; height:4px; border-radius:9999px; background:#e2e8f0;"></span>
+    </div>
+  </div>
+
+  {# ---------------------------------------------------------------- STEP 3 #}
+  <div x-show="step === 3"
+       x-transition
+       class="w-full max-w-[540px]"
+       style="background:white; border-radius:1.5rem; overflow:hidden;
+              box-shadow:0px 12px 32px rgba(35,66,128,0.12);">
+    <div style="display:flex; justify-content:space-between; align-items:center;
+                padding:1rem 1.5rem; background:#f1f4fb80;">
+      <span style="font-size:0.6875rem; font-family:Manrope; font-weight:700;
+                   text-transform:uppercase; letter-spacing:0.1em; color:#3d5a99;">
+        FlockIQ Tour — Step 3 of 3
+      </span>
+      <button @click="dismissOnboarding()"
+              style="color:#94a3b8; background:none; border:none; cursor:pointer;
+                     font-size:1.25rem;">✕</button>
+    </div>
+
+    <div style="padding:2rem 2rem 1.5rem;">
+      <div style="width:4rem; height:4rem; border-radius:1rem; background:#e8edf7;
+                  display:flex; align-items:center; justify-content:center;
+                  margin-bottom:1.5rem;">
+        <span style="font-size:2rem;">✅</span>
+      </div>
+
+      <h3 style="font-family:Manrope; font-size:1.75rem; font-weight:700;
+                 color:#234280; margin:0 0 1rem; letter-spacing:-0.02em;">
+        Start Here
+      </h3>
+
+      <ol style="font-family:Inter; color:#4a5568; line-height:1.6;
+                 margin:0; padding-left:1.25rem; display:flex;
+                 flex-direction:column; gap:0.5rem;">
+        {% if request.user.role == 'manager' %}
+          <li>Check the farm credit score on the Billing page</li>
+          <li>Set your notification preferences under Settings</li>
+          <li>Review this week's AI Daily Brief on the dashboard</li>
+        {% elif request.user.role == 'supervisor' %}
+          <li>Open your active batch and check today's cycle day</li>
+          <li>Review open tasks assigned to you</li>
+          <li>Log any feed or mortality your team may have missed</li>
+        {% elif request.user.role == 'data_entry' %}
+          <li>Find your active batch and log today's feed &amp; water</li>
+          <li>Record any bird deaths — don't wait till end of day</li>
+          <li>Check your task list for anything assigned to you</li>
+        {% elif request.user.role == 'vet_advisor' %}
+          <li>Check the vaccination calendar for overdue schedules</li>
+          <li>Review any active outbreak alerts on the health page</li>
+          <li>Look at mortality trends in the Health Analytics page</li>
+        {% endif %}
+      </ol>
+
+      <p style="margin-top:1.5rem; font-size:0.75rem; color:#94a3b8;
+                font-family:Inter; text-align:center; line-height:1.5;">
+        📄 The FlockIQ User Manual is available at the bottom of every page —
+        download it anytime for a full guide to the platform.
+      </p>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center;
+                padding:1.25rem 2rem; background:rgba(241,244,251,0.3);">
+      <button @click="step = 2"
+              style="color:#3d5a99; font-family:Manrope; font-weight:700;
+                     font-size:0.875rem; padding:0.75rem 1.75rem;
+                     border-radius:9999px; background:none;
+                     border:1px solid #cbd5e1; cursor:pointer;">
+        ← Back
+      </button>
+      <button @click="dismissOnboarding()"
+              style="background:#10b981; color:white; padding:0.75rem 2rem;
+                     border-radius:9999px; font-family:Manrope; font-weight:700;
+                     font-size:0.875rem; border:none; cursor:pointer;">
+        Got it ✓
+      </button>
+    </div>
+
+    <div style="display:flex; gap:0.375rem; padding:0 2rem 1.5rem;">
+      <span style="flex:1; height:4px; border-radius:9999px; background:#234280;"></span>
+      <span style="flex:1; height:4px; border-radius:9999px; background:#234280;"></span>
+      <span style="flex:1; height:4px; border-radius:9999px; background:#234280;"></span>
+    </div>
+  </div>
+
+</div>

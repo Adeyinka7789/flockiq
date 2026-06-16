@@ -87,6 +87,10 @@ class CustomUser(AbstractUser):
     email_verified = models.BooleanField(default=False)
     email_verification_token = models.UUIDField(default=uuid.uuid4, editable=False)
 
+    # Whether the user has dismissed the 3-step staff onboarding tour.
+    # Default False so existing non-owner staff who never saw it get it on next login.
+    has_seen_staff_onboarding = models.BooleanField(default=False)
+
     # Notification preferences
     sms_alerts_enabled = models.BooleanField(default=True)
     email_digest_frequency = models.CharField(

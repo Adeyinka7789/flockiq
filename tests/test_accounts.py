@@ -221,3 +221,94 @@ def test_reserved_subdomain_rejected_at_onboarding():
         format="json",
     )
     assert response.status_code == 400
+
+
+# ── Staff onboarding tour ─────────────────────────────────────────────────────
+
+from django.test import Client
+
+
+def _staff_page_org(subdomain):
+    """An org configured so middleware lets an authenticated staff page render."""
+    import datetime
+    from django.utils import timezone
+    org = make_org(subdomain=subdomain)
+    org.onboarding_complete = True
+    org.trial_ends_at = timezone.now() + datetime.timedelta(days=14)
+    org.save()
+    return org
+
+
+def _logged_in_staff(org, role, email):
+    user = make_user(org=org, role=role, email=email)
+    user.email_verified = True
+    user.save()
+    client = Client()
+    client.force_login(user)
+    return client, user
+
+
+def test_has_seen_staff_onboarding_defaults_false():
+    org = make_org(subdomain="onbdefault")
+    user = make_user(org=org, role="manager", email="onbdef@test.com")
+    assert user.has_seen_staff_onboarding is False
+
+
+@pytest.mark.parametrize("role", ["manager", "supervisor", "data_entry", "vet_advisor"])
+def test_staff_sees_onboarding_modal(role):
+    org = _staff_page_org(f"onbshow{role[:4]}")
+    client, _ = _logged_in_staff(org, role, f"onbshow-{role}@test.com")
+    response = client.get("/profile/")
+    assert response.status_code == 200
+    assert b"Welcome to the Team!" in response.content
+
+
+def test_owner_does_not_see_onboarding_modal():
+    org = _staff_page_org("onbowner")
+    client, _ = _logged_in_staff(org, "owner", "onbowner-user@test.com")
+    response = client.get("/profile/")
+    assert response.status_code == 200
+    assert b"Welcome to the Team!" not in response.content
+
+
+def test_superuser_does_not_see_onboarding_modal():
+    from apps.infrastructure.accounts.models import CustomUser
+    admin = CustomUser.objects.create_superuser(
+        email="onbsuper@flockiq.com",
+        username="onbsuper@flockiq.com",
+        password="pass1234",
+    )
+    admin.email_verified = True
+    admin.save()
+    client = Client()
+    client.force_login(admin)
+    response = client.get("/profile/")
+    assert response.status_code == 200
+    assert b"Welcome to the Team!" not in response.content
+
+
+def test_dismissed_staff_does_not_see_onboarding_modal():
+    org = _staff_page_org("onbdone")
+    client, user = _logged_in_staff(org, "data_entry", "onbdone-user@test.com")
+    user.has_seen_staff_onboarding = True
+    user.save()
+    response = client.get("/profile/")
+    assert response.status_code == 200
+    assert b"Welcome to the Team!" not in response.content
+
+
+def test_dismiss_endpoint_sets_flag_and_returns_204():
+    org = _staff_page_org("onbdismiss")
+    client, user = _logged_in_staff(org, "supervisor", "onbdismiss-user@test.com")
+    assert user.has_seen_staff_onboarding is False
+    response = client.post("/onboarding/staff/dismiss/")
+    assert response.status_code == 204
+    user.refresh_from_db()
+    assert user.has_seen_staff_onboarding is True
+
+
+def test_dismiss_endpoint_requires_login():
+    client = Client()
+    response = client.post("/onboarding/staff/dismiss/")
+    assert response.status_code == 302
+    assert "/login/" in response["Location"]

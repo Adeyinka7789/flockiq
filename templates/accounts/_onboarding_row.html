@@ -1,0 +1,41 @@
+{% comment %}
+A single Step-2 "Your Workspace" row: icon circle + bold label + description.
+Params: label, text, icon (one of: chart, money, users, clipboard, egg, check,
+heart, calendar, alert). Inline path-based SVGs — Material Symbols are not
+loaded in base.html.
+{% endcomment %}
+<div style="display:flex; align-items:center; gap:0.875rem;">
+  <div style="width:2.5rem; height:2.5rem; border-radius:50%; background:white;
+              display:flex; align-items:center; justify-content:center;
+              box-shadow:0 1px 3px rgba(0,0,0,0.1); flex-shrink:0;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+         stroke="#234280" stroke-width="2" stroke-linecap="round"
+         stroke-linejoin="round">
+      {% if icon == "chart" %}
+        <line x1="3" y1="21" x2="21" y2="21"/><rect x="5" y="11" width="3" height="7"/><rect x="10.5" y="7" width="3" height="11"/><rect x="16" y="13" width="3" height="5"/>
+      {% elif icon == "money" %}
+        <circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5a2.5 2 0 0 1 2.5-1.5c1.4 0 2.5.7 2.5 1.7s-1 1.6-2.5 1.6-2.5.7-2.5 1.7 1.1 1.7 2.5 1.7a2.5 2 0 0 0 2.5-1.5"/>
+      {% elif icon == "users" %}
+        <path d="M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1"/><circle cx="9" cy="7" r="3"/><path d="M22 19v-1a4 4 0 0 0-3-3.85M16 4.13a4 4 0 0 1 0 7.75"/>
+      {% elif icon == "clipboard" %}
+        <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z"/><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 11h6M9 15h4"/>
+      {% elif icon == "egg" %}
+        <path d="M12 3c-3 0-6 5-6 9a6 6 0 0 0 12 0c0-4-3-9-6-9z"/>
+      {% elif icon == "check" %}
+        <path d="M3 12l2 2 4-4M3 6l2 2 4-4M3 18l2 2 4-4"/><line x1="13" y1="6" x2="21" y2="6"/><line x1="13" y1="12" x2="21" y2="12"/><line x1="13" y1="18" x2="21" y2="18"/>
+      {% elif icon == "heart" %}
+        <path d="M19 14c1.5-1.5 3-3.4 3-5.5A4.5 4.5 0 0 0 12 5 4.5 4.5 0 0 0 2 8.5c0 2.1 1.5 4 3 5.5l7 7z"/>
+      {% elif icon == "calendar" %}
+        <rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/>
+      {% elif icon == "alert" %}
+        <path d="M10.3 4l-8 13.5A2 2 0 0 0 4 20.5h16a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12" y2="17"/>
+      {% endif %}
+    </svg>
+  </div>
+  <div>
+    <p style="font-family:Manrope; font-weight:700; font-size:0.9375rem;
+              color:#181c21; margin:0 0 0.125rem;">{{ label }}</p>
+    <p style="font-family:Inter; font-size:0.8125rem; color:#5a6678;
+              margin:0; line-height:1.45;">{{ text }}</p>
+  </div>
+</div>
