@@ -290,6 +290,22 @@
       border-top: 1px solid #e5e7eb;
       margin-top: auto;
     }
+
+    /* ── Global Form Dropdowns Fix ───────────────────────────────── */
+    #modal-body select,
+    div[style*="padding:14px 18px"] select,
+    select {
+      -webkit-appearance: none !important;
+      -moz-appearance: none !important;
+      appearance: none !important;
+      padding-right: 34px !important;
+      background-color: white !important;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a96a8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+      background-repeat: no-repeat !important;
+      background-position: right 12px center !important;
+      background-size: 12px !important;
+      cursor: pointer !important;
+    }
   </style>
 
   <!-- app.js must load before Alpine so flockApp() is defined when Alpine initialises -->

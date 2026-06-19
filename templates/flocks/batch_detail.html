@@ -798,6 +798,22 @@
   padding:9px 18px; background:#3d5a99; color:white;
   border-radius:10px; font-size:12px; font-weight:700;
   text-decoration:none;
+
+/* Global select dropdown fix for all sub-components on this detail view */
+select, 
+.bl-select, 
+.fl-select, 
+.fd-select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  padding-right: 34px !important; /* Make sure text doesn't overlap arrow */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a96a8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 12px !important;
+  cursor: pointer !important;
+}
 }
 </style>
 

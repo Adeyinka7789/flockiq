@@ -46,10 +46,15 @@
     white-space: nowrap;
   }
   .bl-select {
-    padding: 7px 12px; border: 1.5px solid #e2e8f0;
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    padding: 7px 32px 7px 12px; border: 1.5px solid #e2e8f0;
     border-radius: 9px; font-size: 12px; color: #1a2744;
     background: white; cursor: pointer; outline: none;
     font-weight: 500; transition: all 0.15s;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a96a8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 12px;
   }
   .bl-select:focus { border-color: #3d5a99; }
 
