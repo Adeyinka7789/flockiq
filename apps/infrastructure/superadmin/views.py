@@ -1194,12 +1194,10 @@ class ValuationSettingsView(SuperAdminMixin, View):
 
 class SupportTicketReplyView(SuperAdminMixin, View):
     def post(self, request, pk):
-        from django.conf import settings as django_settings
-        from apps.infrastructure.core.email_service import EmailService
-        from apps.infrastructure.notifications.models import (
-            SupportTicket, SupportTicketReply,
+        from apps.infrastructure.notifications.models import SupportTicket
+        from apps.infrastructure.notifications.ticket_service import (
+            SupportTicketService,
         )
-        from apps.infrastructure.core.rls import set_tenant_context
 
         ticket = get_object_or_404(SupportTicket, pk=pk)
         message = request.POST.get('message', '').strip()
@@ -1214,42 +1212,12 @@ class SupportTicketReplyView(SuperAdminMixin, View):
                 status=422,
             )
 
-        reply = SupportTicketReply.objects.create(
+        SupportTicketService.add_reply(
             ticket=ticket,
             author=request.user,
             message=message,
+            new_status=new_status,
         )
-
-        if new_status in ('open', 'in_progress', 'resolved'):
-            ticket.status = new_status
-            ticket.save(update_fields=['status', 'updated_at'])
-
-        if ticket.submitted_by:
-            base_url = getattr(django_settings, 'SITE_URL', 'https://app.flockiq.com')
-            ticket_url = f"{base_url.rstrip('/')}/support/my-tickets/{ticket.pk}/"
-            EmailService.send_support_reply(
-                recipient_email=ticket.submitted_by.email,
-                owner_name=ticket.submitted_by.get_full_name() or ticket.submitted_by.email,
-                subject=ticket.subject,
-                reply_message=message,
-                ticket_url=ticket_url,
-            )
-
-            # Write to NotificationLog (tenant-scoped) so the user's bell lights up.
-            # AdminNotification is for superadmin-only; tenant users' bells read NotificationLog.
-            # Routed through notify() for the _should_receive gate. support_reply is
-            # intentionally uncategorised (no preference toggle and not financial),
-            # so it always reaches the ticket's submitter regardless of role/prefs.
-            from apps.infrastructure.notifications.services import NotificationService
-            with set_tenant_context(ticket.org):
-                NotificationService(ticket.org).notify(
-                    recipient=ticket.submitted_by,
-                    event_type='support_reply',
-                    title=f"Support ticket update — {ticket.subject}",
-                    body=f"Admin replied: {reply.message[:200]}",
-                    severity='info',
-                    action_url=reverse('notifications:support_ticket_detail', kwargs={'pk': ticket.pk}),
-                )
 
         replies = ticket.replies.select_related('author').all()
         return render(

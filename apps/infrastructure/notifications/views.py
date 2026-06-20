@@ -435,8 +435,8 @@ class SupportTicketDetailUserView(LoginRequiredMixin, View):
         })
 
     def post(self, request, pk):
-        from apps.infrastructure.accounts.models import CustomUser
-        from .models import SupportTicket, SupportTicketReply, AdminNotification
+        from .models import SupportTicket
+        from .ticket_service import SupportTicketService
 
         ticket = get_object_or_404(SupportTicket, pk=pk, submitted_by=request.user)
         message = request.POST.get("message", "").strip()
@@ -449,20 +449,11 @@ class SupportTicketDetailUserView(LoginRequiredMixin, View):
                 "error": "Cannot reply — message is empty or ticket is resolved.",
             }, status=422)
 
-        SupportTicketReply.objects.create(
+        SupportTicketService.add_reply(
             ticket=ticket,
             author=request.user,
             message=message,
         )
-
-        followup_url = reverse('superadmin:support_ticket_detail', kwargs={'pk': ticket.pk})
-        for su in CustomUser.objects.filter(is_superuser=True):
-            AdminNotification.objects.create(
-                recipient=su,
-                title=f"[Support follow-up] {ticket.subject} | {ticket.org.name}",
-                body=f"{request.user.email}: {message[:200]}",
-                action_url=followup_url,
-            )
 
         replies = ticket.replies.select_related("author").all()
         return render(request, "support/ticket_detail.html", {
