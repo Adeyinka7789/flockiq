@@ -435,3 +435,198 @@ class TestBillingViews:
             content_type="application/json",
         )
         assert response.status_code == 400
+
+
+# ── Notification API Views ───────────────────────────────────────────────────
+
+def _make_notification(org, user, **kwargs):
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import NotificationLog
+
+    defaults = dict(
+        org=org,
+        recipient=user,
+        event_type="mortality_spike",
+        title="Alert",
+        body="body",
+        severity="warning",
+        channel="in_app",
+        is_read=False,
+    )
+    defaults.update(kwargs)
+    with set_tenant_context(org):
+        return NotificationLog.objects.create(**defaults)
+
+
+class TestNotificationListAPIView:
+
+    def test_list_unauthenticated_returns_401(self):
+        client = APIClient()
+        response = client.get("/api/v1/notifications/")
+        assert response.status_code == 401
+
+    def test_list_returns_200(self, api_client, test_notification):
+        response = api_client.get("/api/v1/notifications/")
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert len(data) == 1
+        assert data[0]["title"] == test_notification.title
+
+    def test_list_no_org_returns_403(self, super_admin_user):
+        client = APIClient()
+        client.force_authenticate(user=super_admin_user)
+        response = client.get("/api/v1/notifications/")
+        assert response.status_code == 403
+
+    def test_list_newest_first(self, api_client, test_org, tenant_user):
+        from django.utils import timezone
+        from datetime import timedelta
+
+        older = _make_notification(test_org, tenant_user, title="Older")
+        newer = _make_notification(test_org, tenant_user, title="Newer")
+        # Force created_at ordering deterministically (auto_now_add is too close).
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.infrastructure.notifications.models import NotificationLog
+        with set_tenant_context(test_org):
+            NotificationLog.objects.filter(pk=older.pk).update(
+                created_at=timezone.now() - timedelta(hours=2)
+            )
+            NotificationLog.objects.filter(pk=newer.pk).update(
+                created_at=timezone.now() - timedelta(hours=1)
+            )
+
+        response = api_client.get("/api/v1/notifications/")
+        titles = [n["title"] for n in response.json()["data"]]
+        assert titles == ["Newer", "Older"]
+
+    def test_list_unread_filter(self, api_client, test_org, tenant_user):
+        _make_notification(test_org, tenant_user, title="Unread one", is_read=False)
+        _make_notification(test_org, tenant_user, title="Read one", is_read=True)
+
+        response = api_client.get("/api/v1/notifications/?unread=true")
+        titles = [n["title"] for n in response.json()["data"]]
+        assert titles == ["Unread one"]
+
+    def test_list_limit_param(self, api_client, test_org, tenant_user):
+        for i in range(8):
+            _make_notification(test_org, tenant_user, title=f"N{i}")
+        response = api_client.get("/api/v1/notifications/?limit=5")
+        assert len(response.json()["data"]) == 5
+
+    def test_list_limit_capped_at_50(self, api_client, test_org, tenant_user):
+        for i in range(55):
+            _make_notification(test_org, tenant_user, title=f"N{i}")
+        response = api_client.get("/api/v1/notifications/?limit=100")
+        assert len(response.json()["data"]) == 50
+
+    def test_list_invalid_limit_falls_back_to_default(self, api_client, test_notification):
+        response = api_client.get("/api/v1/notifications/?limit=abc")
+        assert response.status_code == 200
+
+    def test_list_excludes_other_users(self, api_client, test_org, tenant_user):
+        from apps.infrastructure.accounts.models import CustomUser
+
+        other = CustomUser.objects.create_user(
+            username="staff-other",
+            email="staff@testfarm.com",
+            password="testpass123",
+            org=test_org,
+            role="manager",
+            email_verified=True,
+        )
+        _make_notification(test_org, tenant_user, title="Mine")
+        _make_notification(test_org, other, title="Theirs")
+
+        response = api_client.get("/api/v1/notifications/")
+        titles = [n["title"] for n in response.json()["data"]]
+        assert titles == ["Mine"]
+
+
+class TestNotificationMarkReadAPIView:
+
+    def test_mark_read_unauthenticated_returns_401(self, test_notification):
+        client = APIClient()
+        response = client.post(f"/api/v1/notifications/{test_notification.pk}/read/")
+        assert response.status_code == 401
+
+    def test_mark_read_returns_204_and_sets_read(self, api_client, test_org, test_notification):
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.infrastructure.notifications.models import NotificationLog
+
+        response = api_client.post(f"/api/v1/notifications/{test_notification.pk}/read/")
+        assert response.status_code == 204
+        with set_tenant_context(test_org):
+            refreshed = NotificationLog.objects.get(pk=test_notification.pk)
+        assert refreshed.is_read is True
+        assert refreshed.read_at is not None
+
+    def test_mark_read_other_user_returns_404(self, api_client, test_org, tenant_user):
+        from apps.infrastructure.accounts.models import CustomUser
+
+        other = CustomUser.objects.create_user(
+            username="staff-mr",
+            email="staff-mr@testfarm.com",
+            password="testpass123",
+            org=test_org,
+            role="manager",
+            email_verified=True,
+        )
+        theirs = _make_notification(test_org, other, title="Theirs")
+        response = api_client.post(f"/api/v1/notifications/{theirs.pk}/read/")
+        assert response.status_code == 404
+
+    def test_mark_read_no_org_returns_403(self, super_admin_user, test_notification):
+        client = APIClient()
+        client.force_authenticate(user=super_admin_user)
+        response = client.post(f"/api/v1/notifications/{test_notification.pk}/read/")
+        assert response.status_code == 403
+
+
+class TestNotificationMarkAllReadAPIView:
+
+    def test_mark_all_read_unauthenticated_returns_401(self):
+        client = APIClient()
+        response = client.post("/api/v1/notifications/read-all/")
+        assert response.status_code == 401
+
+    def test_mark_all_read_returns_204_and_marks_all(self, api_client, test_org, tenant_user):
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.infrastructure.notifications.models import NotificationLog
+
+        _make_notification(test_org, tenant_user, title="A")
+        _make_notification(test_org, tenant_user, title="B")
+
+        response = api_client.post("/api/v1/notifications/read-all/")
+        assert response.status_code == 204
+        with set_tenant_context(test_org):
+            unread = NotificationLog.objects.filter(
+                recipient=tenant_user, is_read=False
+            ).count()
+        assert unread == 0
+
+    def test_mark_all_read_does_not_affect_other_users(self, api_client, test_org, tenant_user):
+        from apps.infrastructure.accounts.models import CustomUser
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.infrastructure.notifications.models import NotificationLog
+
+        other = CustomUser.objects.create_user(
+            username="staff-mar",
+            email="staff-mar@testfarm.com",
+            password="testpass123",
+            org=test_org,
+            role="manager",
+            email_verified=True,
+        )
+        theirs = _make_notification(test_org, other, title="Theirs")
+        _make_notification(test_org, tenant_user, title="Mine")
+
+        api_client.post("/api/v1/notifications/read-all/")
+        with set_tenant_context(test_org):
+            refreshed = NotificationLog.objects.get(pk=theirs.pk)
+        assert refreshed.is_read is False
+
+    def test_mark_all_read_no_org_returns_403(self, super_admin_user):
+        client = APIClient()
+        client.force_authenticate(user=super_admin_user)
+        response = client.post("/api/v1/notifications/read-all/")
+        assert response.status_code == 403

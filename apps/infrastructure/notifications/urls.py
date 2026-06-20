@@ -4,6 +4,9 @@ from .views import (
     MarkAdminNotificationReadView,
     NotificationBellView,
     NotificationDropdownView,
+    NotificationListAPIView,
+    NotificationMarkAllReadAPIView,
+    NotificationMarkReadAPIView,
     NotificationsPageView,
     MarkReadView,
     MarkAllReadView,
@@ -31,4 +34,8 @@ urlpatterns = [
     path("support/ticket/submit/", SubmitSupportTicketView.as_view(), name="submit_support_ticket"),
     path("support/my-tickets/", MySupportTicketsView.as_view(), name="my_support_tickets"),
     path("support/my-tickets/<int:pk>/", SupportTicketDetailUserView.as_view(), name="support_ticket_detail"),
+    # DRF API (mobile)
+    path("api/v1/notifications/", NotificationListAPIView.as_view(), name="api_notification_list"),
+    path("api/v1/notifications/read-all/", NotificationMarkAllReadAPIView.as_view(), name="api_notification_read_all"),
+    path("api/v1/notifications/<uuid:pk>/read/", NotificationMarkReadAPIView.as_view(), name="api_notification_mark_read"),
 ]

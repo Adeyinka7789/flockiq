@@ -13,10 +13,14 @@ from django.utils import timezone
 from django.views import View
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.infrastructure.core.email_service import EmailService
 from apps.infrastructure.core.helpers import get_org_or_404
 from apps.infrastructure.core.rls import set_tenant_context
+from .serializers import NotificationLogSerializer
 from .services import NotificationService
 
 logger = structlog.get_logger(__name__)
@@ -529,3 +533,89 @@ class SubmitSupportTicketView(LoginRequiredMixin, View):
             logger.exception("support_ticket.email_send_failed", ticket_id=ticket.pk)
 
         return render(request, "support/_ticket_success.html", {})
+
+
+# ─── Mobile API ───────────────────────────────────────────────────────────────
+
+
+class NotificationListAPIView(APIView):
+    """
+    GET /api/v1/notifications/ → List the current user's notifications, newest first.
+
+    Query params:
+      ?unread=true  — filter to unread only
+      ?limit=20     — number of results (default 20, max 50)
+
+    Scoped to the current organisation via RLS. Used by the mobile notification
+    feed/bell.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import NotificationLog
+
+        org = getattr(request.user, "org", None)
+        if not org:
+            return Response({"error": "No organisation."}, status=403)
+
+        try:
+            limit = min(int(request.query_params.get("limit", 20)), 50)
+        except (ValueError, TypeError):
+            limit = 20
+        if limit < 1:
+            limit = 20
+
+        with set_tenant_context(org):
+            qs = NotificationLog.objects.filter(
+                recipient=request.user
+            ).order_by("-created_at")
+            if request.query_params.get("unread") == "true":
+                qs = qs.filter(is_read=False)
+            notifications = list(qs[:limit])
+            serializer = NotificationLogSerializer(notifications, many=True)
+            return Response({"data": serializer.data})
+
+
+class NotificationMarkReadAPIView(APIView):
+    """POST /api/v1/notifications/<uuid>/read/ → Mark a single notification read. Returns 204."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        from .models import NotificationLog
+
+        org = getattr(request.user, "org", None)
+        if not org:
+            return Response({"error": "No organisation."}, status=403)
+
+        with set_tenant_context(org):
+            try:
+                notif = NotificationLog.objects.get(pk=pk, recipient=request.user)
+            except NotificationLog.DoesNotExist:
+                return Response({"error": "Notification not found."}, status=404)
+            if not notif.is_read:
+                notif.is_read = True
+                notif.read_at = timezone.now()
+                notif.save(update_fields=["is_read", "read_at"])
+        return Response(status=204)
+
+
+class NotificationMarkAllReadAPIView(APIView):
+    """POST /api/v1/notifications/read-all/ → Mark all of the user's unread notifications read. Returns 204."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .models import NotificationLog
+
+        org = getattr(request.user, "org", None)
+        if not org:
+            return Response({"error": "No organisation."}, status=403)
+
+        with set_tenant_context(org):
+            NotificationLog.objects.filter(
+                recipient=request.user,
+                is_read=False,
+            ).update(is_read=True, read_at=timezone.now())
+        return Response(status=204)
