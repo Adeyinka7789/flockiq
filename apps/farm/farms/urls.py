@@ -11,6 +11,7 @@ from .views import (
     FarmSummaryCardView,
     HouseCreateView,
     HouseDeleteView,
+    HouseListAPIView,
 )
 
 app_name = "farms"
@@ -31,5 +32,6 @@ urlpatterns = [
     # DRF API
     path("api/v1/farms/", FarmListAPIView.as_view(), name="api_list"),
     path("api/v1/farms/<uuid:pk>/", FarmDetailAPIView.as_view(), name="api_detail"),
+    path("api/v1/farms/<uuid:pk>/houses/", HouseListAPIView.as_view(), name="api_house_list"),
     path("api/v1/farms/<uuid:pk>/dashboard/", FarmDashboardAPIView.as_view(), name="api_dashboard"),
 ]

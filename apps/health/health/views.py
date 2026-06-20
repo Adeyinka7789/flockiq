@@ -537,8 +537,6 @@ class AddVaccinationView(TenantRequiredMixin, View):
 
         from apps.farm.flocks.models import Batch
 
-        from .models import VaccinationSchedule
-
         org = get_org_or_404(request)
         batch_id = request.POST.get("batch_id")
         vaccine_name = request.POST.get("vaccine_name", "").strip()
@@ -559,15 +557,13 @@ class AddVaccinationView(TenantRequiredMixin, View):
             with set_tenant_context(org):
                 batch = get_object_or_404(Batch, pk=batch_id, org=org)
                 due_date = datetime.strptime(due_date_str, "%Y-%m-%d").date()
-                VaccinationSchedule.objects.create(
+                HealthService.schedule_vaccination(
                     org=org,
                     batch=batch,
-                    farm=batch.farm,
                     vaccine_name=vaccine_name,
                     due_date=due_date,
                     route=route,
                     notes=notes,
-                    status="scheduled",
                 )
         except Exception as exc:
             logger.warning("add_vaccination_failed", error=str(exc))
@@ -629,7 +625,6 @@ class VaccinationAPIView(APIView):
         if not org:
             return Response({"error": "No organisation."}, status=403)
 
-        from .models import VaccinationSchedule
         import datetime
 
         required = ["batch_id", "vaccine_name", "due_date"]
@@ -641,10 +636,9 @@ class VaccinationAPIView(APIView):
             from apps.farm.flocks.models import Batch
             with set_tenant_context(org):
                 batch = Batch.objects.get(id=request.data["batch_id"], org=org)
-                vacc = VaccinationSchedule.objects.create(
+                vacc = HealthService.schedule_vaccination(
                     org=org,
                     batch=batch,
-                    farm=batch.farm,
                     vaccine_name=request.data["vaccine_name"],
                     due_date=datetime.date.fromisoformat(request.data["due_date"]),
                     route=request.data.get("route", "oral"),

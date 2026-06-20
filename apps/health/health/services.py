@@ -22,6 +22,38 @@ class HealthService(BaseService):
 
         return list(upcoming)
 
+    @staticmethod
+    def schedule_vaccination(
+        org,
+        batch,
+        vaccine_name: str,
+        due_date,
+        route: str = "oral",
+        notes: str = "",
+    ):
+        """
+        Single authoritative path for creating a VaccinationSchedule. Always sets
+        status='scheduled' so the daily reminder task (send_vaccination_reminders)
+        can find it.
+
+        Both the HTMX view and the API view must call this instead of
+        VaccinationSchedule.objects.create() directly — this prevents the status
+        divergence where API-created vaccinations are invisible to the Celery
+        reminder task.
+        """
+        from .models import VaccinationSchedule
+
+        return VaccinationSchedule.objects.create(
+            org=org,
+            batch=batch,
+            farm=batch.farm,  # denormalisation owned here
+            vaccine_name=vaccine_name,
+            due_date=due_date,
+            route=route,
+            notes=notes,
+            status="scheduled",  # always — this is the rule
+        )
+
     def record_vaccination(
         self,
         vaccination_id,

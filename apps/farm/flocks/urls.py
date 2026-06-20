@@ -13,6 +13,7 @@ from .views import (
     BatchListView,
     BatchMetricsCardView,
     BatchPDFExportView,
+    BatchValuationAPIView,
     ExitOptimizerPartialView,
     LossDocumentationReportView,
     MortalityLogAPIView,
@@ -65,5 +66,10 @@ urlpatterns = [
         "api/v1/flocks/batches/<uuid:pk>/close/",
         BatchCloseAPIView.as_view(),
         name="api_close",
+    ),
+    path(
+        "api/v1/flocks/batches/<uuid:pk>/valuation/",
+        BatchValuationAPIView.as_view(),
+        name="api_valuation",
     ),
 ]

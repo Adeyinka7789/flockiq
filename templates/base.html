@@ -1274,6 +1274,12 @@
         .catch(function() {});
       }
     });
+
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered explicitly at scope:', reg.scope))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  }
   </script>
 
   {% if request.user.is_authenticated and not request.user.is_superuser %}

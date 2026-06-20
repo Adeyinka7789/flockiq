@@ -21,6 +21,7 @@ from .serializers import (
     FarmCreateSerializer,
     FarmSerializer,
     FarmSummarySerializer,
+    HouseSerializer,
 )
 from .services import FarmService
 
@@ -499,6 +500,30 @@ class FarmDetailAPIView(APIView):
             data = serializer.data
 
         return Response({"data": data})
+
+
+class HouseListAPIView(APIView):
+    """
+    GET /api/v1/farms/<uuid>/houses/ → List all active (non-deleted) houses for a farm.
+    Used by mobile/partner batch-create flows.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        org = getattr(request.user, "org", None)
+        if not org:
+            return Response({"error": "No organization."}, status=403)
+
+        with set_tenant_context(org):
+            try:
+                farm = Farm.objects.get(id=pk)
+            except Farm.DoesNotExist:
+                return Response({"error": "Farm not found."}, status=404)
+
+            houses = list(House.objects.filter(farm=farm).order_by("name"))
+            serializer = HouseSerializer(houses, many=True)
+            return Response({"data": serializer.data})
 
 
 class FarmDashboardAPIView(APIView):

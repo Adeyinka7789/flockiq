@@ -1083,11 +1083,32 @@ class BatchDetailAPIView(APIView):
 
 class MortalityLogAPIView(APIView):
     """
-    POST /api/v1/batches/<uuid>/mortality/ → Record a mortality event for the batch.
+    GET  /api/v1/flocks/batches/<uuid>/mortality/ → List mortality logs for the batch.
+    POST /api/v1/flocks/batches/<uuid>/mortality/ → Record a mortality event for the batch.
     Live-bird counts are decremented atomically and an audit log entry is written.
     """
 
-    permission_classes = [IsAuthenticated, CanRecord]
+    def get_permissions(self):
+        # Reading the mortality log is open to any authenticated tenant user;
+        # recording a mortality event requires record permission (CanRecord).
+        if self.request.method == "POST":
+            return [IsAuthenticated(), CanRecord()]
+        return [IsAuthenticated()]
+
+    def get(self, request, pk):
+        org = getattr(request.user, "org", None)
+        if not org:
+            return Response({"error": "No organisation."}, status=403)
+
+        with set_tenant_context(org):
+            try:
+                batch = Batch.objects.get(id=pk)
+            except Batch.DoesNotExist:
+                return Response({"error": "Batch not found."}, status=404)
+
+            logs = list(MortalityLog.objects.filter(batch=batch).order_by("-date"))
+            serializer = MortalityLogSerializer(logs, many=True)
+            return Response({"data": serializer.data})
 
     def post(self, request, pk):
         org = getattr(request.user, "org", None)
@@ -1149,3 +1170,49 @@ class BatchCloseAPIView(APIView):
             return Response({"error": {"detail": str(exc)}}, status=404)
 
         return Response({"data": BatchSerializer(batch).data})
+
+
+class BatchValuationAPIView(APIView):
+    """
+    GET /api/v1/flocks/batches/<uuid>/valuation/ → Current estimated flock value
+    for an active batch — financial centrepiece for partner integrations (credit
+    scoring, offtake financing, insurance documentation).
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        org = getattr(request.user, "org", None)
+        if not org:
+            return Response({"error": "No organisation."}, status=403)
+
+        with set_tenant_context(org):
+            try:
+                batch = Batch.objects.get(id=pk)
+            except Batch.DoesNotExist:
+                return Response({"error": "Batch not found."}, status=404)
+
+            if batch.status != "active":
+                return Response(
+                    {"detail": "Valuation only available for active batches."},
+                    status=400,
+                )
+
+            from apps.infrastructure.core.valuation import FlockValuationService
+            valuation = FlockValuationService(batch).estimate_value()
+
+        # Serialise the dict — convert Decimal and datetime to JSON-safe types.
+        return Response({
+            "data": {
+                "batch_id": str(batch.pk),
+                "batch_name": batch.batch_name,
+                "estimated_value_naira": str(valuation["estimated_value_naira"]),
+                "valuation_method": valuation["valuation_method"],
+                "price_per_unit": str(valuation["price_per_unit"]),
+                "unit": valuation["unit"],
+                "current_count": valuation["current_count"],
+                "as_of": valuation["as_of"].isoformat(),
+                "confidence": valuation["confidence"],
+                "currency": "NGN",
+            }
+        })

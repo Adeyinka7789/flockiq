@@ -1,7 +1,9 @@
+import os
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import FileResponse, Http404
 from apps.infrastructure.core.health import health_check, ping
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -30,9 +32,20 @@ from apps.infrastructure.superadmin import urls as superadmin_urls
 handler404 = 'apps.infrastructure.core.views.custom_404'
 handler500 = 'apps.infrastructure.core.views.custom_500'
 
+# View to serve the Service Worker directly from disk bypassing the template loader
+def service_worker_view(request):
+    # Check root static directory first
+    sw_path = os.path.join(settings.BASE_DIR, "static", "sw.js")
+    if not os.path.exists(sw_path):
+        sw_path = os.path.join(settings.BASE_DIR, "templates", "sw.js")
+    if os.path.exists(sw_path):
+        return FileResponse(open(sw_path, "rb"), content_type="application/javascript")
+    raise Http404("Service worker file not found on disk.")
+
 urlpatterns = [
     # Public pages (static content)
     path("about/", TemplateView.as_view(template_name="about-us.html"), name="about"),
+    path("sw.js", service_worker_view, name="service_worker"),
     path("case-studies/", views.case_studies_list, name="case_studies"),
     path("case-studies/<slug:slug>/", views.case_study_detail, name="case_study_detail"),
     path("contact/", views.contact, name="contact"),
@@ -83,6 +96,7 @@ urlpatterns = [
     # monitoring health check is served at /healthz/ (k8s-style convention).
     path("healthz/", health_check, name="health_check"),
     path("ping/", ping, name="ping"),
+    
 ]
 
 # Django Silk profiling UI — wired whenever ENABLE_SILK is on (any environment).

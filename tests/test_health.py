@@ -582,3 +582,146 @@ class TestHealthRLSIsolation:
 
         assert count_a == 1
         assert count_b == 1
+
+
+# ── 9. HealthService.schedule_vaccination — single authoritative path ────────────
+
+class TestScheduleVaccinationService:
+    """The shared create path used by both the HTMX and API vaccination views.
+
+    Guards the bug where API-created vaccinations were saved without
+    status='scheduled' and so were invisible to the Celery reminder task.
+    """
+
+    def test_schedule_vaccination_always_sets_status_scheduled(self, db):
+        from apps.health.health.services import HealthService
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        org = _make_org("sched_status")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org):
+            batch = _make_batch(org, farm, house)
+            vacc = HealthService.schedule_vaccination(
+                org=org,
+                batch=batch,
+                vaccine_name="Newcastle (manual)",
+                due_date=datetime.date.today() + datetime.timedelta(days=2),
+                route="spray",
+                notes="hand-scheduled",
+            )
+
+        assert vacc.status == "scheduled"
+        # farm is denormalised from the batch by the service.
+        assert vacc.farm_id == batch.farm_id
+        assert vacc.route == "spray"
+        assert vacc.notes == "hand-scheduled"
+
+    def test_schedule_vaccination_defaults_route_oral(self, db):
+        from apps.health.health.services import HealthService
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        org = _make_org("sched_default")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org):
+            batch = _make_batch(org, farm, house)
+            vacc = HealthService.schedule_vaccination(
+                org=org,
+                batch=batch,
+                vaccine_name="Gumboro (manual)",
+                due_date=datetime.date.today() + datetime.timedelta(days=1),
+            )
+
+        assert vacc.route == "oral"
+        assert vacc.notes == ""
+
+    def test_htmx_and_api_paths_produce_identical_records(self, db, client):
+        """Both views funnel through schedule_vaccination → both records are
+        status='scheduled' with farm denormalised from the batch."""
+        from rest_framework.test import APIClient
+
+        from apps.health.health.models import VaccinationSchedule
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        org = _make_org("sched_parity")
+        user = _make_user(org, username="parity")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+        with set_tenant_context(org):
+            batch = _make_batch(org, farm, house)
+
+        due = (datetime.date.today() + datetime.timedelta(days=2)).isoformat()
+
+        # API path
+        api = APIClient()
+        api.force_authenticate(user=user)
+        api_resp = api.post(
+            "/api/v1/health/vaccinations/",
+            {"batch_id": str(batch.id), "vaccine_name": "PARITY-API",
+             "due_date": due, "route": "injection"},
+            format="json",
+        )
+        assert api_resp.status_code == 201
+
+        # HTMX path
+        client.force_login(user)
+        htmx_resp = client.post(
+            "/health/vaccinations/add/",
+            {"batch_id": str(batch.id), "vaccine_name": "PARITY-HTMX",
+             "due_date": due, "route": "injection", "notes": ""},
+        )
+        assert htmx_resp.status_code == 200
+
+        with set_tenant_context(org):
+            api_rec = VaccinationSchedule.objects.get(vaccine_name="PARITY-API")
+            htmx_rec = VaccinationSchedule.objects.get(vaccine_name="PARITY-HTMX")
+
+        assert api_rec.status == "scheduled"
+        assert htmx_rec.status == "scheduled"
+        assert api_rec.farm_id == batch.farm_id
+        assert htmx_rec.farm_id == batch.farm_id
+
+    def test_api_created_vaccination_found_by_reminder_task(self, db):
+        """The core bug fix: a vaccination created through the API is picked up
+        by send_vaccination_reminders_for_org because status='scheduled'."""
+        from rest_framework.test import APIClient
+
+        from apps.health.health.models import VaccinationSchedule
+        from apps.health.health.tasks import send_vaccination_reminders_for_org
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.infrastructure.notifications.models import AlertRule
+
+        org = _make_org("sched_task_bug")
+        user = _make_user(org, username="taskbug")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org):
+            AlertRule.objects.update_or_create(
+                org=org,
+                event_type="vaccination_due",
+                defaults={"channels": ["in_app"], "notify_roles": ["owner"], "is_active": True},
+            )
+            batch = _make_batch(org, farm, house)
+
+        api = APIClient()
+        api.force_authenticate(user=user)
+        resp = api.post(
+            "/api/v1/health/vaccinations/",
+            {"batch_id": str(batch.id), "vaccine_name": "TASK-BUG",
+             "due_date": datetime.date.today().isoformat()},
+            format="json",
+        )
+        assert resp.status_code == 201
+        vacc_id = resp.json()["data"]["id"]
+
+        send_vaccination_reminders_for_org(str(org.id))
+
+        with set_tenant_context(org):
+            vacc = VaccinationSchedule.objects.get(id=vacc_id)
+        # reminder_sent flips to True only if the task's status='scheduled'
+        # filter matched it — proving the API record is no longer invisible.
+        assert vacc.reminder_sent is True

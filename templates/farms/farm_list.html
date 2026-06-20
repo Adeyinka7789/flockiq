@@ -223,6 +223,7 @@
         and resource distribution.
       </div>
     </div>
+    {% if request.user.role in 'owner,manager' %}
     <button class="fl-add-btn"
             hx-get="{% url 'farms:create' %}"
             hx-target="#modal-body"
@@ -234,6 +235,7 @@
       </svg>
       Add Farm
     </button>
+    {% endif %}
   </div>
 
   <!-- Summary stats -->

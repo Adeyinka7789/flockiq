@@ -10,6 +10,34 @@ from rest_framework.test import APIClient
 pytestmark = pytest.mark.django_db
 
 
+def _second_org_client():
+    """A separate org + authenticated APIClient, for cross-tenant isolation tests."""
+    import uuid
+
+    from apps.infrastructure.accounts.models import CustomUser
+    from apps.infrastructure.tenants.models import Organization
+
+    org = Organization.objects.create(
+        name="Other Org Ltd",
+        subdomain=f"other-{uuid.uuid4().hex[:8]}",
+        plan_tier="monthly",
+        subscription_status="active",
+        onboarding_complete=True,
+        is_active=True,
+    )
+    user = CustomUser.objects.create_user(
+        username=f"owner-{org.subdomain}",
+        email=f"owner@{org.subdomain}.com",
+        password="testpass123",
+        org=org,
+        role="owner",
+        email_verified=True,
+    )
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return org, client
+
+
 # ── Farm API Views ─────────────────────────────────────────────────────────────
 
 class TestFarmAPIViews:
@@ -134,6 +162,124 @@ class TestMortalityAPIView:
             format="json",
         )
         assert response.status_code == 403
+
+    # ── GET (list) ──────────────────────────────────────────────────────────────
+
+    def test_mortality_api_get_returns_logs(self, api_client, test_batch):
+        # Record one mortality event, then list it back.
+        api_client.post(
+            f"/api/v1/flocks/batches/{test_batch.pk}/mortality/",
+            {"count": 3, "cause": "disease", "date": date.today().isoformat()},
+            format="json",
+        )
+        response = api_client.get(f"/api/v1/flocks/batches/{test_batch.pk}/mortality/")
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert len(data) == 1
+        assert data[0]["count"] == 3
+
+    def test_mortality_api_get_empty_for_no_logs(self, api_client, test_batch):
+        response = api_client.get(f"/api/v1/flocks/batches/{test_batch.pk}/mortality/")
+        assert response.status_code == 200
+        assert response.json()["data"] == []
+
+    def test_mortality_api_get_404_for_missing_batch(self, api_client):
+        import uuid
+        response = api_client.get(f"/api/v1/flocks/batches/{uuid.uuid4()}/mortality/")
+        assert response.status_code == 404
+
+    def test_mortality_api_get_tenant_isolation(self, api_client, test_batch):
+        # org_b cannot read org_a's mortality logs — batch is invisible → 404.
+        _org_b, client_b = _second_org_client()
+        response = client_b.get(f"/api/v1/flocks/batches/{test_batch.pk}/mortality/")
+        assert response.status_code == 404
+
+
+# ── House API Views ────────────────────────────────────────────────────────────
+
+class TestHouseListAPIView:
+
+    def test_houses_api_returns_houses(self, api_client, test_farm, test_house):
+        response = api_client.get(f"/api/v1/farms/{test_farm.pk}/houses/")
+        assert response.status_code == 200
+        data = response.json()["data"]
+        names = [h["name"] for h in data]
+        assert test_house.name in names
+
+    def test_houses_api_empty_for_farm_with_no_houses(self, api_client, test_farm):
+        response = api_client.get(f"/api/v1/farms/{test_farm.pk}/houses/")
+        assert response.status_code == 200
+        assert response.json()["data"] == []
+
+    def test_houses_api_404_for_missing_farm(self, api_client):
+        import uuid
+        response = api_client.get(f"/api/v1/farms/{uuid.uuid4()}/houses/")
+        assert response.status_code == 404
+
+    def test_houses_api_excludes_soft_deleted(self, api_client, test_org, test_farm, test_house):
+        from apps.farm.farms.models import House
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        with set_tenant_context(test_org):
+            gone = House.objects.create(
+                org=test_org, farm=test_farm, name="Demolished House",
+                capacity=100, house_type="layer",
+            )
+            gone.soft_delete()  # is_deleted=True → excluded by ActiveManager
+
+        response = api_client.get(f"/api/v1/farms/{test_farm.pk}/houses/")
+        assert response.status_code == 200
+        names = [h["name"] for h in response.json()["data"]]
+        assert "Demolished House" not in names
+        assert test_house.name in names
+
+    def test_houses_api_tenant_isolation(self, api_client, test_farm, test_house):
+        _org_b, client_b = _second_org_client()
+        response = client_b.get(f"/api/v1/farms/{test_farm.pk}/houses/")
+        assert response.status_code == 404
+
+
+# ── Batch Valuation API View ────────────────────────────────────────────────────
+
+class TestBatchValuationAPIView:
+
+    def test_valuation_api_returns_200_for_active_batch(self, api_client, test_batch):
+        response = api_client.get(f"/api/v1/flocks/batches/{test_batch.pk}/valuation/")
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["batch_id"] == str(test_batch.pk)
+        assert data["currency"] == "NGN"
+
+    def test_valuation_api_estimated_value_is_string(self, api_client, test_batch):
+        response = api_client.get(f"/api/v1/flocks/batches/{test_batch.pk}/valuation/")
+        assert response.status_code == 200
+        # Decimal serialised JSON-safe as a string.
+        assert isinstance(response.json()["data"]["estimated_value_naira"], str)
+
+    def test_valuation_api_400_for_closed_batch(self, api_client, test_org, test_farm, test_house):
+        from apps.farm.flocks.models import Batch
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        with set_tenant_context(test_org):
+            closed = Batch.objects.create(
+                org=test_org, farm=test_farm, house=test_house,
+                batch_name="Closed Batch", bird_type="layer",
+                placement_date=date.today(), initial_count=100,
+                current_count=100, status="closed",
+            )
+
+        response = api_client.get(f"/api/v1/flocks/batches/{closed.pk}/valuation/")
+        assert response.status_code == 400
+
+    def test_valuation_api_404_for_missing_batch(self, api_client):
+        import uuid
+        response = api_client.get(f"/api/v1/flocks/batches/{uuid.uuid4()}/valuation/")
+        assert response.status_code == 404
+
+    def test_valuation_api_tenant_isolation(self, api_client, test_batch):
+        _org_b, client_b = _second_org_client()
+        response = client_b.get(f"/api/v1/flocks/batches/{test_batch.pk}/valuation/")
+        assert response.status_code == 404
 
 
 class TestBatchCloseAPIView:
