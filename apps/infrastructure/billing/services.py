@@ -181,6 +181,96 @@ class BillingService(BaseService):
         plan = BillingPlan.objects.filter(plan_tier=plan_tier, is_active=True).first()
         return plan.amount_kobo if plan else 0
 
+    # ------------------------------------------------------------------
+    # Superadmin billing-manage lifecycle actions
+    #
+    # These are @staticmethod because superadmin operates cross-tenant
+    # (no bound org / tenant context). They own the org-row mutations that
+    # used to live inline in superadmin.views.BillingManageOrgView so every
+    # subscription-state change goes through one place.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def grant_grace_period(org, ends_at, granted_by=None) -> None:
+        """
+        Grant a billing grace period to an org, keeping it active until
+        ``ends_at`` (an aware datetime). Extracted from the superadmin billing
+        manage panel.
+        """
+        from django.core.cache import cache
+
+        org.grace_period_ends_at = ends_at
+        org.subscription_status = "active"
+        org.is_active = True
+        org.save(update_fields=[
+            "grace_period_ends_at", "subscription_status", "is_active", "updated_at",
+        ])
+
+        # Drop the TenantMiddleware org-active cache so re-activation takes
+        # effect on the org's very next request instead of after the TTL.
+        cache.delete(f"org_active:{org.id}")
+
+        logger.info(
+            "billing.grace_period_granted",
+            org_id=str(org.pk),
+            ends_at=ends_at.isoformat() if ends_at else None,
+            granted_by=str(granted_by.pk) if granted_by else None,
+        )
+
+    @staticmethod
+    def extend_trial(org, days: int, extended_by=None) -> None:
+        """
+        Extend an org's trial period by ``days``, from the current trial end if
+        one is set, otherwise from now. Extracted from the superadmin billing
+        manage panel.
+        """
+        from datetime import timedelta
+
+        if org.trial_ends_at:
+            org.trial_ends_at += timedelta(days=days)
+        else:
+            org.trial_ends_at = timezone.now() + timedelta(days=days)
+        org.subscription_status = "trial"
+        org.save(update_fields=["trial_ends_at", "subscription_status", "updated_at"])
+
+        logger.info(
+            "billing.trial_extended",
+            org_id=str(org.pk),
+            days=days,
+            extended_by=str(extended_by.pk) if extended_by else None,
+        )
+
+    @staticmethod
+    def change_subscription_status(org, status: str, changed_by=None) -> None:
+        """
+        Set an org's subscription_status (and the derived is_active flag) from
+        the superadmin billing manage panel.
+
+        subscription_status is a billing field, so the mutation lives here; the
+        owner-facing notification when the org goes offline is delegated to
+        TenantService.suspend_org (the single home for suspension email). To
+        preserve existing behaviour, moving to 'active' does NOT send a
+        reactivation email.
+        """
+        from django.core.cache import cache
+
+        from apps.infrastructure.tenants.services import TenantService
+
+        org.subscription_status = status
+        org.is_active = status == "active"
+        org.save(update_fields=["subscription_status", "is_active", "updated_at"])
+        cache.delete(f"org_active:{org.id}")
+
+        if not org.is_active:
+            TenantService.suspend_org(org, suspended_by=changed_by)
+
+        logger.info(
+            "billing.subscription_status_changed",
+            org_id=str(org.pk),
+            status=status,
+            changed_by=str(changed_by.pk) if changed_by else None,
+        )
+
     @transaction.atomic
     def activate_plan(
         self,

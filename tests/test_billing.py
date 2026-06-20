@@ -812,3 +812,193 @@ def test_trial_reminder_no_owner_does_not_error():
         assert not NotificationLog.objects.filter(
             org=org, event_type="trial_expiry_reminder"
         ).exists()
+
+
+# ---------------------------------------------------------------------------
+# Superadmin billing-manage lifecycle (grant_grace_period / extend_trial /
+# change_subscription_status) — extracted from BillingManageOrgView (item g).
+# ---------------------------------------------------------------------------
+
+class TestBillingServiceLifecycle:
+
+    def test_grant_grace_period_sets_fields(self, db):
+        import datetime as dt
+        from django.utils import timezone
+        from apps.infrastructure.billing.services import BillingService
+
+        org = make_org(
+            subdomain="graceorg",
+            is_active=False,
+            subscription_status="past_due",
+        )
+        ends_at = timezone.make_aware(dt.datetime(2026, 12, 31, 12, 0, 0))
+
+        BillingService.grant_grace_period(org, ends_at=ends_at)
+
+        org.refresh_from_db()
+        assert org.grace_period_ends_at == ends_at
+        assert org.subscription_status == "active"
+        assert org.is_active is True
+
+    def test_grant_grace_period_logs(self, db):
+        import datetime as dt
+        from django.utils import timezone
+        from structlog.testing import capture_logs
+        from apps.infrastructure.billing.services import BillingService
+
+        org = make_org(subdomain="gracelog")
+        user = make_user(org)
+        ends_at = timezone.make_aware(dt.datetime(2026, 11, 30, 12, 0, 0))
+
+        with capture_logs() as logs:
+            BillingService.grant_grace_period(org, ends_at=ends_at, granted_by=user)
+
+        assert any(
+            e["event"] == "billing.grace_period_granted"
+            and e["org_id"] == str(org.pk)
+            and e["granted_by"] == str(user.pk)
+            for e in logs
+        )
+
+    def test_extend_trial_from_existing_end(self, db):
+        import datetime as dt
+        from datetime import timedelta
+        from django.utils import timezone
+        from apps.infrastructure.billing.services import BillingService
+
+        start = timezone.make_aware(dt.datetime(2026, 7, 1, 12, 0, 0))
+        org = make_org(subdomain="trialext", plan_tier="trial", trial_ends_at=start)
+
+        BillingService.extend_trial(org, days=7)
+
+        org.refresh_from_db()
+        assert org.trial_ends_at == start + timedelta(days=7)
+        assert org.subscription_status == "trial"
+
+    def test_extend_trial_from_now_when_unset(self, db):
+        from datetime import timedelta
+        from django.utils import timezone
+        from apps.infrastructure.billing.services import BillingService
+
+        org = make_org(subdomain="trialnew", plan_tier="trial", trial_ends_at=None)
+        before = timezone.now()
+
+        BillingService.extend_trial(org, days=14)
+
+        org.refresh_from_db()
+        assert org.trial_ends_at is not None
+        # Within a few seconds of now + 14 days.
+        assert org.trial_ends_at >= before + timedelta(days=14) - timedelta(seconds=10)
+        assert org.subscription_status == "trial"
+
+    def test_extend_trial_logs(self, db):
+        from structlog.testing import capture_logs
+        from apps.infrastructure.billing.services import BillingService
+
+        org = make_org(subdomain="triallog", plan_tier="trial")
+        user = make_user(org)
+
+        with capture_logs() as logs:
+            BillingService.extend_trial(org, days=5, extended_by=user)
+
+        assert any(
+            e["event"] == "billing.trial_extended"
+            and e["org_id"] == str(org.pk)
+            and e["days"] == 5
+            and e["extended_by"] == str(user.pk)
+            for e in logs
+        )
+
+    def test_change_status_offline_notifies_owner(self, db):
+        from apps.infrastructure.billing.services import BillingService
+
+        org = make_org(subdomain="statusoff", is_active=True)
+        make_user(org, email="owner@statusoff.com")
+
+        with patch("apps.infrastructure.tenants.services.EmailService") as mock_email:
+            BillingService.change_subscription_status(org, "past_due")
+
+        org.refresh_from_db()
+        assert org.subscription_status == "past_due"
+        assert org.is_active is False
+        mock_email.send_suspension.assert_called_once()
+
+    def test_change_status_active_does_not_email(self, db):
+        from apps.infrastructure.billing.services import BillingService
+
+        org = make_org(
+            subdomain="statuson",
+            is_active=False,
+            subscription_status="suspended",
+        )
+        make_user(org, email="owner@statuson.com")
+
+        with patch("apps.infrastructure.tenants.services.EmailService") as mock_email:
+            BillingService.change_subscription_status(org, "active")
+
+        org.refresh_from_db()
+        assert org.subscription_status == "active"
+        assert org.is_active is True
+        mock_email.send_suspension.assert_not_called()
+        mock_email.send_reactivation.assert_not_called()
+
+
+class TestBillingManagePanelRegression:
+    """Regression: the superadmin billing-manage panel still mutates org state
+    correctly now that it routes through BillingService."""
+
+    def test_grace_period_action(self, client, super_admin_user, tenant_user):
+        from django.utils import timezone
+        org = tenant_user.org
+        client.force_login(super_admin_user)
+        resp = client.post(f'/superadmin/billing/{org.pk}/manage/', {
+            'action': 'grace_period',
+            'grace_end_date': '2026-12-31',
+        })
+        assert resp.status_code == 204
+        org.refresh_from_db()
+        assert org.grace_period_ends_at is not None
+        assert (timezone.localtime(org.grace_period_ends_at).date().isoformat()
+                == '2026-12-31')
+        assert org.subscription_status == 'active'
+        assert org.is_active is True
+
+    def test_extend_trial_action(self, client, super_admin_user, tenant_user):
+        org = tenant_user.org
+        org.trial_ends_at = None
+        org.save()
+        client.force_login(super_admin_user)
+        resp = client.post(f'/superadmin/billing/{org.pk}/manage/', {
+            'action': 'extend_trial',
+            'days': '10',
+        })
+        assert resp.status_code == 204
+        org.refresh_from_db()
+        assert org.trial_ends_at is not None
+        assert org.subscription_status == 'trial'
+
+    def test_change_status_action_offline(self, client, super_admin_user, tenant_user):
+        org = tenant_user.org
+        client.force_login(super_admin_user)
+        with patch("apps.infrastructure.tenants.services.EmailService"):
+            resp = client.post(f'/superadmin/billing/{org.pk}/manage/', {
+                'action': 'change_status',
+                'status': 'past_due',
+            })
+        assert resp.status_code == 204
+        org.refresh_from_db()
+        assert org.subscription_status == 'past_due'
+        assert org.is_active is False
+
+    def test_change_plan_action_no_regression(self, client, super_admin_user, tenant_user):
+        """change_plan (SuperAdminTenantActionView) still activates via
+        BillingService after the import was hoisted to module level."""
+        org = tenant_user.org
+        client.force_login(super_admin_user)
+        resp = client.post(f'/superadmin/tenants/{org.pk}/action/', {
+            'action': 'change_plan',
+            'plan_tier': 'yearly',
+        })
+        assert resp.status_code == 204
+        org.refresh_from_db()
+        assert org.plan_tier == 'yearly'

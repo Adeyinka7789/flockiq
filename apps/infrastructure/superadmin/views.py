@@ -3,7 +3,6 @@ import time
 from datetime import date, datetime, timedelta
 
 import structlog
-from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
 from django.http import HttpResponse
@@ -13,6 +12,7 @@ from django.utils import timezone
 from django.views import View
 
 from apps.infrastructure.billing.models import PaymentRecord
+from apps.infrastructure.billing.services import BillingService
 from apps.infrastructure.core.mixins import SuperAdminMixin
 from apps.infrastructure.tenants.models import Organization
 from apps.infrastructure.tenants.services import TenantService
@@ -32,12 +32,6 @@ def get_client_ip(request):
         'remote_addr': remote_addr,
         'x_forwarded_for': x_forwarded_for,
     }
-
-
-def invalidate_org_active_cache(org_id):
-    """Drop the TenantMiddleware org-active cache so suspension / activation
-    takes effect on the org's very next request instead of after the TTL."""
-    cache.delete(f'org_active:{org_id}')
 
 
 def _org_owner(org):
@@ -211,7 +205,6 @@ class SuperAdminTenantActionView(SuperAdminMixin, View):
         elif action == 'change_plan':
             new_plan = request.POST.get('plan_tier')
             if new_plan in ['trial', 'cycle', 'monthly', 'yearly']:
-                from apps.infrastructure.billing.services import BillingService
                 from apps.infrastructure.core.rls import set_tenant_context
                 # Route through activate_plan so admin upgrades also set the
                 # expiry window and fire the owner email + in-app notification.
@@ -497,7 +490,7 @@ class BillingManageOrgView(SuperAdminMixin, View):
             {'org': org, 'today': date.today()})
 
     def post(self, request, pk):
-        from datetime import datetime, timedelta
+        from datetime import datetime
         org = get_object_or_404(Organization, pk=pk)
         action = request.POST.get('action')
 
@@ -505,36 +498,29 @@ class BillingManageOrgView(SuperAdminMixin, View):
             end_date = request.POST.get('grace_end_date')
             if end_date:
                 naive = datetime.strptime(end_date, '%Y-%m-%d')
-                org.grace_period_ends_at = timezone.make_aware(naive)
-                org.subscription_status = 'active'
-                org.is_active = True
-                org.save()
-                invalidate_org_active_cache(org.id)
+                BillingService.grant_grace_period(
+                    org,
+                    ends_at=timezone.make_aware(naive),
+                    granted_by=request.user,
+                )
                 msg = f'Grace period set for {org.name}'
             else:
                 msg = 'End date required'
 
         elif action == 'extend_trial':
             days = int(request.POST.get('days', 7))
-            if org.trial_ends_at:
-                org.trial_ends_at += timedelta(days=days)
-            else:
-                org.trial_ends_at = timezone.now() + timedelta(days=days)
-            org.subscription_status = 'trial'
-            org.save()
+            BillingService.extend_trial(org, days=days, extended_by=request.user)
             msg = f'Trial extended by {days} days for {org.name}'
 
         elif action == 'change_status':
             new_status = request.POST.get('status')
             if new_status in ['active', 'trial', 'suspended', 'past_due', 'cancelled']:
-                org.subscription_status = new_status
-                org.is_active = new_status == 'active'
-                org.save()
-                invalidate_org_active_cache(org.id)
-                if not org.is_active:
-                    # Same owner-notification path as a manual suspend; only
-                    # fired when the new status takes the org offline.
-                    TenantService.suspend_org(org, suspended_by=request.user)
+                # subscription_status is a billing field, so the mutation lives
+                # in BillingService; it delegates the owner suspension email to
+                # TenantService when the new status takes the org offline.
+                BillingService.change_subscription_status(
+                    org, new_status, changed_by=request.user,
+                )
                 msg = f'{org.name} status → {new_status}'
             else:
                 msg = 'Invalid status'
