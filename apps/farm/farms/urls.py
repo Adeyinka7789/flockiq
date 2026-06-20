@@ -6,11 +6,13 @@ from .views import (
     FarmDeleteView,
     FarmDetailAPIView,
     FarmDetailView,
+    FarmEditView,
     FarmListAPIView,
     FarmListView,
     FarmSummaryCardView,
     HouseCreateView,
     HouseDeleteView,
+    HouseEditView,
     HouseListAPIView,
 )
 
@@ -21,6 +23,8 @@ urlpatterns = [
     path("farms/", FarmListView.as_view(), name="list"),
     path("farms/create/", FarmCreateView.as_view(), name="create"),
     path("farms/<uuid:pk>/", FarmDetailView.as_view(), name="detail"),
+    path("farms/<uuid:pk>/edit/", FarmEditView.as_view(), name="edit"),
+    path("houses/<uuid:pk>/edit/", HouseEditView.as_view(), name="house_edit"),
     path("farms/<uuid:pk>/houses/create/", HouseCreateView.as_view(), name="house_create"),
     path("farms/<uuid:pk>/delete/", FarmDeleteView.as_view(), name="delete"),
     path(

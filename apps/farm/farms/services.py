@@ -91,6 +91,25 @@ class FarmService(BaseService):
 
         return house
 
+    def update_house(self, house_id: str, **kwargs) -> House:
+        """
+        Updates descriptive house fields only (name, capacity, house_type, notes).
+
+        The owning farm and org are structural — moving a house between farms
+        would break batch history — so they are never reassigned here regardless
+        of what is passed in.
+        """
+        house = House.objects.get(id=house_id, org_id=self.org.id)
+        allowed = {"name", "capacity", "house_type", "notes"}
+        for field, value in kwargs.items():
+            if field in allowed:
+                setattr(house, field, value)
+        if house.capacity is not None and int(house.capacity) <= 0:
+            raise ValueError("House capacity must be greater than 0.")
+        house.save(update_fields=list(set(kwargs.keys()) & allowed) + ["updated_at"])
+        self.logger.info("house.updated", house_id=str(house.id))
+        return house
+
     # ── Summary / dashboard ────────────────────────────────────────────────────
 
     def get_farm_summary(self, farm_id: str) -> dict:

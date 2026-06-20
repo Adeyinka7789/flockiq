@@ -90,6 +90,49 @@ class BatchService(BaseService):
         )
         return batch
 
+    # ── Batch edit ─────────────────────────────────────────────────────────
+
+    def update_batch(self, batch_id: str, **kwargs):
+        """
+        Updates descriptive batch fields only.
+
+        Editable: batch_name, breed_name, bird_type, doc_supplier_name, notes.
+
+        Structural / financial fields are never touched here regardless of what
+        is passed in:
+          - initial_count  → anchors every financial record (use mortality logs)
+          - placement_date → determines cycle day and benchmark calculations
+          - current_count  → derived from mortality logs, not edited directly
+          - farm / house / org → moving a batch breaks history and RLS scoping
+        """
+        assert_tenant_context()
+        from apps.farm.flocks.models import Batch
+
+        try:
+            batch = Batch.objects.get(id=batch_id, org=self.org)
+        except Batch.DoesNotExist:
+            raise ValueError(f"Batch {batch_id} not found.")
+
+        allowed = {"batch_name", "breed_name", "bird_type", "doc_supplier_name", "notes"}
+        update_fields = []
+        for field, value in kwargs.items():
+            if field in allowed:
+                setattr(batch, field, value)
+                update_fields.append(field)
+
+        if not update_fields:
+            return batch
+
+        with transaction.atomic():
+            batch.save(update_fields=update_fields + ["updated_at"])
+
+        self.logger.info(
+            "flocks.batch_updated",
+            batch_id=str(batch.pk),
+            fields=update_fields,
+        )
+        return batch
+
     # ── Batch close ────────────────────────────────────────────────────────
 
     def close_batch(self, batch_id: str, notes: str = ""):

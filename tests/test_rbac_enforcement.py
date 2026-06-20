@@ -7,12 +7,32 @@ DRF permission classes (API views) and the financial-notification role floor.
 Roles: owner, manager, supervisor, data_entry, vet_advisor.
 ``tenant_user`` (from conftest) is the org owner.
 """
+import uuid
 from datetime import date
+from decimal import Decimal
 
 import pytest
 from django.urls import reverse
 
+from apps.infrastructure.core.rls import set_tenant_context
+
 pytestmark = pytest.mark.django_db
+
+
+def _other_org():
+    from apps.infrastructure.tenants.models import Organization
+    return Organization.objects.create(
+        name="Other Org", subdomain=f"other-{uuid.uuid4().hex[:8]}"
+    )
+
+
+def _make_farm(test_org, name="Second Farm"):
+    from apps.farm.farms.models import Farm
+    with set_tenant_context(test_org):
+        return Farm.objects.create(
+            org=test_org, name=name, location="Kano",
+            latitude=Decimal("8.0"), longitude=Decimal("8.0"), farm_type="mixed",
+        )
 
 
 # ── Role-user fixtures (all in the same org as tenant_user/test_org) ───────────
@@ -389,6 +409,209 @@ class TestTaskDeleteRBAC:
         task = self._make_task(test_org, tenant_user)
         client.force_login(tenant_user)
         assert self._delete(client, task).status_code == 204
+
+
+# ── Farm edit (owner + manager only) ──────────────────────────────────────────
+
+class TestFarmEditRBAC:
+    def _url(self, farm):
+        return f"/farms/{farm.pk}/edit/"
+
+    def test_owner_can_get_edit_form(self, client, tenant_user, test_farm):
+        client.force_login(tenant_user)
+        assert client.get(self._url(test_farm), HTTP_HX_REQUEST="true").status_code == 200
+
+    def test_manager_can_get_edit_form(self, client, manager_user, test_farm):
+        client.force_login(manager_user)
+        assert client.get(self._url(test_farm), HTTP_HX_REQUEST="true").status_code == 200
+
+    def test_supervisor_cannot_edit_farm(self, client, supervisor_user, test_farm):
+        client.force_login(supervisor_user)
+        assert client.get(self._url(test_farm), HTTP_HX_REQUEST="true").status_code == 403
+
+    def test_data_entry_cannot_edit_farm(self, client, data_entry_user, test_farm):
+        client.force_login(data_entry_user)
+        assert client.get(self._url(test_farm), HTTP_HX_REQUEST="true").status_code == 403
+
+    def test_post_updates_editable_fields(self, client, tenant_user, test_org, test_farm):
+        from apps.farm.farms.models import Farm
+        client.force_login(tenant_user)
+        r = client.post(
+            self._url(test_farm),
+            {"name": "Renamed Farm", "location": "Abuja",
+             "farm_type": "broiler", "notes": "updated notes"},
+            HTTP_HX_REQUEST="true",
+        )
+        assert r.status_code == 204
+        with set_tenant_context(test_org):
+            farm = Farm.objects.get(id=test_farm.pk)
+        assert farm.name == "Renamed Farm"
+        assert farm.location == "Abuja"
+        assert farm.farm_type == "broiler"
+        assert farm.notes == "updated notes"
+
+    def test_post_cannot_change_org(self, client, tenant_user, test_org, test_farm):
+        from apps.farm.farms.models import Farm
+        client.force_login(tenant_user)
+        other = _other_org()
+        r = client.post(
+            self._url(test_farm),
+            {"name": test_farm.name, "location": test_farm.location,
+             "farm_type": test_farm.farm_type, "org": str(other.id)},
+            HTTP_HX_REQUEST="true",
+        )
+        assert r.status_code == 204
+        with set_tenant_context(test_org):
+            farm = Farm.objects.get(id=test_farm.pk)
+        assert farm.org_id == test_org.id
+
+    def test_htmx_post_returns_toast(self, client, tenant_user, test_farm):
+        client.force_login(tenant_user)
+        r = client.post(
+            self._url(test_farm),
+            {"name": "Toast Farm", "location": "Lagos", "farm_type": "mixed"},
+            HTTP_HX_REQUEST="true",
+        )
+        assert r.status_code == 204
+        assert "showToast" in r.headers["HX-Trigger"]
+
+
+# ── House edit (owner + manager only) ─────────────────────────────────────────
+
+class TestHouseEditRBAC:
+    def _url(self, house):
+        return f"/houses/{house.pk}/edit/"
+
+    def test_owner_can_edit_house(self, client, tenant_user, test_house):
+        client.force_login(tenant_user)
+        assert client.get(self._url(test_house), HTTP_HX_REQUEST="true").status_code == 200
+
+    def test_manager_can_edit_house(self, client, manager_user, test_house):
+        client.force_login(manager_user)
+        assert client.get(self._url(test_house), HTTP_HX_REQUEST="true").status_code == 200
+
+    def test_supervisor_cannot_edit_house(self, client, supervisor_user, test_house):
+        client.force_login(supervisor_user)
+        assert client.get(self._url(test_house), HTTP_HX_REQUEST="true").status_code == 403
+
+    def test_data_entry_cannot_edit_house(self, client, data_entry_user, test_house):
+        client.force_login(data_entry_user)
+        assert client.get(self._url(test_house), HTTP_HX_REQUEST="true").status_code == 403
+
+    def test_post_updates_name_and_capacity(self, client, tenant_user, test_org, test_house):
+        from apps.farm.farms.models import House
+        client.force_login(tenant_user)
+        r = client.post(
+            self._url(test_house),
+            {"name": "House Z", "capacity": "750", "house_type": "broiler"},
+            HTTP_HX_REQUEST="true",
+        )
+        assert r.status_code == 204
+        with set_tenant_context(test_org):
+            house = House.objects.get(id=test_house.pk)
+        assert house.name == "House Z"
+        assert house.capacity == 750
+
+    def test_post_cannot_change_farm(self, client, tenant_user, test_org, test_house):
+        from apps.farm.farms.models import House
+        client.force_login(tenant_user)
+        original_farm_id = test_house.farm_id
+        other_farm = _make_farm(test_org, name="Farm Two")
+        r = client.post(
+            self._url(test_house),
+            {"name": test_house.name, "capacity": str(test_house.capacity),
+             "house_type": test_house.house_type, "farm": str(other_farm.id)},
+            HTTP_HX_REQUEST="true",
+        )
+        assert r.status_code == 204
+        with set_tenant_context(test_org):
+            house = House.objects.get(id=test_house.pk)
+        assert house.farm_id == original_farm_id
+
+
+# ── Batch edit (owner + manager only) ─────────────────────────────────────────
+
+class TestBatchEditRBAC:
+    def _url(self, batch):
+        return f"/batches/{batch.pk}/edit/"
+
+    def test_owner_can_get_edit_form(self, client, tenant_user, test_batch):
+        client.force_login(tenant_user)
+        assert client.get(self._url(test_batch), HTTP_HX_REQUEST="true").status_code == 200
+
+    def test_manager_can_get_edit_form(self, client, manager_user, test_batch):
+        client.force_login(manager_user)
+        assert client.get(self._url(test_batch), HTTP_HX_REQUEST="true").status_code == 200
+
+    def test_supervisor_cannot_edit_batch(self, client, supervisor_user, test_batch):
+        client.force_login(supervisor_user)
+        assert client.get(self._url(test_batch), HTTP_HX_REQUEST="true").status_code == 403
+
+    def test_data_entry_cannot_edit_batch(self, client, data_entry_user, test_batch):
+        client.force_login(data_entry_user)
+        assert client.get(self._url(test_batch), HTTP_HX_REQUEST="true").status_code == 403
+
+    def test_post_updates_descriptive_fields(self, client, tenant_user, test_org, test_batch):
+        from apps.farm.flocks.models import Batch
+        client.force_login(tenant_user)
+        r = client.post(
+            self._url(test_batch),
+            {"batch_name": "Batch X", "breed_name": "ISA Brown",
+             "bird_type": "layer", "notes": "note edit"},
+            HTTP_HX_REQUEST="true",
+        )
+        assert r.status_code == 204
+        with set_tenant_context(test_org):
+            batch = Batch.objects.get(id=test_batch.pk)
+        assert batch.batch_name == "Batch X"
+        assert batch.breed_name == "ISA Brown"
+        assert batch.notes == "note edit"
+
+    def test_post_cannot_change_initial_count(self, client, tenant_user, test_org, test_batch):
+        from apps.farm.flocks.models import Batch
+        client.force_login(tenant_user)
+        original = test_batch.initial_count
+        r = client.post(
+            self._url(test_batch),
+            {"batch_name": test_batch.batch_name, "bird_type": test_batch.bird_type,
+             "initial_count": "9999"},
+            HTTP_HX_REQUEST="true",
+        )
+        assert r.status_code == 204
+        with set_tenant_context(test_org):
+            batch = Batch.objects.get(id=test_batch.pk)
+        assert batch.initial_count == original
+
+    def test_post_cannot_change_placement_date(self, client, tenant_user, test_org, test_batch):
+        from apps.farm.flocks.models import Batch
+        client.force_login(tenant_user)
+        original = test_batch.placement_date
+        r = client.post(
+            self._url(test_batch),
+            {"batch_name": test_batch.batch_name, "bird_type": test_batch.bird_type,
+             "placement_date": "2020-01-01"},
+            HTTP_HX_REQUEST="true",
+        )
+        assert r.status_code == 204
+        with set_tenant_context(test_org):
+            batch = Batch.objects.get(id=test_batch.pk)
+        assert batch.placement_date == original
+
+    def test_post_cannot_change_farm(self, client, tenant_user, test_org, test_batch):
+        from apps.farm.flocks.models import Batch
+        client.force_login(tenant_user)
+        original_farm_id = test_batch.farm_id
+        other_farm = _make_farm(test_org, name="Farm Three")
+        r = client.post(
+            self._url(test_batch),
+            {"batch_name": test_batch.batch_name, "bird_type": test_batch.bird_type,
+             "farm": str(other_farm.id)},
+            HTTP_HX_REQUEST="true",
+        )
+        assert r.status_code == 204
+        with set_tenant_context(test_org):
+            batch = Batch.objects.get(id=test_batch.pk)
+        assert batch.farm_id == original_farm_id
 
 
 # ── NOTIFICATIONS: financial role floor ───────────────────────────────────────

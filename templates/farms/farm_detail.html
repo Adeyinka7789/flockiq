@@ -232,6 +232,20 @@
       </div>
     </div>
     <div class="fd-header-actions">
+      {% if request.user.role in 'owner,manager' %}
+      <button class="fd-btn-secondary"
+              hx-get="{% url 'farms:edit' farm.pk %}"
+              hx-target="#modal-body"
+              hx-swap="innerHTML"
+              @click="$dispatch('open-modal')">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+        </svg>
+        Edit Farm
+      </button>
+      {% endif %}
       <button class="fd-btn-secondary"
               hx-get="{% url 'farms:house_create' farm.pk %}"
               hx-target="#modal-body"
@@ -436,6 +450,19 @@
             </div>
             {% endif %}
             {% if request.user.role in 'owner,manager' %}
+            <button hx-get="{% url 'farms:house_edit' house.pk %}"
+                    hx-target="#modal-body" hx-swap="innerHTML"
+                    @click="$dispatch('open-modal')"
+                    title="Edit house"
+                    style="position:absolute;top:10px;right:34px;background:none;border:none;
+                           color:#cbd5e1;cursor:pointer;padding:2px"
+                    onmouseover="this.style.color='#3d5a99'"
+                    onmouseout="this.style.color='#cbd5e1'">
+              <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </button>
             <button hx-get="{% url 'farms:house_delete' farm.pk house.pk %}"
                     hx-target="#modal-body" hx-swap="innerHTML"
                     @click="$dispatch('open-modal')"

@@ -1,0 +1,123 @@
+<div style="padding:24px">
+  <h3 style="font-size:16px;font-weight:800;color:#1a2744;margin-bottom:4px">Edit Farm</h3>
+  <p style="font-size:12px;color:#8a96a8;margin-bottom:20px">
+    Update descriptive details for this farm. Ownership and creation history are locked.
+  </p>
+
+  <form hx-post="{% url 'farms:edit' farm.pk %}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML"
+        hx-indicator="#htmx-spinner">
+    {% csrf_token %}
+
+    {% if error %}
+    <div style="margin-bottom:14px;padding:10px 14px;background:#fef2f2;
+                border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#dc2626">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+        Farm Name
+      </label>
+      <input type="text" name="name" required
+             value="{{ farm.name }}"
+             style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                    border-radius:10px;font-size:13px;box-sizing:border-box;outline:none"
+             onfocus="this.style.borderColor='#3d5a99'"
+             onblur="this.style.borderColor='#e2e8f0'">
+    </div>
+
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+        Location
+      </label>
+      <input type="text" name="location" required
+             value="{{ farm.location }}"
+             style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                    border-radius:10px;font-size:13px;box-sizing:border-box;outline:none"
+             onfocus="this.style.borderColor='#3d5a99'"
+             onblur="this.style.borderColor='#e2e8f0'">
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+          Latitude
+        </label>
+        <input type="number" name="latitude" step="0.0000001"
+               value="{{ farm.latitude|default_if_none:'' }}"
+               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                      border-radius:10px;font-size:13px;box-sizing:border-box;outline:none"
+               onfocus="this.style.borderColor='#3d5a99'"
+               onblur="this.style.borderColor='#e2e8f0'">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                      margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+          Longitude
+        </label>
+        <input type="number" name="longitude" step="0.0000001"
+               value="{{ farm.longitude|default_if_none:'' }}"
+               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                      border-radius:10px;font-size:13px;box-sizing:border-box;outline:none"
+               onfocus="this.style.borderColor='#3d5a99'"
+               onblur="this.style.borderColor='#e2e8f0'">
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+        Farm Type
+      </label>
+      <select name="farm_type" required
+              style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                     border-radius:10px;font-size:13px;box-sizing:border-box;
+                     background:white;outline:none"
+              onfocus="this.style.borderColor='#3d5a99'"
+              onblur="this.style.borderColor='#e2e8f0'">
+        <option value="broiler" {% if farm.farm_type == 'broiler' %}selected{% endif %}>Broiler</option>
+        <option value="layer" {% if farm.farm_type == 'layer' %}selected{% endif %}>Layer</option>
+        <option value="mixed" {% if farm.farm_type == 'mixed' %}selected{% endif %}>Mixed</option>
+      </select>
+    </div>
+
+    <div style="margin-bottom:18px">
+      <label style="display:block;font-size:11px;font-weight:700;color:#4a5568;
+                    margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em">
+        Notes <span style="color:#8a96a8;font-weight:400;text-transform:none">(optional)</span>
+      </label>
+      <textarea name="notes" rows="2"
+                placeholder="Anything worth noting about this site"
+                style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                       border-radius:10px;font-size:13px;box-sizing:border-box;outline:none;
+                       resize:vertical;font-family:inherit"
+                onfocus="this.style.borderColor='#3d5a99'"
+                onblur="this.style.borderColor='#e2e8f0'">{{ farm.notes }}</textarea>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button type="button"
+              @click="$dispatch('close-modal')"
+              style="flex:1;padding:11px;background:#f4f7fe;color:#4a5568;
+                     border:1.5px solid #e2e8f0;border-radius:10px;
+                     font-size:13px;font-weight:600;cursor:pointer">
+        Cancel
+      </button>
+      <button type="submit"
+              style="flex:2;padding:11px;background:#3d5a99;color:white;border:none;
+                     border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;
+                     transition:background 0.15s"
+              onmouseover="this.style.background='#2d4578'"
+              onmouseout="this.style.background='#3d5a99'"
+              hx-disabled-elt="this">
+        Save Changes
+      </button>
+    </div>
+  </form>
+</div>

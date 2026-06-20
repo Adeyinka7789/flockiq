@@ -1,11 +1,13 @@
 import json
 
 import structlog
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
+from django.core.exceptions import ValidationError
 from django.http import Http404, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.views import View
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -319,6 +321,149 @@ class FarmDetailView(TenantRequiredMixin, View):
         }
 
         return render(request, "farms/farm_detail.html", context)
+
+
+class FarmEditView(RoleRequiredMixin, TenantRequiredMixin, View):
+    """
+    GET  /farms/<uuid>/edit/  → Farm edit modal (HTMX fragment).
+    POST /farms/<uuid>/edit/  → Updates editable descriptive fields only.
+
+    Owner/manager only. Structural fields (org, created_at) are never exposed —
+    only the descriptive set FarmService.update_farm allows is written.
+    """
+
+    allowed_roles = ["owner", "manager"]
+
+    def get(self, request, pk):
+        org = get_org_or_404(request)
+        with set_tenant_context(org):
+            try:
+                farm = Farm.objects.get(id=pk, org_id=org.id)
+            except Farm.DoesNotExist:
+                raise Http404("Farm not found.")
+        return render(request, "farms/_farm_edit_modal.html", {"farm": farm})
+
+    def post(self, request, pk):
+        org = get_org_or_404(request)
+        is_htmx = request.headers.get("HX-Request") == "true"
+
+        with set_tenant_context(org):
+            try:
+                farm = Farm.objects.get(id=pk, org_id=org.id)
+            except Farm.DoesNotExist:
+                raise Http404("Farm not found.")
+
+            updates = {
+                "name": request.POST.get("name", farm.name).strip(),
+                "location": request.POST.get("location", farm.location).strip(),
+                "farm_type": request.POST.get("farm_type", farm.farm_type),
+                "notes": request.POST.get("notes", farm.notes).strip(),
+            }
+            # GPS is optional on the form — only apply when a value is supplied.
+            lat = request.POST.get("latitude", "").strip()
+            lng = request.POST.get("longitude", "").strip()
+            if lat:
+                updates["latitude"] = lat
+            if lng:
+                updates["longitude"] = lng
+
+            try:
+                farm = FarmService(org).update_farm(str(pk), **updates)
+            except (ValidationError, ValueError) as exc:
+                # Re-render with the submitted values preserved for correction.
+                for field, value in updates.items():
+                    setattr(farm, field, value)
+                error = self._format_error(exc)
+                return render(
+                    request,
+                    "farms/_farm_edit_modal.html",
+                    {"farm": farm, "error": error},
+                    status=422,
+                )
+
+        if is_htmx:
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = json.dumps({
+                "showToast": {"message": "Farm updated.", "type": "success"},
+                "close-modal": True,
+            })
+            response["HX-Refresh"] = "true"
+            return response
+
+        messages.success(request, "Farm updated.")
+        return redirect("farms:detail", pk=pk)
+
+    @staticmethod
+    def _format_error(exc):
+        if isinstance(exc, ValidationError) and hasattr(exc, "message_dict"):
+            return "; ".join(m for msgs in exc.message_dict.values() for m in msgs)
+        if isinstance(exc, ValidationError):
+            return "; ".join(exc.messages)
+        return str(exc)
+
+
+class HouseEditView(RoleRequiredMixin, TenantRequiredMixin, View):
+    """
+    GET  /farms/houses/<uuid>/edit/  → House edit modal (HTMX fragment).
+    POST /farms/houses/<uuid>/edit/  → Updates name, capacity, house_type, notes.
+
+    Owner/manager only. The owning farm is structural — moving a house between
+    farms breaks batch history — so it is never reassigned here.
+    """
+
+    allowed_roles = ["owner", "manager"]
+
+    def get(self, request, pk):
+        org = get_org_or_404(request)
+        with set_tenant_context(org):
+            try:
+                house = House.objects.get(id=pk, org_id=org.id)
+            except House.DoesNotExist:
+                raise Http404("House not found.")
+        return render(request, "farms/_house_edit_modal.html", {"house": house})
+
+    def post(self, request, pk):
+        org = get_org_or_404(request)
+        is_htmx = request.headers.get("HX-Request") == "true"
+
+        with set_tenant_context(org):
+            try:
+                house = House.objects.get(id=pk, org_id=org.id)
+            except House.DoesNotExist:
+                raise Http404("House not found.")
+
+            updates = {
+                "name": request.POST.get("name", house.name).strip(),
+                "house_type": request.POST.get("house_type", house.house_type),
+                "notes": request.POST.get("notes", house.notes).strip(),
+            }
+            capacity = request.POST.get("capacity", "").strip()
+            if capacity:
+                updates["capacity"] = capacity
+
+            try:
+                house = FarmService(org).update_house(str(pk), **updates)
+            except (ValidationError, ValueError) as exc:
+                for field, value in updates.items():
+                    setattr(house, field, value)
+                return render(
+                    request,
+                    "farms/_house_edit_modal.html",
+                    {"house": house, "error": str(exc)},
+                    status=422,
+                )
+
+        if is_htmx:
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = json.dumps({
+                "showToast": {"message": "House updated.", "type": "success"},
+                "close-modal": True,
+            })
+            response["HX-Refresh"] = "true"
+            return response
+
+        messages.success(request, "House updated.")
+        return redirect("farms:detail", pk=house.farm_id)
 
 
 class HouseCreateView(RoleRequiredMixin, View):

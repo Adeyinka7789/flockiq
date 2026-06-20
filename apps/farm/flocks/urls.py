@@ -8,6 +8,7 @@ from .views import (
     BatchDeleteView,
     BatchDetailAPIView,
     BatchDetailView,
+    BatchEditView,
     BatchExcelExportView,
     BatchListAPIView,
     BatchListView,
@@ -31,6 +32,7 @@ urlpatterns = [
     # HTMX views
     path("batches/", BatchListView.as_view(), name="list"),
     path("batches/<uuid:pk>/", BatchDetailView.as_view(), name="detail"),
+    path("batches/<uuid:pk>/edit/", BatchEditView.as_view(), name="edit"),
     path("batches/<uuid:pk>/mortality/", MortalityLogView.as_view(), name="mortality"),
     path("batches/<uuid:pk>/mortality/recent/", MortalityRecentView.as_view(), name="mortality_recent"),
     path("batches/<uuid:pk>/weight/", WeightRecordView.as_view(), name="weight"),

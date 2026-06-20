@@ -1,0 +1,124 @@
+<div style="padding:24px">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+    <div style="width:40px;height:40px;border-radius:12px;
+                background:#e8eef8;display:flex;align-items:center;
+                justify-content:center;flex-shrink:0">
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24"
+           stroke="#3d5a99" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9 22V12h6v10"/>
+      </svg>
+    </div>
+    <div>
+      <h3 style="font-size:15px;font-weight:800;color:#1a2744;
+                 margin-bottom:2px">Edit House</h3>
+      <p style="font-size:11px;color:#8a96a8">
+        {{ house.farm.name }} · descriptive details only
+      </p>
+    </div>
+  </div>
+
+  <form hx-post="{% url 'farms:house_edit' house.pk %}"
+        hx-target="#modal-body"
+        hx-swap="innerHTML"
+        hx-indicator="#htmx-spinner">
+    {% csrf_token %}
+
+    {% if error %}
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;
+                padding:10px 12px;font-size:12px;color:#dc2626;margin-bottom:12px">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;
+                gap:12px;margin-bottom:12px">
+      <div style="grid-column:1/-1">
+        <label style="display:block;font-size:11px;font-weight:700;
+                      color:#4a5568;margin-bottom:5px;
+                      text-transform:uppercase;letter-spacing:0.05em">
+          House Name *
+        </label>
+        <input type="text" name="name" required
+               value="{{ house.name }}"
+               style="width:100%;padding:9px 12px;
+                      border:1.5px solid #e2e8f0;border-radius:9px;
+                      font-size:13px;box-sizing:border-box;outline:none"
+               onfocus="this.style.borderColor='#3d5a99'"
+               onblur="this.style.borderColor='#e2e8f0'">
+      </div>
+
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;
+                      color:#4a5568;margin-bottom:5px;
+                      text-transform:uppercase;letter-spacing:0.05em">
+          Capacity (birds) *
+        </label>
+        <input type="number" name="capacity" required min="1"
+               value="{{ house.capacity }}"
+               style="width:100%;padding:9px 12px;
+                      border:1.5px solid #e2e8f0;border-radius:9px;
+                      font-size:13px;box-sizing:border-box;outline:none"
+               onfocus="this.style.borderColor='#3d5a99'"
+               onblur="this.style.borderColor='#e2e8f0'">
+      </div>
+
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;
+                      color:#4a5568;margin-bottom:5px;
+                      text-transform:uppercase;letter-spacing:0.05em">
+          House Type
+        </label>
+        <select name="house_type"
+                style="width:100%;padding:9px 12px;
+                       border:1.5px solid #e2e8f0;border-radius:9px;
+                       font-size:13px;box-sizing:border-box;
+                       background:white;outline:none"
+                onfocus="this.style.borderColor='#3d5a99'"
+                onblur="this.style.borderColor='#e2e8f0'">
+          <option value="broiler" {% if house.house_type == 'broiler' %}selected{% endif %}>Broiler</option>
+          <option value="layer" {% if house.house_type == 'layer' %}selected{% endif %}>Layer</option>
+          <option value="mixed" {% if house.house_type == 'mixed' %}selected{% endif %}>Mixed</option>
+        </select>
+      </div>
+
+      <div style="grid-column:1/-1">
+        <label style="display:block;font-size:11px;font-weight:700;
+                      color:#4a5568;margin-bottom:5px;
+                      text-transform:uppercase;letter-spacing:0.05em">
+          Notes <span style="color:#8a96a8;font-weight:400;text-transform:none">(optional)</span>
+        </label>
+        <textarea name="notes" rows="2"
+                  style="width:100%;padding:9px 12px;
+                         border:1.5px solid #e2e8f0;border-radius:9px;
+                         font-size:13px;box-sizing:border-box;outline:none;
+                         resize:vertical;font-family:inherit"
+                  onfocus="this.style.borderColor='#3d5a99'"
+                  onblur="this.style.borderColor='#e2e8f0'">{{ house.notes }}</textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button type="button"
+              @click="$dispatch('close-modal')"
+              style="flex:1;padding:11px;background:#f4f7fe;
+                     color:#4a5568;border:1.5px solid #e2e8f0;
+                     border-radius:10px;font-size:13px;
+                     font-weight:600;cursor:pointer">
+        Cancel
+      </button>
+      <button type="submit"
+              style="flex:2;padding:11px;background:#3d5a99;
+                     color:white;border:none;border-radius:10px;
+                     font-size:13px;font-weight:700;cursor:pointer;
+                     transition:background 0.15s"
+              onmouseover="this.style.background='#2d4578'"
+              onmouseout="this.style.background='#3d5a99'"
+              hx-disabled-elt="this">
+        Save Changes
+      </button>
+    </div>
+  </form>
+</div>

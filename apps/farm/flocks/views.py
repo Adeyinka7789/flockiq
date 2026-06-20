@@ -1,12 +1,13 @@
 import json
 
 import structlog
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from apps.infrastructure.accounts.permissions import CanRecord, IsSupervisorOrAbove
 from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
 from django.http import Http404, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -480,6 +481,74 @@ class BatchDetailView(TenantRequiredMixin, View):
             ],
         }
         return render(request, "flocks/batch_detail.html", context)
+
+
+class BatchEditView(RoleRequiredMixin, TenantRequiredMixin, View):
+    """
+    GET  /batches/<uuid>/edit/  → Batch edit modal (HTMX fragment).
+    POST /batches/<uuid>/edit/  → Updates editable descriptive fields only.
+
+    Owner/manager only. Locked fields (initial_count, placement_date, farm,
+    house) are never written here regardless of POST data — the service ignores
+    everything outside its allow-list.
+    """
+
+    allowed_roles = ["owner", "manager"]
+
+    def get(self, request, pk):
+        org = get_org_or_404(request)
+        with set_tenant_context(org):
+            batch = get_object_or_404(
+                Batch.objects.select_related("farm", "house"), id=pk
+            )
+        return render(request, "flocks/_batch_edit_modal.html", {"batch": batch})
+
+    def post(self, request, pk):
+        org = get_org_or_404(request)
+        is_htmx = request.headers.get("HX-Request") == "true"
+
+        with set_tenant_context(org):
+            batch = get_object_or_404(
+                Batch.objects.select_related("farm", "house"), id=pk
+            )
+
+            updates = {
+                "batch_name": request.POST.get("batch_name", batch.batch_name).strip(),
+                "breed_name": request.POST.get("breed_name", batch.breed_name).strip(),
+                "doc_supplier_name": request.POST.get(
+                    "doc_supplier_name", batch.doc_supplier_name
+                ).strip(),
+                "notes": request.POST.get("notes", batch.notes).strip(),
+            }
+            # bird_type is editable but constrained to the valid choices —
+            # ignore anything outside them rather than corrupting benchmarks.
+            bird_type = request.POST.get("bird_type", "").strip()
+            if bird_type in dict(Batch.BirdType.choices):
+                updates["bird_type"] = bird_type
+
+            if not updates["batch_name"]:
+                for field, value in updates.items():
+                    setattr(batch, field, value)
+                return render(
+                    request,
+                    "flocks/_batch_edit_modal.html",
+                    {"batch": batch, "error": "Batch name is required."},
+                    status=422,
+                )
+
+            batch = BatchService(org).update_batch(str(pk), **updates)
+
+        if is_htmx:
+            response = HttpResponse(status=204)
+            response["HX-Trigger"] = json.dumps({
+                "showToast": {"message": "Batch updated.", "type": "success"},
+                "close-modal": True,
+            })
+            response["HX-Refresh"] = "true"
+            return response
+
+        messages.success(request, "Batch updated.")
+        return redirect("flocks:detail", pk=pk)
 
 
 class ExitOptimizerPartialView(TenantRequiredMixin, View):
