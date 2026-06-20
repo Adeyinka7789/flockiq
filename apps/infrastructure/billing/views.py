@@ -4,6 +4,8 @@ import structlog
 from django.conf import settings
 from apps.infrastructure.core.mixins import RoleRequiredMixin
 from apps.infrastructure.core.views import TenantRequiredMixin
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -13,7 +15,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import PaymentRecord, PaystackWebhookLog
+from .models import BillingPlan, PaymentRecord, PaystackWebhookLog
 from .services import BillingService, PaystackService
 
 logger = structlog.get_logger(__name__)
@@ -549,8 +551,75 @@ class PaystackCallbackView(View):
             success = service.activate_from_verified_data(result, reference)
 
         if success:
+            # New paid signups pay BEFORE finishing the onboarding wizard —
+            # send them through onboarding rather than to the billing page.
+            if not request.user.org.onboarding_complete:
+                return redirect("/onboarding/")
             return redirect("/billing/?upgraded=1")
         return redirect("/billing/?error=payment_failed")
+
+
+class SignupCheckoutView(LoginRequiredMixin, View):
+    """
+    GET /billing/checkout/?plan=monthly
+
+    Called after email verification for a user who selected a paid plan at
+    signup. Initializes Paystack via the same BillingService path that
+    UpgradeRequestView uses (request_upgrade) and redirects to the hosted
+    checkout. On any failure the user lands on the billing page, where they
+    can retry the upgrade manually.
+    """
+
+    def get(self, request):
+        plan_tier = request.GET.get("plan", "monthly")
+        if plan_tier not in ("monthly", "cycle", "yearly"):
+            return redirect("/")
+
+        org = request.user.org
+        if not org:
+            return redirect("/")
+
+        if not BillingPlan.objects.filter(
+            plan_tier=plan_tier, is_active=True
+        ).exists():
+            messages.error(request, "Selected plan is not available.")
+            return redirect("/billing/")
+
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        try:
+            with set_tenant_context(org):
+                result = BillingService(org).request_upgrade(
+                    plan_tier=plan_tier,
+                    user_email=request.user.email,
+                )
+        except Exception:
+            logger.exception(
+                "signup_checkout.paystack_init_failed",
+                org_id=str(org.pk),
+                plan_tier=plan_tier,
+            )
+            messages.error(
+                request,
+                "Payment initialization failed. "
+                "You can upgrade from the billing page.",
+            )
+            return redirect("/billing/")
+
+        if result.get("method") == "paystack":
+            return redirect(result["authorization_url"])
+
+        # No Paystack secret configured (e.g. local/dev) — request_upgrade fell
+        # back to the email/admin-activation path. Surface its message and send
+        # the user to the billing page rather than an empty redirect.
+        messages.info(
+            request,
+            result.get(
+                "message",
+                "You can complete payment from the billing page.",
+            ),
+        )
+        return redirect("/billing/")
 
 
 class BankTransferNotifyView(RoleRequiredMixin, TenantRequiredMixin, View):

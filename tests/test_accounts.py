@@ -312,3 +312,115 @@ def test_dismiss_endpoint_requires_login():
     response = client.post("/onboarding/staff/dismiss/")
     assert response.status_code == 302
     assert "/login/" in response["Location"]
+
+
+# ── Landing → signup → verify funnel (plan selection) ──────────────────────────
+
+class TestSignupPlanSelection:
+    """FIX 1 + 2A/2B — GET /signup/ reads ?plan= and surfaces it to the form."""
+
+    def test_get_paid_plan_shows_selected_plan_banner(self):
+        resp = Client().get("/signup/?plan=monthly")
+        assert resp.status_code == 200
+        content = resp.content.decode()
+        assert "Selected plan:" in content
+        assert "Monthly" in content
+        assert 'name="selected_plan" value="monthly"' in content
+
+    def test_get_trial_plan_shows_trial_banner(self):
+        resp = Client().get("/signup/?plan=trial")
+        content = resp.content.decode()
+        assert "14-day free trial" in content
+        assert 'name="selected_plan" value="trial"' in content
+
+    def test_get_no_plan_defaults_to_trial(self):
+        resp = Client().get("/signup/")
+        assert 'name="selected_plan" value="trial"' in resp.content.decode()
+
+    def test_get_invalid_plan_defaults_to_trial(self):
+        resp = Client().get("/signup/?plan=bogus")
+        assert 'name="selected_plan" value="trial"' in resp.content.decode()
+
+
+class TestSignupStoresPlanInSession:
+    """FIX 2C — SignupView.post stashes the chosen plan in the session so
+    VerifyEmailView can route the user after the email round-trip."""
+
+    def _post(self, plan, subdomain):
+        from django.core.cache import cache
+        cache.clear()  # reset the 5/hour signup throttle between cases
+        client = Client()
+        resp = client.post("/signup/", {
+            "org_name": "Funnel Farm",
+            "owner_name": "Ada Owner",
+            "email": f"{subdomain}@test.com",
+            "phone": "+2348000000000",
+            "subdomain": subdomain,
+            "country": "Nigeria",
+            "state_region": "Lagos",
+            "password": "supersecret123",
+            "confirm_password": "supersecret123",
+            "selected_plan": plan,
+        })
+        return client, resp
+
+    def test_trial_plan_stored_in_session(self):
+        client, resp = self._post("trial", "funneltrial")
+        assert resp.status_code == 302
+        assert client.session.get("pending_plan") == "trial"
+        assert client.session.get("pending_org_id")
+
+    def test_paid_plan_stored_in_session(self):
+        client, resp = self._post("monthly", "funnelpaid")
+        assert resp.status_code == 302
+        assert client.session.get("pending_plan") == "monthly"
+
+
+class TestVerifyEmailRedirect:
+    """FIX 3 — post-verification routing: paid plans go to Paystack checkout,
+    trial plans go to the dashboard. Session keys are consumed either way."""
+
+    def _user_with_token(self, subdomain):
+        from apps.infrastructure.tenants.models import Organization
+        from apps.infrastructure.accounts.models import CustomUser
+        org = Organization.objects.create(
+            name="Verify Farm", subdomain=subdomain,
+            owner_email=f"{subdomain}@test.com",
+            plan_tier="trial", subscription_status="trial",
+        )
+        user = CustomUser.objects.create_user(
+            email=f"{subdomain}@test.com",
+            username=f"{subdomain}@test.com",
+            password="pass1234", org=org, role="owner",
+            email_verified=False,
+        )
+        return org, user
+
+    def test_paid_plan_redirects_to_checkout(self):
+        org, user = self._user_with_token("verpaid")
+        client = Client()
+        session = client.session
+        session["pending_plan"] = "monthly"
+        session["pending_org_id"] = str(org.pk)
+        session.save()
+        resp = client.get(f"/accounts/verify/{user.email_verification_token}/")
+        assert resp.status_code == 302
+        assert resp["Location"] == "/billing/checkout/?plan=monthly"
+        assert client.session.get("pending_plan") is None
+
+    def test_trial_plan_redirects_home(self):
+        org, user = self._user_with_token("vertrial")
+        client = Client()
+        session = client.session
+        session["pending_plan"] = "trial"
+        session.save()
+        resp = client.get(f"/accounts/verify/{user.email_verification_token}/")
+        assert resp.status_code == 302
+        assert resp["Location"] == "/"
+        assert client.session.get("pending_plan") is None
+
+    def test_no_session_defaults_home(self):
+        org, user = self._user_with_token("vernone")
+        resp = Client().get(f"/accounts/verify/{user.email_verification_token}/")
+        assert resp.status_code == 302
+        assert resp["Location"] == "/"

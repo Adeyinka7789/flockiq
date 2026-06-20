@@ -216,6 +216,11 @@ RESERVED_SUBDOMAINS = {
     "signup", "register", "dashboard",
 }
 
+# Plan tiers a visitor may pick on the landing page and carry through signup.
+# "trial" is the default; the three paid tiers route into Paystack checkout
+# after email verification (see VerifyEmailView + billing SignupCheckoutView).
+VALID_PLAN_TIERS = ("trial", "monthly", "cycle", "yearly")
+
 
 class SignupView(View):
     """Session-based signup — creates Organisation + owner user atomically."""
@@ -223,8 +228,17 @@ class SignupView(View):
     def get(self, request):
         if request.user.is_authenticated:
             return redirect("/")
+        from apps.infrastructure.billing.models import BillingPlan
+
+        selected_plan = request.GET.get("plan", "trial")
+        if selected_plan not in VALID_PLAN_TIERS:
+            selected_plan = "trial"
         return render(request, "accounts/signup.html", {
             "country_choices": COUNTRY_CHOICES,
+            "selected_plan": selected_plan,
+            "billing_plans": BillingPlan.objects.filter(
+                is_active=True
+            ).order_by("amount_kobo"),
         })
 
     def post(self, request):
@@ -258,6 +272,9 @@ class SignupView(View):
         state_region = request.POST.get("state_region", "").strip()
         password = request.POST.get("password", "")
         confirm = request.POST.get("confirm_password", "")
+        selected_plan = request.POST.get("selected_plan", "trial")
+        if selected_plan not in VALID_PLAN_TIERS:
+            selected_plan = "trial"
 
         if not org_name:
             errors["org_name"] = "Farm name is required"
@@ -285,6 +302,7 @@ class SignupView(View):
                 "errors": errors,
                 "values": request.POST,
                 "country_choices": COUNTRY_CHOICES,
+                "selected_plan": selected_plan,
             })
 
         # The exists() checks above are advisory only — two concurrent signups
@@ -308,7 +326,14 @@ class SignupView(View):
                 "errors": errors,
                 "values": request.POST,
                 "country_choices": COUNTRY_CHOICES,
+                "selected_plan": selected_plan,
             })
+
+        # Carry the chosen plan across the email-verification round-trip.
+        # VerifyEmailView reads these to route paid signups into Paystack
+        # checkout instead of straight to the dashboard.
+        request.session["pending_plan"] = selected_plan
+        request.session["pending_org_id"] = str(org.pk)
 
         verification_url = request.build_absolute_uri(
             f"/accounts/verify/{user.email_verification_token}/"
@@ -347,6 +372,15 @@ class VerifyEmailView(View):
         user.backend = 'django.contrib.auth.backends.ModelBackend'
         login(request, user)
         logger.info("email_verified", user_id=str(user.id))
+
+        # Route paid-plan signups into Paystack checkout; trial signups fall
+        # through to the dashboard/onboarding. pending_plan is set by
+        # SignupView.post and only present when verification happens in the
+        # same browser session as signup (otherwise we safely default to trial).
+        pending_plan = request.session.pop("pending_plan", "trial")
+        request.session.pop("pending_org_id", None)
+        if pending_plan in ("monthly", "cycle", "yearly"):
+            return redirect(f"/billing/checkout/?plan={pending_plan}")
         return redirect('/')
 
 

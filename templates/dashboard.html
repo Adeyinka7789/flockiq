@@ -53,6 +53,52 @@
     </div>
   </div>
 
+  {% if org.subscription_status == 'trial' and trial_days_remaining > 7 %}
+  <!-- Trial countdown banner — shown only while MORE than 7 days remain.
+       In the final 7 days (and on expiry) base.html's global sticky banner
+       takes over, so the two never display at the same time. -->
+  <div id="trial-banner"
+       style="border-radius: 1rem; padding: 1rem 1.5rem;
+              margin-bottom: 1.5rem;
+              display: flex; align-items: center;
+              justify-content: space-between;
+              gap: 1rem; flex-wrap: wrap;
+              background: linear-gradient(135deg, #234280 0%, #2d5099 100%);">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <span style="font-size: 1.25rem;">⏳</span>
+      <div>
+        <p style="font-family: Manrope; font-weight: 700;
+                  color: white; margin: 0; font-size: 0.9375rem;">
+          Your free trial ends {{ org.trial_ends_at|timeuntil }}
+        </p>
+        <p style="font-size: 0.8125rem;
+                  color: rgba(255,255,255,0.7);
+                  margin: 0.125rem 0 0;">
+          Upgrade now to keep your farm data and continue without interruption.
+        </p>
+      </div>
+    </div>
+    <div style="display: flex; gap: 0.75rem;
+                align-items: center; flex-shrink: 0;">
+      <a href="/billing/"
+         style="background: white; color: #234280;
+                padding: 0.625rem 1.25rem;
+                border-radius: 9999px; font-weight: 700;
+                font-size: 0.8125rem; text-decoration: none;
+                font-family: Inter, sans-serif;">
+        Upgrade Now
+      </a>
+      <button
+        onclick="document.getElementById('trial-banner').style.display='none'"
+        style="color: rgba(255,255,255,0.6);
+               background: none; border: none;
+               cursor: pointer; font-size: 1rem;">
+        ✕
+      </button>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- KPI cards -->
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px">
 

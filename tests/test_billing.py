@@ -1002,3 +1002,95 @@ class TestBillingManagePanelRegression:
         assert resp.status_code == 204
         org.refresh_from_db()
         assert org.plan_tier == 'yearly'
+
+
+# ---------------------------------------------------------------------------
+# Signup → Paystack checkout (post email-verification) + dashboard trial banner
+# ---------------------------------------------------------------------------
+
+class TestSignupCheckoutView:
+    """FIX 3 — GET /billing/checkout/?plan= initializes Paystack for a paid
+    plan picked at signup, reusing BillingService.request_upgrade."""
+
+    def _login(self, client, org):
+        user = make_user(org, role="owner", email=f"owner@{org.subdomain}.com")
+        client.force_login(user)
+        return user
+
+    @patch("apps.infrastructure.billing.services.BillingService.request_upgrade")
+    def test_valid_plan_redirects_to_paystack(self, mock_upgrade):
+        mock_upgrade.return_value = {
+            "method": "paystack",
+            "authorization_url": "https://checkout.paystack.com/abc123",
+            "reference": "FIQ-TEST",
+        }
+        org = make_org(subdomain="chk1", plan_tier="trial",
+                       subscription_status="trial")
+        make_plan(plan_tier="monthly", amount_kobo=500000)
+        client = Client()
+        self._login(client, org)
+        resp = client.get("/billing/checkout/?plan=monthly")
+        assert resp.status_code == 302
+        assert resp["Location"] == "https://checkout.paystack.com/abc123"
+        mock_upgrade.assert_called_once()
+
+    def test_paid_plan_not_in_db_redirects_billing(self):
+        org = make_org(subdomain="chk2", plan_tier="trial",
+                       subscription_status="trial")
+        # No BillingPlan rows — 'yearly' is a valid tier but unavailable.
+        client = Client()
+        self._login(client, org)
+        resp = client.get("/billing/checkout/?plan=yearly")
+        assert resp.status_code == 302
+        assert resp["Location"] == "/billing/"
+
+    def test_trial_plan_redirects_home(self):
+        org = make_org(subdomain="chk3", plan_tier="trial",
+                       subscription_status="trial")
+        client = Client()
+        self._login(client, org)
+        resp = client.get("/billing/checkout/?plan=trial")
+        assert resp.status_code == 302
+        assert resp["Location"] == "/"
+
+    def test_unauthenticated_redirects_to_login(self):
+        resp = Client().get("/billing/checkout/?plan=monthly")
+        assert resp.status_code == 302
+        assert "/login/" in resp["Location"]
+
+
+class TestDashboardTrialBanner:
+    """FIX 5 — the dashboard renders a trial countdown banner for trial orgs
+    and omits it for active/paid orgs."""
+
+    def _login(self, org):
+        user = make_user(org, role="owner", email=f"owner@{org.subdomain}.com")
+        user.email_verified = True
+        user.save(update_fields=["email_verified"])
+        client = Client()
+        client.force_login(user)
+        return client
+
+    def test_trial_org_sees_banner(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        org = make_org(
+            subdomain="trialbnr", plan_tier="trial",
+            subscription_status="trial", onboarding_complete=True,
+            trial_ends_at=timezone.now() + timedelta(days=10),
+        )
+        resp = self._login(org).get("/")
+        assert resp.status_code == 200
+        content = resp.content.decode()
+        assert 'id="trial-banner"' in content
+        assert "Upgrade Now" in content
+        assert "/billing/" in content
+
+    def test_active_org_no_banner(self):
+        org = make_org(
+            subdomain="activebnr", plan_tier="monthly",
+            subscription_status="active", onboarding_complete=True,
+        )
+        resp = self._login(org).get("/")
+        assert resp.status_code == 200
+        assert 'id="trial-banner"' not in resp.content.decode()

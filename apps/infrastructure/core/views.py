@@ -296,6 +296,7 @@ class DashboardView(TemplateView):
 
         ctx.update(
             {
+                "org": org,
                 "farms_count": farms_count,
                 "total_active_batches": total_active_batches,
                 "total_live_birds": total_live_birds,

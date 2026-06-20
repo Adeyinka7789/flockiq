@@ -13,10 +13,31 @@
     </p>
   </div>
 
-  <div class="inline-flex items-center gap-2 rounded-full bg-green-50 border border-green-200 px-3.5 py-1.5 text-[12px] font-semibold text-green-700 mb-5">
-    <span class="w-2 h-2 rounded-full bg-green-500"></span>
-    14-day free trial — no card needed
+  {% if selected_plan != 'trial' %}
+  <div style="background: #f1f4fb; border-radius: 0.75rem;
+              padding: 0.75rem 1rem; margin-bottom: 1.5rem;
+              display: flex; align-items: center;
+              justify-content: space-between;">
+    <span style="font-size: 0.8125rem; color: #234280;
+                 font-weight: 600;">
+      Selected plan:
+      <strong>{{ selected_plan|title }}</strong>
+    </span>
+    <a href="/signup/?plan=trial"
+       style="font-size: 0.75rem; color: #94a3b8;
+              text-decoration: underline;">
+      Switch to free trial
+    </a>
   </div>
+  {% else %}
+  <div style="background: #f1f4fb; border-radius: 0.75rem;
+              padding: 0.75rem 1rem; margin-bottom: 1.5rem;">
+    <span style="font-size: 0.8125rem; color: #336a28;
+                 font-weight: 600;">
+      ✓ 14-day free trial — no card required
+    </span>
+  </div>
+  {% endif %}
 
   {% if errors %}
   <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-[13px] text-red-600 mb-4">
@@ -26,6 +47,8 @@
 
   <form method="POST" action="/signup/" class="space-y-4">
     {% csrf_token %}
+    <input type="hidden" name="selected_plan" value="{{ selected_plan|default:'trial' }}">
+
 
     <div>
       <label class="block text-[11px] font-semibold text-gray-600 uppercase tracking-wide mb-1.5">Farm / Business Name</label>
