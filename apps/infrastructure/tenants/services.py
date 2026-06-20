@@ -18,7 +18,101 @@ logger = structlog.get_logger(__name__)
 
 
 class TenantService:
-    """Org lifecycle: suspension, reactivation, and owner resolution."""
+    """Org lifecycle: creation, suspension, reactivation, and owner resolution."""
+
+    @staticmethod
+    def create_organization(
+        org_name: str,
+        subdomain: str,
+        owner_email: str,
+        owner_password: str | None = None,
+        owner_name: str = "",
+        owner_first_name: str = "",
+        owner_last_name: str = "",
+        owner_phone: str = "",
+        country: str = "Nigeria",
+        state_region: str = "",
+        timezone: str | None = None,
+        trial_days: int = 14,
+    ) -> tuple:
+        """Single authoritative path for creating a tenant org + its owner user.
+
+        Both the web signup flow (SignupView) and the API onboarding flow
+        (TenantOnboardingView) call this so field defaults, the trial window,
+        and country-scoping stay identical regardless of entry point.
+
+        ``country`` is written to BOTH the Organization and the owner user, so
+        community market data is scoped correctly for non-Nigerian tenants no
+        matter which entry point they signed up through.
+
+        If ``owner_password`` is falsy a temporary password is generated and
+        returned (the API onboarding path surfaces it to the caller); when a
+        password is supplied the third tuple element is ``None``.
+
+        Returns: ``(org, user, temp_password_if_generated)``
+        """
+        import secrets
+        from datetime import timedelta
+
+        from django.db import transaction
+        from django.utils import timezone as dj_timezone
+
+        from apps.infrastructure.accounts.constants import timezone_for_country
+        from apps.infrastructure.accounts.models import CustomUser
+
+        from .models import Organization
+
+        country = country or "Nigeria"
+        if timezone is None:
+            timezone = timezone_for_country(country)
+
+        # Derive first/last from owner_name when not supplied explicitly.
+        if not owner_first_name and not owner_last_name and owner_name:
+            parts = owner_name.split()
+            owner_first_name = parts[0] if parts else ""
+            owner_last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
+
+        temp_password = None
+        if not owner_password:
+            temp_password = secrets.token_urlsafe(12)
+            owner_password = temp_password
+
+        with transaction.atomic():
+            org = Organization.objects.create(
+                name=org_name,
+                subdomain=subdomain,
+                owner_name=owner_name,
+                owner_email=owner_email,
+                owner_phone=owner_phone,
+                country=country,
+                plan_tier="trial",
+                subscription_status="trial",
+                trial_ends_at=dj_timezone.now() + timedelta(days=trial_days),
+                is_active=True,
+            )
+            user = CustomUser.objects.create_user(
+                email=owner_email,
+                username=owner_email,
+                password=owner_password,
+                first_name=owner_first_name,
+                last_name=owner_last_name,
+                phone=owner_phone,
+                country=country,
+                state_region=state_region,
+                timezone=timezone,
+                org=org,
+                role="owner",
+                is_active=True,
+            )
+
+        logger.info(
+            "tenant.created",
+            org_id=str(org.pk),
+            owner_email=owner_email,
+            country=country,
+        )
+
+        return org, user, temp_password
 
     @staticmethod
     def get_org_owner(org):

@@ -305,3 +305,107 @@ class TestTenantService:
         mock_email.send_suspension.assert_not_called()
         test_org.refresh_from_db()
         assert test_org.is_active is False
+
+
+# ── TenantService.create_organization — unified org+owner creation ────────────
+
+class TestCreateOrganization:
+    """The single authoritative path both SignupView and TenantOnboardingView
+    call. Verifies field defaults, country propagation, atomicity and the
+    generated-password contract."""
+
+    def _create(self, **overrides):
+        from apps.infrastructure.tenants.services import TenantService
+        kwargs = {
+            "org_name": "Acme Poultry",
+            "subdomain": "acmepoultry",
+            "owner_email": "owner@acme.com",
+            "owner_password": "supersecret123",
+            "owner_name": "Ada Eze",
+            "owner_phone": "+2348012345678",
+            "country": "Nigeria",
+            "state_region": "Lagos",
+        }
+        kwargs.update(overrides)
+        return TenantService.create_organization(**kwargs)
+
+    def test_creates_organization_with_correct_fields(self, db):
+        org, _user, _tmp = self._create()
+        org.refresh_from_db()
+        assert org.name == "Acme Poultry"
+        assert org.subdomain == "acmepoultry"
+        assert org.owner_email == "owner@acme.com"
+        assert org.owner_name == "Ada Eze"
+        assert org.owner_phone == "+2348012345678"
+        assert org.plan_tier == "trial"
+        assert org.subscription_status == "trial"
+        assert org.trial_ends_at is not None
+        assert org.is_active is True
+
+    def test_creates_owner_user_with_role_owner(self, db):
+        _org, user, _tmp = self._create()
+        assert user.role == "owner"
+        assert user.email == "owner@acme.com"
+        assert user.username == "owner@acme.com"
+        # owner_name split into first/last
+        assert user.first_name == "Ada"
+        assert user.last_name == "Eze"
+        assert user.check_password("supersecret123")
+
+    def test_org_country_set_from_parameter(self, db):
+        org, _user, _tmp = self._create(subdomain="ghanaco", owner_email="g@x.com",
+                                        country="Ghana")
+        org.refresh_from_db()
+        assert org.country == "Ghana"
+
+    def test_user_country_matches_org_country(self, db):
+        org, user, _tmp = self._create(subdomain="kenyaco", owner_email="k@x.com",
+                                       country="Kenya")
+        assert user.country == "Kenya"
+        assert org.country == user.country
+
+    def test_timezone_derived_from_country(self, db):
+        _org, user, _tmp = self._create(subdomain="ghtz", owner_email="ghtz@x.com",
+                                        country="Ghana")
+        assert user.timezone == "Africa/Accra"
+
+    def test_generates_temp_password_when_none_supplied(self, db):
+        _org, user, temp_password = self._create(
+            subdomain="notmp", owner_email="notmp@x.com", owner_password=None,
+        )
+        assert temp_password
+        assert user.check_password(temp_password)
+
+    def test_returns_none_temp_password_when_password_supplied(self, db):
+        _org, _user, temp_password = self._create()
+        assert temp_password is None
+
+    def test_atomicity_no_user_when_org_fails(self, db):
+        """If the org INSERT fails, the owner user must not exist either."""
+        from apps.infrastructure.accounts.models import CustomUser
+        from apps.infrastructure.tenants.models import Organization
+        from apps.infrastructure.tenants.services import TenantService
+
+        # Pre-claim the subdomain so the org create hits the unique constraint.
+        Organization.objects.create(name="Taken", subdomain="taken")
+        with pytest.raises(Exception):
+            TenantService.create_organization(
+                org_name="Dupe", subdomain="taken",
+                owner_email="dupe@x.com", owner_password="x12345678",
+            )
+        assert not CustomUser.objects.filter(email="dupe@x.com").exists()
+
+    def test_logs_tenant_created(self, db):
+        from apps.infrastructure.tenants.services import TenantService
+        with capture_logs() as logs:
+            TenantService.create_organization(
+                org_name="Logged Co", subdomain="loggedco",
+                owner_email="logged@x.com", owner_password="x12345678",
+                country="Ghana",
+            )
+        assert any(
+            e["event"] == "tenant.created"
+            and e["owner_email"] == "logged@x.com"
+            and e["country"] == "Ghana"
+            for e in logs
+        )

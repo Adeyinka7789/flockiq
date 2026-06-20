@@ -229,13 +229,12 @@ class SignupView(View):
 
     def post(self, request):
         import re
-        from datetime import timedelta
 
-        from django.db import IntegrityError, transaction
+        from django.db import IntegrityError
         from django.http import JsonResponse
-        from django.utils import timezone
 
         from apps.infrastructure.tenants.models import Organization
+        from apps.infrastructure.tenants.services import TenantService
 
         # Rate limit signups per IP (scope "signup" in DEFAULT_THROTTLE_RATES).
         # This is a plain Django view, so the throttle is invoked manually —
@@ -293,33 +292,16 @@ class SignupView(View):
         # are the real guard; IntegrityError converts the race loser into a
         # form error instead of a 500.
         try:
-            with transaction.atomic():
-                org = Organization.objects.create(
-                    name=org_name,
-                    subdomain=subdomain,
-                    owner_name=owner_name,
-                    owner_email=email,
-                    owner_phone=phone,
-                    country=country or "Nigeria",
-                    plan_tier="trial",
-                    subscription_status="trial",
-                    trial_ends_at=timezone.now() + timedelta(days=14),
-                    is_active=True,
-                )
-                name_parts = owner_name.split()
-                user = CustomUser.objects.create_user(
-                    email=email,
-                    password=password,
-                    username=email,
-                    first_name=name_parts[0] if name_parts else "",
-                    last_name=" ".join(name_parts[1:]) if len(name_parts) > 1 else "",
-                    phone=phone,
-                    country=country,
-                    state_region=state_region,
-                    timezone=timezone_for_country(country),
-                    org=org,
-                    role="owner",
-                )
+            org, user, _ = TenantService.create_organization(
+                org_name=org_name,
+                subdomain=subdomain,
+                owner_email=email,
+                owner_password=password,
+                owner_name=owner_name,
+                owner_phone=phone,
+                country=country or "Nigeria",
+                state_region=state_region,
+            )
         except IntegrityError:
             errors["subdomain"] = "This subdomain is already taken. Please choose another."
             return render(request, "accounts/signup.html", {

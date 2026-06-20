@@ -24,7 +24,13 @@ class OrganizationOnboardingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Organization
-        fields = ["name", "subdomain", "owner_name", "owner_phone", "owner_email"]
+        # ``country`` is optional (model default 'Nigeria') so existing API
+        # clients keep working, but international signups can now pass e.g.
+        # country='Ghana' and have it scope their org correctly.
+        fields = [
+            "name", "subdomain", "owner_name", "owner_phone",
+            "owner_email", "country",
+        ]
 
     def validate_subdomain(self, value):
         if not re.match(r"^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$", value):

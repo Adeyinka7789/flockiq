@@ -118,3 +118,61 @@ class TestSignupCountry:
 
         org = Organization.objects.get(subdomain=payload["subdomain"])
         assert org.country == "Nigeria"
+
+
+# ── API onboarding wires org.country from request.data (Step 4 bug fix) ────────
+
+class TestOnboardingApiCountry:
+    """POST /api/v1/onboarding/ now reads country from request.data instead of
+    silently defaulting every international API signup to Nigeria."""
+
+    def _payload(self, **overrides):
+        sub = f"api{uuid.uuid4().hex[:8]}"
+        payload = {
+            "name": "API Farm",
+            "subdomain": sub,
+            "owner_name": "Kwame Asante",
+            "owner_phone": "+233200000000",
+            "owner_email": f"{sub}@example.com",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_onboarding_creates_org_and_owner(self, client):
+        from apps.infrastructure.tenants.models import Organization
+        from apps.infrastructure.accounts.models import CustomUser
+
+        payload = self._payload()
+        resp = client.post("/api/v1/onboarding/", payload, content_type="application/json")
+        assert resp.status_code == 201, resp.content
+        body = resp.json()["data"]
+        assert body["user"]["role"] == "owner"
+        assert body["temp_password"]  # generated password surfaced to caller
+        assert body["access"] and body["refresh"]
+
+        org = Organization.objects.get(subdomain=payload["subdomain"])
+        owner = CustomUser.objects.get(email=payload["owner_email"])
+        assert owner.role == "owner"
+        assert owner.org_id == org.id
+
+    def test_onboarding_sets_country_from_request(self, client):
+        from apps.infrastructure.tenants.models import Organization
+
+        payload = self._payload(country="Ghana")
+        resp = client.post("/api/v1/onboarding/", payload, content_type="application/json")
+        assert resp.status_code == 201, resp.content
+
+        org = Organization.objects.get(subdomain=payload["subdomain"])
+        assert org.country == "Ghana"
+        # User country must match the org's so market data scopes correctly.
+        assert org.users.get(role="owner").country == "Ghana"
+
+    def test_onboarding_defaults_country_to_nigeria(self, client):
+        from apps.infrastructure.tenants.models import Organization
+
+        payload = self._payload()  # no country key
+        resp = client.post("/api/v1/onboarding/", payload, content_type="application/json")
+        assert resp.status_code == 201, resp.content
+
+        org = Organization.objects.get(subdomain=payload["subdomain"])
+        assert org.country == "Nigeria"
