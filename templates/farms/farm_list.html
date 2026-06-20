@@ -5,204 +5,342 @@
 
 {% block content %}
 <style>
+  /* ----- Global layout ----- */
   .fl-wrap { max-width: 1100px; margin: 0 auto; }
 
+  /* ----- Header ----- */
   .fl-header {
-    display: flex; align-items: flex-start;
-    justify-content: space-between; margin-bottom: 28px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 28px;
   }
   .fl-eyebrow {
-    font-size: 11px; font-weight: 700; color: #8a96a8;
-    text-transform: uppercase; letter-spacing: 0.1em;
+    font-size: 11px;
+    font-weight: 700;
+    color: #336a28;                 /* secondary green */
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
     margin-bottom: 6px;
   }
   .fl-title {
-    font-size: 28px; font-weight: 800; color: #1a2744;
-    letter-spacing: -0.5px; margin-bottom: 6px;
+    font-size: 28px;
+    font-weight: 800;
+    color: #234280;                 /* Navy */
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
   }
   .fl-subtitle {
-    font-size: 14px; color: #4a5568; line-height: 1.5;
+    font-size: 14px;
+    color: #64748b;                 /* slate-500 */
+    line-height: 1.5;
     max-width: 520px;
   }
   .fl-add-btn {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 11px 20px; background: #3d5a99; color: white;
-    border: none; border-radius: 10px; font-size: 13px;
-    font-weight: 700; cursor: pointer; transition: all 0.15s;
-    text-decoration: none; flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 20px;
+    background: #3d5a99;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    flex-shrink: 0;
   }
   .fl-add-btn:hover { background: #2d4578; transform: translateY(-1px); }
 
+  /* ----- Summary stats ----- */
   .fl-stats {
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 14px; margin-bottom: 28px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 28px;
   }
   .fl-stat {
-    background: white; border: 1px solid #e2e8f0;
-    border-radius: 12px; padding: 16px 20px;
+    background: white;
+    /* removed border: 1px solid #e2e8f0; */
+    box-shadow: 0px 8px 24px rgba(35,66,128,0.05);
+    border-radius: 1rem;
+    padding: 16px 20px;
   }
   .fl-stat-val {
-    font-size: 28px; font-weight: 800; color: #1a2744;
-    line-height: 1; font-variant-numeric: tabular-nums;
+    font-size: 28px;
+    font-weight: 800;
+    color: #1a2744;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
     margin-bottom: 4px;
   }
   .fl-stat-lbl {
-    font-size: 11px; font-weight: 700; color: #8a96a8;
-    text-transform: uppercase; letter-spacing: 0.07em;
+    font-size: 11px;
+    font-weight: 700;
+    color: #8a96a8;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
   }
 
+  /* ----- Toolbar (search + filter) ----- */
+  .fl-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .fl-search {
+    flex: 1;
+    min-width: 220px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    /* removed border: 1px solid #e2e8f0; */
+    box-shadow: 0px 2px 8px rgba(35,66,128,0.06);
+    border-radius: 0.75rem;
+    padding: 0 14px;
+  }
+  .fl-search:focus-within { box-shadow: 0px 2px 12px rgba(35,66,128,0.12); }
+  .fl-search input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 11px 0;
+    font-size: 13px;
+    color: #1a2744;
+  }
+  .fl-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    /* removed border: 1px solid #e2e8f0; */
+    box-shadow: 0px 2px 8px rgba(35,66,128,0.06);
+    border-radius: 0.75rem;
+    padding: 11px 34px 11px 14px;
+    font-size: 13px;
+    color: #1a2744;
+    background: white;
+    cursor: pointer;
+    font-weight: 600;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a96a8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+  }
+  .fl-select:focus { outline: none; box-shadow: 0px 2px 12px rgba(35,66,128,0.12); }
+
+  /* ----- Farm grid ----- */
   .fl-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
     gap: 18px;
   }
 
+  /* ----- Farm card (redesigned) ----- */
   .fl-card {
-    background: white; border: 1px solid #e2e8f0;
-    border-radius: 18px; padding: 24px;
-    transition: all 0.2s; position: relative;
+    background: white;
+    border-radius: 1.5rem;          /* roundedness-xl */
+    padding: 1.5rem;
+    box-shadow: 0px 12px 32px rgba(35,66,128,0.06);
+    transition: all 0.2s;
+    position: relative;
     overflow: hidden;
+    border: none;                   /* no hard border */
   }
   .fl-card:hover {
-    border-color: #3d5a99;
-    box-shadow: 0 8px 32px rgba(61,90,153,0.1);
+    box-shadow: 0px 16px 40px rgba(35,66,128,0.10);
     transform: translateY(-2px);
   }
-  .fl-card.featured {
-    background: #1a2744; border-color: #1a2744;
-  }
 
+  /* ----- Status badge ----- */
   .fl-status {
-    position: absolute; top: 20px; right: 20px;
-    padding: 4px 12px; border-radius: 20px;
-    font-size: 10px; font-weight: 800;
-    letter-spacing: 0.08em; text-transform: uppercase;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
-  .fl-status.optimal  { background: #edfae8; color: #166534; }
-  .fl-status.warning  { background: #fef3c7; color: #92400e; }
-  .fl-status.critical { background: #fee2e2; color: #991b1b; }
-  .fl-status.new      { background: #e8eef8; color: #2d4578; }
-  .fl-card.featured .fl-status { background: rgba(255,255,255,0.15); color: white; }
+  .fl-status.optimal  { background: #dcfce7; color: #16a34a; }
+  .fl-status.warning  { background: #fef3c7; color: #d97706; }
+  .fl-status.critical { background: #fee2e2; color: #dc2626; }
+  .fl-status.new      { background: #f1f4fb; color: #234280; }
 
+  /* ----- Farm icon ----- */
   .fl-farm-icon {
-    width: 48px; height: 48px; border-radius: 14px;
-    background: #e8eef8;
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 14px; font-size: 22px;
+    width: 48px;
+    height: 48px;
+    border-radius: 0.875rem;
+    background: #f1f4fb;            /* surface-container-low */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    font-size: 22px;
   }
-  .fl-card.featured .fl-farm-icon { background: rgba(255,255,255,0.1); }
 
+  /* ----- Farm name & location ----- */
   .fl-farm-name {
-    font-size: 20px; font-weight: 800; color: #3d5a99;
-    margin-bottom: 4px; letter-spacing: -0.3px;
+    font-size: 20px;
+    font-weight: 800;
+    color: #234280;                 /* Navy */
+    font-family: Manrope, sans-serif;
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
   }
-  .fl-card.featured .fl-farm-name { color: white; }
-
   .fl-farm-location {
-    font-size: 12px; color: #8a96a8;
-    display: flex; align-items: center; gap: 4px;
+    font-size: 12px;
+    color: #94a3b8;                 /* slate-400 */
+    display: flex;
+    align-items: center;
+    gap: 4px;
     margin-bottom: 20px;
   }
-  .fl-card.featured .fl-farm-location { color: rgba(255,255,255,0.5); }
 
+  /* ----- Metrics ----- */
   .fl-metrics {
-    display: grid; grid-template-columns: 1fr 1fr;
-    gap: 12px; margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
   }
   .fl-metric-lbl {
-    font-size: 10px; font-weight: 700; color: #8a96a8;
-    text-transform: uppercase; letter-spacing: 0.08em;
+    font-size: 0.625rem;            /* 10px */
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     margin-bottom: 4px;
   }
-  .fl-card.featured .fl-metric-lbl { color: rgba(255,255,255,0.4); }
   .fl-metric-val {
-    font-size: 16px; font-weight: 800; color: #1a2744;
+    font-size: 1rem;                /* 16px */
+    font-weight: 700;
+    color: #181c21;                 /* on-surface */
     font-variant-numeric: tabular-nums;
   }
-  .fl-card.featured .fl-metric-val { color: white; }
 
+  /* ----- Sparkline ----- */
   .fl-sparkline {
-    display: flex; align-items: flex-end;
-    gap: 3px; height: 32px;
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 32px;
   }
   .fl-spark-bar {
-    flex: 1; border-radius: 2px 2px 0 0;
-    background: #3d5a99; opacity: 0.3;
-    min-height: 3px; transition: opacity 0.15s;
+    flex: 1;
+    border-radius: 2px 2px 0 0;
+    background: #336a28;            /* secondary green */
+    opacity: 0.3;
+    min-height: 3px;
+    transition: opacity 0.15s;
   }
   .fl-spark-bar:hover { opacity: 0.8; }
-  .fl-spark-bar.has-data { opacity: 0.7; }
-  .fl-card.featured .fl-spark-bar { background: #8bc87a; }
+  .fl-spark-bar.has-data { opacity: 0.8; }  /* was 0.7, now 0.8 per spec */
 
-  .fl-actions { display: flex; gap: 10px; margin-top: 4px; }
-  .fl-btn-edit {
-    flex: 1; padding: 10px; border-radius: 10px;
-    background: transparent; color: #4a5568;
-    border: 1.5px solid #e2e8f0; font-size: 13px;
-    font-weight: 600; cursor: pointer; transition: all 0.15s;
-    text-align: center; text-decoration: none;
-    display: flex; align-items: center; justify-content: center;
+  /* ----- Action buttons ----- */
+  .fl-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
   }
-  .fl-btn-edit:hover { border-color: #3d5a99; color: #3d5a99; }
-  .fl-card.featured .fl-btn-edit {
-    border-color: rgba(255,255,255,0.2); color: white;
+  .fl-btn-edit {
+    flex: 1;
+    padding: 10px;
+    border-radius: 0.75rem;
+    background: #f1f4fb;
+    color: #234280;
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+    text-align: center;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .fl-btn-edit:hover {
+    background: #e2e8f4;
   }
   .fl-btn-view {
-    flex: 2; padding: 10px; border-radius: 10px;
-    background: #3d5a99; color: white; border: none;
-    font-size: 13px; font-weight: 700; cursor: pointer;
-    transition: all 0.15s; text-align: center;
-    text-decoration: none; display: flex;
-    align-items: center; justify-content: center;
+    flex: 2;
+    padding: 10px;
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, #234280, #2d5099);
+    color: white;
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    box-shadow: 0px 4px 12px rgba(35,66,128,0.2);
+    text-align: center;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  .fl-btn-view:hover { background: #2d4578; }
-  .fl-card.featured .fl-btn-view { background: white; color: #1a2744; }
+  .fl-btn-view:hover {
+    opacity: 0.92;
+  }
 
+  /* ----- Add farm card ----- */
   .fl-add-card {
-    background: #f8fafc; border: 2px dashed #e2e8f0;
-    border-radius: 18px; padding: 24px;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    min-height: 280px; cursor: pointer;
-    transition: all 0.2s; text-decoration: none;
+    background: #f7f9ff;            /* surface */
+    border: 2px dashed rgba(35,66,128,0.15);
+    border-radius: 1.5rem;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 280px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
   }
-  .fl-add-card:hover { border-color: #3d5a99; background: #e8eef8; }
+  .fl-add-card:hover {
+    border-color: rgba(35,66,128,0.3);
+    background: #f1f4fb;
+  }
   .fl-add-icon {
-    width: 48px; height: 48px; border-radius: 50%;
-    background: #e8eef8; display: flex;
-    align-items: center; justify-content: center;
-    font-size: 22px; margin-bottom: 12px; transition: all 0.2s;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #f1f4fb;
+    color: #234280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin-bottom: 12px;
+    transition: all 0.2s;
   }
-  .fl-add-card:hover .fl-add-icon { background: #3d5a99; color: white; }
-  .fl-add-text { font-size: 14px; font-weight: 700; color: #4a5568; }
-  .fl-add-sub { font-size: 12px; color: #8a96a8; margin-top: 4px; }
+  .fl-add-card:hover .fl-add-icon {
+    background: #234280;
+    color: white;
+  }
+  .fl-add-text {
+    font-size: 14px;
+    font-weight: 700;
+    color: #4a5568;
+  }
+  .fl-add-sub {
+    font-size: 12px;
+    color: #8a96a8;
+    margin-top: 4px;
+  }
 
-  .fl-toolbar {
-    display: flex; align-items: center; gap: 12px;
-    margin-bottom: 20px; flex-wrap: wrap;
-  }
-  .fl-search {
-    flex: 1; min-width: 220px; display: flex; align-items: center;
-    gap: 8px; background: white; border: 1px solid #e2e8f0;
-    border-radius: 10px; padding: 0 14px;
-  }
-  .fl-search:focus-within { border-color: #3d5a99; }
-  .fl-search input {
-    flex: 1; border: none; outline: none; background: transparent;
-    padding: 11px 0; font-size: 13px; color: #1a2744;
-  }
-  .fl-select {
-    -webkit-appearance: none; -moz-appearance: none; appearance: none;
-    border: 1px solid #e2e8f0; border-radius: 10px;
-    padding: 11px 34px 11px 14px; font-size: 13px; color: #1a2744;
-    background: white; cursor: pointer; font-weight: 600;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a96a8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 12px;
-  }
-  .fl-select:focus { outline: none; border-color: #3d5a99; }
-
+  /* ----- Responsive ----- */
   @media(max-width:768px){
     .fl-grid { grid-template-columns: 1fr; }
     .fl-stats { grid-template-columns: 1fr 1fr; }

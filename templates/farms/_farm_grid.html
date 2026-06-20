@@ -2,7 +2,7 @@
 <div class="fl-grid">
   {% for item in farm_list %}
   {% with farm=item.farm %}
-  <div class="fl-card {% if forloop.last and forloop.revcounter == 1 %}featured{% endif %}">
+  <div class="fl-card">   <!-- removed featured logic -->
 
     <span class="fl-status {{ item.status }}">{{ item.status_label }}</span>
 
@@ -55,17 +55,26 @@
     </div>
 
     <div class="fl-actions">
-      <a href="{% url 'farms:detail' farm.pk %}"
-         class="fl-btn-edit">Edit</a>
-      <a href="{% url 'farms:detail' farm.pk %}"
-         class="fl-btn-view">View Detail →</a>
+      <!-- Edit button – only for owner/manager, uses modal -->
+      {% if request.user.role in 'owner,manager' %}
+        <button
+          hx-get="{% url 'farms:edit' farm.pk %}"
+          hx-target="#modal-body"
+          hx-swap="innerHTML"
+          hx-on::after-request="window.dispatchEvent(new CustomEvent('open-modal'))"
+          class="fl-btn-edit">
+          Edit
+        </button>
+      {% endif %}
+      <!-- View Detail – always visible -->
+      <a href="{% url 'farms:detail' farm.pk %}" class="fl-btn-view">View Detail →</a>
     </div>
 
   </div>
   {% endwith %}
   {% endfor %}
 
-  <!-- Add farm card -->
+  <!-- Add farm card (only for owner/manager) -->
   {% if request.user.role in 'owner,manager' %}
   <div class="fl-add-card"
        hx-get="{% url 'farms:create' %}"
