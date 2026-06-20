@@ -1,5 +1,8 @@
+from unittest.mock import patch
+
 import pytest
 from django.http import Http404, HttpResponse
+from structlog.testing import capture_logs
 
 pytestmark = pytest.mark.django_db
 
@@ -196,3 +199,109 @@ class TestTenantMiddleware:
 
         response = middleware(request)
         assert response.status_code == 200
+
+
+# ── TenantService lifecycle tests ─────────────────────────────────────────────
+
+class TestTenantService:
+    """suspend_org / reactivate_org orchestration — status, owner email, logs."""
+
+    def test_suspend_org_sets_status(self, db, tenant_user):
+        from apps.infrastructure.tenants.services import TenantService
+        org = tenant_user.org
+        with patch("apps.infrastructure.tenants.services.EmailService"):
+            TenantService.suspend_org(org, reason="Non-payment")
+        org.refresh_from_db()
+        assert org.is_active is False
+        assert org.suspension_reason == "Non-payment"
+
+    def test_suspend_org_emails_owner(self, db, tenant_user):
+        from apps.infrastructure.tenants.services import TenantService
+        org = tenant_user.org
+        with patch("apps.infrastructure.tenants.services.EmailService") as mock_email:
+            TenantService.suspend_org(org, reason="Non-payment")
+        mock_email.send_suspension.assert_called_once()
+        kwargs = mock_email.send_suspension.call_args.kwargs
+        assert kwargs["recipient_email"] == tenant_user.email
+        assert kwargs["reason"] == "Non-payment"
+
+    def test_suspend_org_logs_event(self, db, tenant_user):
+        from apps.infrastructure.tenants.services import TenantService
+        org = tenant_user.org
+        with patch("apps.infrastructure.tenants.services.EmailService"):
+            with capture_logs() as logs:
+                TenantService.suspend_org(org, suspended_by=tenant_user)
+        assert any(
+            e["event"] == "tenant.suspended"
+            and e["org_id"] == str(org.pk)
+            and e["suspended_by"] == str(tenant_user.pk)
+            for e in logs
+        )
+
+    def test_reactivate_org_sets_status(self, db, tenant_user):
+        from apps.infrastructure.tenants.services import TenantService
+        org = tenant_user.org
+        org.is_active = False
+        org.suspension_reason = "old reason"
+        org.save(update_fields=["is_active", "suspension_reason", "updated_at"])
+        with patch("apps.infrastructure.tenants.services.EmailService"):
+            TenantService.reactivate_org(org)
+        org.refresh_from_db()
+        assert org.is_active is True
+        assert org.suspension_reason == ""
+
+    def test_reactivate_org_emails_owner(self, db, tenant_user):
+        from apps.infrastructure.tenants.services import TenantService
+        org = tenant_user.org
+        with patch("apps.infrastructure.tenants.services.EmailService") as mock_email:
+            TenantService.reactivate_org(org)
+        mock_email.send_reactivation.assert_called_once()
+        kwargs = mock_email.send_reactivation.call_args.kwargs
+        assert kwargs["recipient_email"] == tenant_user.email
+        assert kwargs["login_url"].endswith("/login/")
+
+    def test_reactivate_org_logs_event(self, db, tenant_user):
+        from apps.infrastructure.tenants.services import TenantService
+        org = tenant_user.org
+        with patch("apps.infrastructure.tenants.services.EmailService"):
+            with capture_logs() as logs:
+                TenantService.reactivate_org(org, reactivated_by=tenant_user)
+        assert any(
+            e["event"] == "tenant.reactivated"
+            and e["org_id"] == str(org.pk)
+            and e["reactivated_by"] == str(tenant_user.pk)
+            for e in logs
+        )
+
+    # ── owner resolution fallback chain ──────────────────────────────────────
+
+    def test_owner_resolution_prefers_owner_user(self, db, tenant_user):
+        from apps.infrastructure.tenants.services import TenantService
+        org = tenant_user.org
+        with patch("apps.infrastructure.tenants.services.EmailService") as mock_email:
+            TenantService.suspend_org(org, reason="x")
+        kwargs = mock_email.send_suspension.call_args.kwargs
+        assert kwargs["recipient_email"] == tenant_user.email
+        assert kwargs["owner_name"] == tenant_user.get_full_name()
+
+    def test_owner_resolution_falls_back_to_owner_email(self, db, test_org):
+        """Org with no member users falls back to the org.owner_email field."""
+        from apps.infrastructure.tenants.services import TenantService
+        test_org.owner_email = "fallback@farm.com"
+        test_org.save(update_fields=["owner_email", "updated_at"])
+        with patch("apps.infrastructure.tenants.services.EmailService") as mock_email:
+            TenantService.suspend_org(test_org, reason="x")
+        kwargs = mock_email.send_suspension.call_args.kwargs
+        assert kwargs["recipient_email"] == "fallback@farm.com"
+        assert kwargs["owner_name"] == "fallback@farm.com"
+
+    def test_no_recipient_skips_email(self, db, test_org):
+        """No owner user and no owner_email → no email attempted, no crash."""
+        from apps.infrastructure.tenants.services import TenantService
+        test_org.owner_email = ""
+        test_org.save(update_fields=["owner_email", "updated_at"])
+        with patch("apps.infrastructure.tenants.services.EmailService") as mock_email:
+            TenantService.suspend_org(test_org, reason="x")
+        mock_email.send_suspension.assert_not_called()
+        test_org.refresh_from_db()
+        assert test_org.is_active is False

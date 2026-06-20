@@ -3,7 +3,6 @@ import time
 from datetime import date, datetime, timedelta
 
 import structlog
-from django.conf import settings
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Q, Sum
@@ -14,9 +13,9 @@ from django.utils import timezone
 from django.views import View
 
 from apps.infrastructure.billing.models import PaymentRecord
-from apps.infrastructure.core.email_service import EmailService
 from apps.infrastructure.core.mixins import SuperAdminMixin
 from apps.infrastructure.tenants.models import Organization
+from apps.infrastructure.tenants.services import TenantService
 
 logger = structlog.get_logger(__name__)
 
@@ -42,46 +41,9 @@ def invalidate_org_active_cache(org_id):
 
 
 def _org_owner(org):
-    """Return the org's owner user (role='owner'), falling back to any member.
-
-    Uses the reverse FK (related_name='users'), whose default manager is
-    unscoped — safe here because superadmin runs without a tenant context.
-    """
-    owner = org.users.filter(role='owner').first()
-    if not owner:
-        owner = org.users.first()
-    return owner
-
-
-def send_suspension_email(org):
-    """Notify the org owner that their account has been suspended."""
-    owner = _org_owner(org)
-    recipient = (owner.email if owner and owner.email else None) or org.owner_email
-    if not recipient:
-        return
-    name = (owner.get_full_name() if owner else '') or recipient
-    EmailService.send_suspension(
-        recipient_email=recipient,
-        owner_name=name,
-        org_name=org.name,
-        reason=org.suspension_reason,
-    )
-
-
-def send_reactivation_email(org):
-    """Notify the org owner that their account has been reactivated."""
-    owner = _org_owner(org)
-    recipient = (owner.email if owner and owner.email else None) or org.owner_email
-    if not recipient:
-        return
-    name = (owner.get_full_name() if owner else '') or recipient
-    login_url = settings.SITE_URL.rstrip('/') + '/login/'
-    EmailService.send_reactivation(
-        recipient_email=recipient,
-        owner_name=name,
-        org_name=org.name,
-        login_url=login_url,
-    )
+    """Resolve the org owner for template rendering — see
+    TenantService.get_org_owner (the single home for owner resolution)."""
+    return TenantService.get_org_owner(org)
 
 
 class SuperAdminDashboardView(SuperAdminMixin, View):
@@ -239,19 +201,11 @@ class SuperAdminTenantActionView(SuperAdminMixin, View):
             # Reason may arrive via the HTMX hx-prompt header or a POST field.
             reason = (request.headers.get('HX-Prompt')
                       or request.POST.get('suspension_reason', '')).strip()
-            org.is_active = False
-            org.suspension_reason = reason
-            org.save()
-            invalidate_org_active_cache(org.id)
-            send_suspension_email(org)
+            TenantService.suspend_org(org, reason=reason, suspended_by=request.user)
             logger.info("superadmin.org_suspended", org_id=str(org.id), reason=reason)
             msg = f'{org.name} suspended.'
         elif action == 'activate':
-            org.is_active = True
-            org.suspension_reason = ''
-            org.save()
-            invalidate_org_active_cache(org.id)
-            send_reactivation_email(org)
+            TenantService.reactivate_org(org, reactivated_by=request.user)
             logger.info("superadmin.org_activated", org_id=str(org.id))
             msg = f'{org.name} activated.'
         elif action == 'change_plan':
@@ -305,11 +259,7 @@ class SuspendOrgView(SuperAdminMixin, View):
                 'error': 'Please provide a reason for suspension.',
             })
 
-        org.is_active = False
-        org.suspension_reason = reason
-        org.save(update_fields=['is_active', 'suspension_reason', 'updated_at'])
-        invalidate_org_active_cache(org.id)
-        send_suspension_email(org)
+        TenantService.suspend_org(org, reason=reason, suspended_by=request.user)
         logger.info("superadmin.org_suspended", org_id=str(org.id), reason=reason)
 
         return render(request, 'superadmin/_suspend_success.html', {
@@ -582,7 +532,9 @@ class BillingManageOrgView(SuperAdminMixin, View):
                 org.save()
                 invalidate_org_active_cache(org.id)
                 if not org.is_active:
-                    send_suspension_email(org)
+                    # Same owner-notification path as a manual suspend; only
+                    # fired when the new status takes the org offline.
+                    TenantService.suspend_org(org, suspended_by=request.user)
                 msg = f'{org.name} status → {new_status}'
             else:
                 msg = 'Invalid status'

@@ -98,6 +98,49 @@ class TestSuperAdminTenants:
         assert org.plan_tier == 'monthly'
 
 
+class TestSuperAdminSuspensionOrchestration:
+    """Regression: superadmin suspend/activate still route through
+    TenantService and notify the org owner end-to-end."""
+
+    def test_suspend_action_sends_owner_email(
+            self, client, super_admin_user, tenant_user):
+        from unittest.mock import patch
+        org = tenant_user.org
+        client.force_login(super_admin_user)
+        with patch("apps.infrastructure.tenants.services.EmailService") as mock_email:
+            response = client.post(
+                f'/superadmin/tenants/{org.pk}/action/',
+                {'action': 'suspend'},
+                HTTP_HX_PROMPT='Non-payment',
+            )
+        assert response.status_code == 204
+        org.refresh_from_db()
+        assert org.is_active is False
+        assert org.suspension_reason == 'Non-payment'
+        mock_email.send_suspension.assert_called_once()
+        assert (mock_email.send_suspension.call_args.kwargs['recipient_email']
+                == tenant_user.email)
+
+    def test_activate_action_sends_owner_email(
+            self, client, super_admin_user, tenant_user):
+        from unittest.mock import patch
+        org = tenant_user.org
+        org.is_active = False
+        org.suspension_reason = 'Non-payment'
+        org.save()
+        client.force_login(super_admin_user)
+        with patch("apps.infrastructure.tenants.services.EmailService") as mock_email:
+            response = client.post(
+                f'/superadmin/tenants/{org.pk}/action/',
+                {'action': 'activate'},
+            )
+        assert response.status_code == 204
+        org.refresh_from_db()
+        assert org.is_active is True
+        assert org.suspension_reason == ''
+        mock_email.send_reactivation.assert_called_once()
+
+
 class TestSuperAdminAnalytics:
     def test_analytics_returns_200(self, client, super_admin_user):
         client.force_login(super_admin_user)
