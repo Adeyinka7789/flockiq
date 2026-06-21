@@ -240,3 +240,48 @@ When you receive one of these notifications, pick one:
    passed and there is no business/legal reason to keep the data.
 
 Document the decision per org so the retention policy is auditable.
+
+## Post-Launch Checklist
+
+### Week 1-2: CSP Enforcement
+CSP ships in REPORT_ONLY mode (header `Content-Security-Policy-Report-Only`,
+configured in `config/settings/base.py`). Nothing is blocked until you enforce.
+
+1. Check Sentry for CSP violation reports:
+   Sentry → [Project] → Security → CSP Reports
+2. Review each violation — understand what triggered it (third-party script?
+   inline style? CDN?)
+3. Update the `CONTENT_SECURITY_POLICY` directives in `config/settings/base.py`
+   if any legitimate source is missing.
+4. Once violation reports are clean (no unexpected violations for 48+ hours):
+   Set the env var (read in `config/settings/base.py`):
+       CSP_REPORT_ONLY=False
+   Deploy. base.py routes the same directive dict to the enforcing
+   `Content-Security-Policy` header. CSP is now enforced.
+   (django-csp 4.x has two distinct settings — `CONTENT_SECURITY_POLICY` vs
+   `CONTENT_SECURITY_POLICY_REPORT_ONLY` — not a boolean flag; the
+   `CSP_REPORT_ONLY` env var picks which one base.py populates.)
+5. Monitor Sentry for any new CSP blocks after enforcement — a blocked resource
+   will appear as a Sentry issue, not just a CSP report.
+
+### When to build BreedBenchmark DB model
+Breed benchmarks are currently hardcoded dicts in
+`apps/health/analytics/breed_benchmarks.py` (see CLAUDE.md: Breed Benchmarks).
+Build a DB model when ANY of these are true:
+- A farmer requests breed-specific tuning that the hardcoded benchmarks can't
+  serve.
+- FlockIQ expands to a country with different dominant breeds (Sasso in
+  Côte d'Ivoire, Kuroiler in East Africa, etc.).
+- An insurance or financing partner needs breed-specific actuarial data via API.
+Until then: the hardcoded dict in `breed_benchmarks.py` is accurate for the
+Nigerian market and requires zero DB overhead.
+
+### Environment variables to set on first deploy
+    SENTRY_CSP_REPORT_URI=https://o<id>.ingest.sentry.io/api/<id>/security/?sentry_key=<key>
+    # Optional. Get from: Sentry → Settings → Security Headers → CSP Reports.
+    # If unset, CSP violations are NOT reported (the header is still sent on
+    # every response — just with no report-uri directive, so no reporting).
+
+    CSP_REPORT_ONLY=True
+    # Default True (report-only — nothing blocked). Set False to ENFORCE CSP,
+    # but only after Sentry CSP reports are clean (see "Week 1-2" above).

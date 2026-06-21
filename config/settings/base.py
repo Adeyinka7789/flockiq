@@ -122,6 +122,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + FLOCKIQ_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "csp.middleware.CSPMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -443,6 +444,113 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 0.25  # 15 minutes
 AXES_LOCKOUT_CALLABLE = None
+
+# ================================================================
+# Content Security Policy (CSP)
+# ================================================================
+# Shipped in REPORT_ONLY mode — the header
+# Content-Security-Policy-Report-Only is sent on every response but
+# NOTHING IS BLOCKED. Violations are reported to Sentry via
+# SENTRY_CSP_REPORT_URI.
+#
+# django-csp 4.x holds the policy as a {"DIRECTIVES": {...}} dict under
+# EITHER CONTENT_SECURITY_POLICY (enforced) or
+# CONTENT_SECURITY_POLICY_REPORT_ONLY (report-only). Those are two
+# different settings, NOT a boolean toggle. We keep one directive dict
+# and route it to the right setting via the CSP_REPORT_ONLY flag below,
+# so flipping to enforced is a single env var with no duplication and no
+# double headers.
+#
+# POST-LAUNCH: After reviewing violation reports in Sentry for 1-2
+# weeks, switch to enforced by setting the env var:
+#   CSP_REPORT_ONLY=False
+# (read here in base.py, so it applies to every settings module).
+#
+# See RUNBOOK.md -> Post-Launch Checklist for step-by-step
+# enforcement instructions.
+#
+# WARNING: Do not enforce without reviewing reports first. Alpine.js
+# (unsafe-eval) and HTMX (unsafe-inline) are already accounted for,
+# but any untracked CDN or inline script will break.
+# ================================================================
+CSP_REPORT_ONLY = config("CSP_REPORT_ONLY", default=True, cast=bool)
+
+# python-decouple is the project's settings reader (not django-environ),
+# so the report endpoint is read with config(), matching every other
+# setting in this file.
+SENTRY_CSP_REPORT_URI = config("SENTRY_CSP_REPORT_URI", default="")
+
+_CSP_DIRECTIVES = {
+    # Self for all base resources
+    "default-src": ("'self'",),
+
+    # Scripts — self + Alpine.js needs unsafe-eval.
+    # HTMX is served from static so 'self' covers it.
+    # Chart.js loaded from cdnjs.
+    "script-src": (
+        "'self'",
+        "'unsafe-inline'",   # HTMX hx-on attrs, inline handlers
+        "'unsafe-eval'",     # Alpine.js x-data expression evaluation
+        "https://cdnjs.cloudflare.com",
+    ),
+
+    # Styles — self + inline styles used throughout
+    "style-src": (
+        "'self'",
+        "'unsafe-inline'",   # inline style="" attrs used extensively
+    ),
+
+    # Images — self + data URIs (chart SVGs, base64 favicons) + https
+    "img-src": (
+        "'self'",
+        "data:",
+        "https:",            # external images (e.g. weather icons)
+    ),
+
+    # Fonts — self only (Manrope/Inter served from static)
+    "font-src": ("'self'",),
+
+    # Connections — self + Paystack + Sentry
+    "connect-src": (
+        "'self'",
+        "https://api.paystack.co",
+        "https://checkout.paystack.com",
+        "https://o*.ingest.sentry.io",
+        "https://*.sentry.io",
+    ),
+
+    # Frames — Paystack checkout uses an iframe
+    "frame-src": (
+        "'self'",
+        "https://checkout.paystack.com",
+    ),
+
+    # Forms — self only (all forms POST to our own endpoints)
+    "form-action": ("'self'",),
+
+    # Base URI — prevent base tag injection
+    "base-uri": ("'self'",),
+
+    # Object — block Flash/plugins entirely
+    "object-src": ("'none'",),
+}
+
+# Only emit report-uri when an endpoint is configured. An empty value
+# would render a malformed `report-uri ` directive, so the key is added
+# conditionally rather than with an empty-string default.
+if SENTRY_CSP_REPORT_URI:
+    _CSP_DIRECTIVES["report-uri"] = (SENTRY_CSP_REPORT_URI,)
+
+_CSP_POLICY = {"DIRECTIVES": _CSP_DIRECTIVES}
+
+# Route the single policy dict to exactly one django-csp setting. django-csp
+# emits the matching header: Content-Security-Policy-Report-Only in report-only
+# mode, otherwise the enforcing Content-Security-Policy. Only one is ever set,
+# so the browser never receives both headers.
+if CSP_REPORT_ONLY:
+    CONTENT_SECURITY_POLICY_REPORT_ONLY = _CSP_POLICY
+else:
+    CONTENT_SECURITY_POLICY = _CSP_POLICY
 
 # --- Waffle feature flags ---
 WAFFLE_FLAG_DEFAULT = False  # All AI features OFF until explicitly enabled

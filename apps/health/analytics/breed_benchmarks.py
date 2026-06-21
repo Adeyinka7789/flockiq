@@ -1,8 +1,30 @@
 """
+Breed performance benchmarks for FlockIQ analytics.
+
 Nigerian/West African poultry breed benchmarks.
-Sources: Cobb-Vantress, Ross An, Hy-Line International,
+Sources: Cobb-Vantress, Ross (Aviagen), Hy-Line International, ISA,
 NAERLS Nigeria poultry production guidelines.
 All values are typical performance targets.
+
+ARCHITECTURE NOTE:
+These benchmarks are intentionally hardcoded for now. They are based on
+published breed standards (Cobb 500, Ross 308, Aviagen, Hy-Line, ISA) and
+empirical Nigerian farm data.
+
+DO NOT move to DB until there is real user demand for breed-specific tuning.
+The access pattern already funnels through get_benchmark() and BREED_ALIASES —
+a DB migration is clean when needed (see CLAUDE.md: Breed Benchmarks).
+
+ValuationSettings (apps/infrastructure/billing/models.py) is PRICING ONLY — it
+is not related to these benchmarks.
+
+A future BreedBenchmark model should:
+- Follow the BillingPlan/ValuationSettings pattern (global, RLS-disabled,
+  seeded via data migration)
+- Include a nullable country/region field from day one
+- Expose a superadmin CRUD view for non-technical updates
+- Keep the BREED_BENCHMARKS dict here as an emergency fallback if the DB is
+  unavailable
 """
 
 BREED_BENCHMARKS = {

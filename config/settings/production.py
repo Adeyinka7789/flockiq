@@ -96,6 +96,11 @@ MEDIA_URL = "/media/"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # ── Security ──────────────────────────────────────────────────────────────────
+# CSP: configured in base.py, report-only mode.
+# To enforce post-launch, set the env var CSP_REPORT_ONLY=False (read in
+# base.py) after reviewing Sentry CSP reports — base.py then routes the
+# same directive dict to the enforcing Content-Security-Policy header.
+# See RUNBOOK.md "Post-Launch Checklist".
 SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True

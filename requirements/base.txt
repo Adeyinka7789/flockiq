@@ -26,6 +26,9 @@ django-import-export==4.*
 
 # Security
 django-axes==6.5.*
+# Content Security Policy — shipped in report-only mode (see config/settings/base.py).
+# >=4.0 is required for the dict-based CONTENT_SECURITY_POLICY config API used there.
+django-csp>=3.8
 cryptography>=48.0.1
 # Required by BCryptSHA256PasswordHasher — production.py's PRIMARY password
 # hasher. Django raises on the first password hash/check if this is missing;

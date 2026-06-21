@@ -238,13 +238,17 @@ class TestBroilerBreedAwareWeight:
         from apps.infrastructure.core.valuation import FlockValuationService
         org = _make_org("val-breed-noiler")
         farm = _make_farm(org)
-        house = _make_house(org, farm)
+        # One active batch per house — the unique_active_batch_per_house
+        # constraint forbids two active batches sharing a house, so the two
+        # breeds being compared each get their own house.
+        cobb_house = _make_house(org, farm)
+        noiler_house = _make_house(org, farm)
         cobb = _make_batch(
-            org, farm, house, bird_type="broiler",
+            org, farm, cobb_house, bird_type="broiler",
             breed_name="Cobb 500", days_old=42, current=480,
         )
         noiler = _make_batch(
-            org, farm, house, bird_type="broiler",
+            org, farm, noiler_house, bird_type="broiler",
             breed_name="Noiler", days_old=42, current=480,
         )
 

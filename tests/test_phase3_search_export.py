@@ -99,8 +99,11 @@ class TestBatchListSearch:
     def test_search_by_name_matches_only_relevant_batch(
         self, client, tenant_user, test_org, test_farm, test_house
     ):
+        # One active batch per house — the unique_active_batch_per_house
+        # constraint forbids two active batches sharing a house.
+        house_b = _make_house(test_org, test_farm, name="House B")
         _make_batch(test_org, test_farm, test_house, "Broiler Alpha")
-        _make_batch(test_org, test_farm, test_house, "Layer Beta")
+        _make_batch(test_org, test_farm, house_b, "Layer Beta")
         client.force_login(tenant_user)
 
         resp = client.get(reverse("flocks:list"), {"q": "Alpha", "status": "all"})
