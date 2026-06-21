@@ -113,6 +113,17 @@ class Batch(SoftDeleteMixin, TenantAwareModel):
             models.Index(fields=["org", "status"]),
             models.Index(fields=["org", "farm", "status"]),
         ]
+        constraints = [
+            # A house can hold at most one active (non-deleted) batch per org.
+            # DB-level guard against the create_batch TOCTOU race: two
+            # concurrent placements can both pass the .exists() check in the
+            # service, but only one can win this partial unique index.
+            models.UniqueConstraint(
+                fields=["org", "house"],
+                condition=models.Q(status="active") & models.Q(is_deleted=False),
+                name="unique_active_batch_per_house",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.batch_name} ({self.get_bird_type_display()})"

@@ -358,6 +358,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.hard_delete_expired_records",
         "schedule": crontab(hour=3, minute=30),
     },
+    # Daily 04:00: flag orgs lapsed/cancelled 90+ days for NDPR retention review
+    # (notifies superadmins; never deletes automatically).
+    "cleanup-lapsed-accounts": {
+        "task": "billing.cleanup_lapsed_accounts",
+        "schedule": crontab(hour=4, minute=0),
+    },
 }
 
 # --- JWT ---
@@ -403,6 +409,7 @@ REST_FRAMEWORK = {
         "user": "1000/hour",    # authenticated tenant API calls
         "login": "10/hour",     # API login attempts (scope=login)
         "signup": "5/hour",     # API signup attempts (scope=signup)
+        "password_reset": "5/hour",  # forgot-password requests per IP (scope=password_reset)
     },
 }
 

@@ -1,0 +1,48 @@
+{# NDPR cookie consent banner — localStorage-based, no external library.
+   Appears at the bottom on first visit; hidden permanently after the user
+   accepts. Included just before </body> in base.html and landing_base.html. #}
+<div id="cookie-banner"
+     style="position: fixed; bottom: 0; left: 0;
+            right: 0; z-index: 9999;
+            background: #1a2744;
+            padding: 1rem 1.5rem;
+            display: flex; align-items: center;
+            justify-content: space-between;
+            gap: 1rem; flex-wrap: wrap;
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.15);">
+  <p style="color: rgba(255,255,255,0.85);
+            font-size: 0.8125rem; margin: 0;
+            font-family: Inter, sans-serif;
+            line-height: 1.5; flex: 1;">
+    🍪 FlockIQ uses essential cookies to keep you
+    logged in and remember your preferences. By using
+    this platform you agree to our
+    <a href="/privacy/" style="color: #8bc87a;
+       text-decoration: underline;">Privacy Policy</a>
+    and
+    <a href="/cookie-policy/" style="color: #8bc87a;
+       text-decoration: underline;">Cookie Policy</a>.
+  </p>
+  <button onclick="acceptCookies()"
+          style="background: #336a28; color: white;
+                 border: none; border-radius: 9999px;
+                 padding: 0.625rem 1.5rem;
+                 font-size: 0.8125rem; font-weight: 700;
+                 cursor: pointer; white-space: nowrap;
+                 font-family: Inter, sans-serif;">
+    Accept &amp; Continue
+  </button>
+</div>
+
+<script>
+  function acceptCookies() {
+    localStorage.setItem('cookie_consent', '1');
+    document.getElementById('cookie-banner')
+            .style.display = 'none';
+  }
+  // Hide banner immediately if already accepted
+  if (localStorage.getItem('cookie_consent') === '1') {
+    var banner = document.getElementById('cookie-banner');
+    if (banner) banner.style.display = 'none';
+  }
+</script>

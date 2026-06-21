@@ -2,7 +2,7 @@ import datetime
 from decimal import Decimal
 
 import structlog
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.utils import timezone
 
@@ -65,21 +65,31 @@ class BatchService(BaseService):
                 f"House already has active batch: {existing.batch_name}."
             )
 
-        with transaction.atomic():
-            batch = Batch.objects.create(
-                org=self.org,
-                farm=farm,
-                house=house,
-                batch_name=batch_name,
-                breed_name=breed_name,
-                bird_type=bird_type,
-                placement_date=placement_date,
-                initial_count=initial_count,
-                current_count=initial_count,
-                notes=notes,
-                hatchery=hatchery,
-                doc_price_per_chick=doc_price_per_chick,
-                doc_supplier_name=doc_supplier_name,
+        try:
+            with transaction.atomic():
+                batch = Batch.objects.create(
+                    org=self.org,
+                    farm=farm,
+                    house=house,
+                    batch_name=batch_name,
+                    breed_name=breed_name,
+                    bird_type=bird_type,
+                    placement_date=placement_date,
+                    initial_count=initial_count,
+                    current_count=initial_count,
+                    notes=notes,
+                    hatchery=hatchery,
+                    doc_price_per_chick=doc_price_per_chick,
+                    doc_supplier_name=doc_supplier_name,
+                )
+        except IntegrityError:
+            # The .exists() check above is advisory only — two concurrent
+            # placements can both pass it. The unique_active_batch_per_house
+            # partial index is the real guard; convert the race loser into the
+            # same user-facing error the occupancy check raises.
+            raise HouseOccupiedError(
+                "This house already has an active batch. Close the current "
+                "batch before starting a new one."
             )
 
         self.logger.info(

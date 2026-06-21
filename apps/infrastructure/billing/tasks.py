@@ -216,6 +216,85 @@ def _send_trial_expiry_reminder(org, days_left: int) -> None:
     )
 
 
+@shared_task(name="billing.cleanup_lapsed_accounts")
+def cleanup_lapsed_accounts():
+    """
+    Celery Beat — 04:00 daily.
+
+    Flags orgs that have been in 'lapsed' or 'cancelled' status for more than
+    90 days with no payment activity since their plan expired, so the team can
+    decide whether to reactivate, archive or delete them.
+
+    Does NOT delete data automatically — creates a superadmin AdminNotification
+    for each flagged org so a human stays in the loop. This satisfies the NDPR
+    storage-limitation principle without risking accidental data loss.
+
+    NOTE on status choice: Organization has no 'expired' status (the audit spec
+    referenced one that does not exist). The real "dead paid account" states are
+    'lapsed' (set by billing.mark_lapsed_orgs) and 'cancelled', so both are
+    scanned here. Idempotent via get_or_create on (recipient, title).
+    """
+    from datetime import timedelta
+
+    from apps.infrastructure.accounts.models import CustomUser
+    from apps.infrastructure.billing.models import PaymentRecord
+    from apps.infrastructure.core.rls import no_tenant_context, set_tenant_context
+    from apps.infrastructure.notifications.models import AdminNotification
+    from apps.infrastructure.tenants.models import Organization
+
+    cutoff = timezone.now() - timedelta(days=90)
+
+    # Organization and CustomUser have RLS disabled — safe to read cross-tenant
+    # here. PaymentRecord is RLS-protected and must NOT be read in this block:
+    # under the all-zeros GUC the tenant_isolation policy matches zero rows, so a
+    # cross-tenant PaymentRecord query would silently return nothing and flag
+    # every org. It is read per-org inside set_tenant_context(org) below.
+    with no_tenant_context():
+        lapsed_orgs = list(
+            Organization.objects.filter(
+                subscription_status__in=["lapsed", "cancelled"],
+                plan_expires_at__lt=cutoff,
+                is_active=False,
+            )
+        )
+        superadmins = list(CustomUser.objects.filter(is_superuser=True))
+
+    flagged_count = 0
+    for org in lapsed_orgs:
+        # Any payment since the plan expired means the account is not dormant.
+        # Read under the org's own RLS context so the policy returns its rows.
+        with set_tenant_context(org):
+            recent_payment = PaymentRecord.objects.filter(
+                org=org,
+                created_at__gte=org.plan_expires_at,
+            ).exists()
+        if recent_payment:
+            continue
+
+        # AdminNotification is not tenant-scoped (superadmin inbox). get_or_create
+        # on (recipient, title) makes re-runs idempotent — no duplicate flags.
+        for su in superadmins:
+            AdminNotification.objects.get_or_create(
+                recipient=su,
+                title=f"[Retention] {org.name} lapsed 90+ days",
+                defaults={
+                    "body": (
+                        f"{org.name} ({org.owner_email}) has been lapsed "
+                        f"since {org.plan_expires_at:%Y-%m-%d}. Review for "
+                        f"data retention/deletion per NDPR policy."
+                    ),
+                    "action_url": f"/superadmin/tenants/{org.pk}/",
+                },
+            )
+        flagged_count += 1
+
+    logger.info(
+        "billing.cleanup_lapsed_accounts.complete",
+        flagged=flagged_count,
+    )
+    return flagged_count
+
+
 @shared_task(name="billing.activate_cycle_subscription")
 def activate_cycle_subscription(org_id: str, batch_id: str):
     """Called from flocks signal when a new broiler batch is placed."""

@@ -1094,3 +1094,89 @@ class TestDashboardTrialBanner:
         resp = self._login(org).get("/")
         assert resp.status_code == 200
         assert 'id="trial-banner"' not in resp.content.decode()
+
+
+# ── Lapsed account retention (NDPR) — billing.cleanup_lapsed_accounts ───────────
+
+def _lapsed_org(subdomain, name, days_ago=100, status="lapsed"):
+    import datetime
+    from django.utils import timezone
+    return make_org(
+        subdomain=subdomain,
+        name=name,
+        plan_tier="monthly",
+        subscription_status=status,
+        is_active=False,
+        plan_expires_at=timezone.now() - datetime.timedelta(days=days_ago),
+    )
+
+
+def test_cleanup_flags_long_lapsed_org_without_payment():
+    from apps.infrastructure.accounts.models import CustomUser
+    from apps.infrastructure.billing.tasks import cleanup_lapsed_accounts
+    from apps.infrastructure.notifications.models import AdminNotification
+
+    su = CustomUser.objects.create_superuser(email="su_lap1@flock.com", password="x")
+    org = _lapsed_org("lapsedflag", name="Lapsed Flag Farm")
+
+    flagged = cleanup_lapsed_accounts()
+
+    assert flagged == 1
+    notes = AdminNotification.objects.filter(recipient=su, title__icontains=org.name)
+    assert notes.count() == 1
+    assert notes.first().title.startswith("[Retention]")
+    assert notes.first().action_url == f"/superadmin/tenants/{org.pk}/"
+
+
+def test_cleanup_skips_org_with_recent_payment():
+    from apps.infrastructure.accounts.models import CustomUser
+    from apps.infrastructure.billing.models import PaymentRecord
+    from apps.infrastructure.billing.tasks import cleanup_lapsed_accounts
+    from apps.infrastructure.core.rls import set_tenant_context
+    from apps.infrastructure.notifications.models import AdminNotification
+
+    CustomUser.objects.create_superuser(email="su_lap2@flock.com", password="x")
+    org = _lapsed_org("lapsedpaid", name="Lapsed Paid Farm")
+    # A payment dated after plan_expires_at means the account is not dormant.
+    with set_tenant_context(org):
+        PaymentRecord.objects.create(
+            org=org, reference="PAY-RECENT-1", amount_kobo=500000, status="success",
+        )
+
+    flagged = cleanup_lapsed_accounts()
+
+    assert flagged == 0
+    assert not AdminNotification.objects.filter(title__icontains=org.name).exists()
+
+
+def test_cleanup_skips_active_org():
+    from apps.infrastructure.accounts.models import CustomUser
+    from apps.infrastructure.billing.tasks import cleanup_lapsed_accounts
+    from apps.infrastructure.notifications.models import AdminNotification
+
+    CustomUser.objects.create_superuser(email="su_lap3@flock.com", password="x")
+    org = make_org(
+        subdomain="activekeep", name="Active Keep Farm",
+        plan_tier="monthly", subscription_status="active", is_active=True,
+    )
+
+    flagged = cleanup_lapsed_accounts()
+
+    assert flagged == 0
+    assert not AdminNotification.objects.filter(title__icontains=org.name).exists()
+
+
+def test_cleanup_is_idempotent():
+    from apps.infrastructure.accounts.models import CustomUser
+    from apps.infrastructure.billing.tasks import cleanup_lapsed_accounts
+    from apps.infrastructure.notifications.models import AdminNotification
+
+    su = CustomUser.objects.create_superuser(email="su_lap4@flock.com", password="x")
+    org = _lapsed_org("lapsedidem", name="Lapsed Idem Farm")
+
+    cleanup_lapsed_accounts()
+    cleanup_lapsed_accounts()
+
+    assert AdminNotification.objects.filter(
+        recipient=su, title__icontains=org.name
+    ).count() == 1

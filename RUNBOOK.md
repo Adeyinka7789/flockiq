@@ -74,6 +74,19 @@ If unset, production.py defaults broker to `{REDIS_URL}/0`, sessions to
 - Local (development.py):  `db`        — pure PostgreSQL, no Redis dependency.
 - Production (production.py): `cached_db` — Redis "sessions" cache + PostgreSQL fallback.
 
+### Redis failure mode
+If Redis goes down, **the web app stays up** but background processing pauses:
+- **Sessions** fall back to PostgreSQL (`cached_db`) — users are NOT logged out.
+- **Cache** degrades silently (`IGNORE_EXCEPTIONS=True` on the default cache).
+- **Celery** cannot enqueue or run tasks — the notification outbox, beat
+  schedule, egg forecasts, weather refresh, and billing crons all **pause**.
+- Queued SMS/email is not lost: `OutboxEvent` rows persist in PostgreSQL and
+  the outbox processor resumes delivery (with retries) once Redis is back.
+
+Recovery: restart Redis (`systemctl restart redis`) and confirm the Celery
+worker/beat reconnect (`celery.log` — the outbox task should fire within 30s).
+No data is lost by a Redis outage; only background work is delayed.
+
 ## PgBouncer Configuration
 
     [pgbouncer]
@@ -195,3 +208,35 @@ Run this during VPS setup before starting the application.
 - To force regeneration: `python manage.py regenerate_user_manual`
 - WeasyPrint requires libpango on Linux:
   `sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libpangocairo-1.0-0`
+
+## NDPR Compliance & Data Retention
+
+### Cookie consent
+- A self-contained banner (`templates/partials/cookie_consent.html`) is included
+  just before `</body>` in both `base.html` (app) and `landing_base.html`
+  (marketing). **No external cookie-consent service** is used.
+- It records the user's choice in `localStorage` under `cookie_consent=1` and
+  hides permanently after "Accept & Continue". Nothing is stored server-side
+  and no third-party script is loaded, so there is no GDPR/NDPR transfer concern.
+- To change the copy or links, edit the single partial — both pages update.
+
+### Lapsed account review (NDPR storage limitation)
+The `billing.cleanup_lapsed_accounts` beat task (daily 04:00 Lagos) scans for
+orgs that are `is_active=False`, in `lapsed`/`cancelled` status, with
+`plan_expires_at` more than **90 days** past and **no payment since expiry**.
+For each, it creates a superadmin `AdminNotification` titled
+`[Retention] <org> lapsed 90+ days` (idempotent — `get_or_create` on
+recipient+title, so re-runs never duplicate). **It never deletes data
+automatically** — a human decides.
+
+When you receive one of these notifications, pick one:
+1. **Reactivate** — send a win-back/reactivation email; if they return, the
+   notification can be dismissed.
+2. **Archive** — keep the data but mark the org for cold storage / exclusion
+   from active reporting.
+3. **Delete** — erase the org and all its data via the superadmin tenant page
+   (`/superadmin/tenants/<id>/`), the same path `delete_account` uses for an
+   owner-initiated deletion. Use this once the retention window has clearly
+   passed and there is no business/legal reason to keep the data.
+
+Document the decision per org so the retention policy is auditable.

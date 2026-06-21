@@ -1,5 +1,5 @@
 import pytest
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 from rest_framework.test import APIClient
 
 pytestmark = pytest.mark.django_db
@@ -424,3 +424,52 @@ class TestVerifyEmailRedirect:
         resp = Client().get(f"/accounts/verify/{user.email_verification_token}/")
         assert resp.status_code == 302
         assert resp["Location"] == "/"
+
+
+# ── Password reset throttle ────────────────────────────────────────────────────
+
+# Isolated in-memory cache so throttle counters don't touch Redis or bleed
+# between tests (mirrors tests/test_api_throttling.py).
+_PWRESET_LOCMEM_CACHE = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "pwreset-throttle-tests",
+    },
+}
+
+
+class TestPasswordResetThrottle:
+    """ForgotPasswordView is rate-limited to 5/hour per IP (scope
+    'password_reset'). A non-existent email is used so no email is sent and the
+    user-enumeration-safe success page renders — the throttle runs regardless."""
+
+    @override_settings(CACHES=_PWRESET_LOCMEM_CACHE)
+    def test_first_five_succeed_sixth_throttled(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        client = Client()
+        statuses = [
+            client.post(
+                "/forgot-password/", {"email": "nobody@example.com"}
+            ).status_code
+            for _ in range(6)
+        ]
+        cache.clear()
+
+        assert statuses[:5] == [200, 200, 200, 200, 200]
+        assert statuses[5] == 429
+
+    @override_settings(CACHES=_PWRESET_LOCMEM_CACHE)
+    def test_throttled_response_carries_error_message(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        client = Client()
+        for _ in range(5):
+            client.post("/forgot-password/", {"email": "nobody@example.com"})
+        resp = client.post("/forgot-password/", {"email": "nobody@example.com"})
+        cache.clear()
+
+        assert resp.status_code == 429
+        assert b"Too many reset attempts" in resp.content

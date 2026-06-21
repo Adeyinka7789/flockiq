@@ -30,7 +30,7 @@ from apps.infrastructure.core.email_service import EmailService
 from .constants import COMMON_TIMEZONES, COUNTRY_CHOICES, timezone_for_country
 from .models import CustomUser
 from .permissions import IsManagerOrAbove
-from .throttles import LoginRateThrottle, SignupRateThrottle
+from .throttles import LoginRateThrottle, PasswordResetRateThrottle, SignupRateThrottle
 from .serializers import (
     ChangePasswordSerializer,
     CustomTokenObtainPairSerializer,
@@ -416,6 +416,16 @@ class ForgotPasswordView(View):
         return render(request, "accounts/forgot_password.html")
 
     def post(self, request):
+        # Rate limit reset requests per IP (scope "password_reset"). Plain
+        # Django view, so the throttle is invoked manually — mirrors the
+        # SignupView pattern (DRF throttle_classes only run on APIView).
+        throttle = PasswordResetRateThrottle()
+        if not throttle.allow_request(request, self):
+            logger.warning("password_reset.throttled", ip=request.META.get("REMOTE_ADDR", ""))
+            return render(request, "accounts/forgot_password.html", {
+                "error": "Too many reset attempts. Please try again in an hour.",
+            }, status=429)
+
         email = request.POST.get("email", "").strip()
         try:
             user = CustomUser.objects.get(email=email)

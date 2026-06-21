@@ -55,7 +55,7 @@ REMOVED_TASK_ROW_NAMES = [
 
 class Command(BaseCommand):
     help = (
-        'Seeds the 10 Celery Beat scheduled tasks into the database '
+        'Seeds the 11 Celery Beat scheduled tasks into the database '
         '(creates, repairs stale task names, prunes removed rows)'
     )
 
@@ -93,6 +93,10 @@ class Command(BaseCommand):
         )
         at630am, _ = CrontabSchedule.objects.get_or_create(
             minute='30', hour='6', day_of_week='*',
+            day_of_month='*', month_of_year='*'
+        )
+        at4am, _ = CrontabSchedule.objects.get_or_create(
+            minute='0', hour='4', day_of_week='*',
             day_of_month='*', month_of_year='*'
         )
 
@@ -158,6 +162,12 @@ class Command(BaseCommand):
                 'name': 'Run proactive alerts all orgs',
                 'task': 'analytics.run_proactive_alerts_all_orgs',
                 'schedule': every6h,
+                'schedule_type': 'crontab',
+            },
+            {
+                'name': 'Cleanup lapsed accounts (daily 04:00)',
+                'task': 'billing.cleanup_lapsed_accounts',
+                'schedule': at4am,
                 'schedule_type': 'crontab',
             },
         ]

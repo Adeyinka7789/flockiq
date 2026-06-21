@@ -140,6 +140,134 @@ class TestBatchCreation:
                 )
 
 
+# ── 1b. Active-batch-per-house DB constraint (race guard) ──────────────────────
+
+class TestActiveBatchPerHouseConstraint:
+    """The unique_active_batch_per_house partial index is the real guard against
+    the create_batch TOCTOU race — the service .exists() check is advisory."""
+
+    def test_db_constraint_blocks_second_active_batch_same_house(self, db):
+        """Bypass the service entirely: two direct active inserts in one house
+        must be rejected by the partial unique index at the DB level."""
+        from django.db import IntegrityError, transaction
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.farm.flocks.models import Batch
+        org = _make_org("dbconstraint")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org):
+            Batch.objects.create(
+                org=org, farm=farm, house=house,
+                batch_name="First", bird_type="broiler",
+                placement_date=datetime.date.today(),
+                initial_count=100, current_count=100, status="active",
+            )
+
+        with pytest.raises(IntegrityError):
+            with transaction.atomic():
+                with set_tenant_context(org):
+                    Batch.objects.create(
+                        org=org, farm=farm, house=house,
+                        batch_name="Second", bird_type="broiler",
+                        placement_date=datetime.date.today(),
+                        initial_count=100, current_count=100, status="active",
+                    )
+
+    def test_db_constraint_allows_active_batch_in_different_house(self, db):
+        """A second active batch in a DIFFERENT house is fine."""
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.farm.flocks.models import Batch
+        org = _make_org("diffhouse")
+        farm = _make_farm(org)
+        house_a = _make_house(org, farm, name="House A")
+        house_b = _make_house(org, farm, name="House B")
+
+        with set_tenant_context(org):
+            Batch.objects.create(
+                org=org, farm=farm, house=house_a,
+                batch_name="A", bird_type="broiler",
+                placement_date=datetime.date.today(),
+                initial_count=100, current_count=100, status="active",
+            )
+            second = Batch.objects.create(
+                org=org, farm=farm, house=house_b,
+                batch_name="B", bird_type="broiler",
+                placement_date=datetime.date.today(),
+                initial_count=100, current_count=100, status="active",
+            )
+
+        assert second.pk is not None
+        assert second.house == house_b
+
+    def test_db_constraint_allows_reuse_after_batch_closed(self, db):
+        """Closing the first batch frees the house — the condition only covers
+        status='active', so a new active batch can be placed."""
+        from apps.infrastructure.core.rls import set_tenant_context
+        from apps.farm.flocks.models import Batch
+        org = _make_org("reuseclosed")
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        with set_tenant_context(org):
+            first = Batch.objects.create(
+                org=org, farm=farm, house=house,
+                batch_name="First", bird_type="broiler",
+                placement_date=datetime.date.today(),
+                initial_count=100, current_count=100, status="active",
+            )
+            first.status = "closed"
+            first.save(update_fields=["status"])
+
+            second = Batch.objects.create(
+                org=org, farm=farm, house=house,
+                batch_name="Second", bird_type="broiler",
+                placement_date=datetime.date.today(),
+                initial_count=100, current_count=100, status="active",
+            )
+
+        assert second.pk is not None
+
+    def test_create_batch_view_returns_422_when_house_occupied(self, db, client):
+        """BatchCreateView surfaces a 422 with a user-facing error when the
+        chosen house already holds an active batch."""
+        from apps.infrastructure.accounts.models import CustomUser
+        from apps.infrastructure.core.rls import set_tenant_context
+
+        # plan_tier=monthly → max_active_batches=10, so the occupancy check
+        # (not the plan-limit gate) is what blocks the second placement.
+        org = _make_org("occupied422")
+        org.plan_tier = "monthly"
+        org.subscription_status = "active"
+        org.save(update_fields=["plan_tier", "subscription_status"])
+        farm = _make_farm(org)
+        house = _make_house(org, farm)
+
+        user = CustomUser.objects.create_user(
+            email="occ@example.com", username="occuser",
+            password="testpass123", org=org, role="owner",
+        )
+        client.force_login(user)
+
+        with set_tenant_context(org):
+            _make_batch(org, farm, house, initial_count=100)
+
+        response = client.post(
+            f"/farms/{farm.pk}/batches/create/",
+            {
+                "house_id": str(house.id),
+                "batch_name": "Second Batch",
+                "bird_type": "broiler",
+                "placement_date": datetime.date.today().isoformat(),
+                "initial_count": "100",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 422
+        assert b"active batch" in response.content.lower()
+
+
 # ── 2. MortalityLog tests ─────────────────────────────────────────────────────
 
 class TestMortalityLog:
